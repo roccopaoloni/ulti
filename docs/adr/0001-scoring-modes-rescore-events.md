@@ -1,0 +1,3 @@
+# Scoring Modes re-score stored Scoring Events, not point totals
+
+Every Personal Record and every completed Session is stored as a Scoring Event, and both standard Points and each Group's Scoring Mode are formulas applied to those same events. We rejected storing a running points total and letting Groups transform it, because any transform applied uniformly to every member's total (such as a multiplier) can never change who wins. Storing events also lets the standard formula be re-tuned, or a new Period be scored under a different mode, without losing history. Point totals are therefore derived data that can always be recomputed from Scoring Events.
