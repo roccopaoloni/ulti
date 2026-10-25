@@ -1,0 +1,12 @@
+{
+  "name": "ulti",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/rules"
+  ],
+  "scripts": {
+    "test": "npm test -w @ulti/rules",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  }
+}
