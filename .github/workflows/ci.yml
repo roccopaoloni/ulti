@@ -35,6 +35,7 @@ jobs:
       - name: Bundle Edge Functions the way deploy does
         # `supabase functions deploy` bundles each function with the edge runtime's `bundle`
         # command (it has no dry-run), so run that command with the image `supabase start` pulled.
+        # The bundler finds each function's deno.json next to its entrypoint.
         run: |
           image=$(docker inspect --format '{{.Config.Image}}' supabase_edge_runtime_ulti)
           for dir in supabase/functions/*/; do
@@ -42,8 +43,9 @@ jobs:
             echo "Bundling $name"
             docker run --rm -v "$PWD:$PWD:ro" -v "$RUNNER_TEMP:$RUNNER_TEMP" -w "$PWD" "$image" bundle \
               --entrypoint "$PWD/${dir}index.ts" \
-              --import-map "$PWD/${dir}deno.json" \
               --output "$RUNNER_TEMP/$name.eszip"
+            test -s "$RUNNER_TEMP/$name.eszip"
+            ls -l "$RUNNER_TEMP/$name.eszip"
           done
       - name: Spike - call the function that imports the rules package
         run: curl -fsS http://127.0.0.1:54321/functions/v1/rules-probe
