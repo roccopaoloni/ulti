@@ -4,6 +4,6 @@ Strength Levels are measured against FitnessVolt's self-reported gym percentiles
 
 ## Considered Options
 
-- **Strength Level**: best coverage, but no API or licence; would need written permission, which we may request later.
+- **Strength Level**: best coverage, but no API or licence; would need written permission, which was requested by email in October 2026.
 - **OpenPowerlifting**: public domain, but only squat, bench and deadlift, and only from competitive lifters, so it skews strong.
 - **Our own users' logs**: the long-term goal once there are enough users to compute reliable percentiles per sex and bodyweight.

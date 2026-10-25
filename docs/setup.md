@@ -23,7 +23,7 @@ The public values are designed to sit in the browser, so sharing them is fine, i
 
 Public repositories get unlimited GitHub Actions minutes, and CI is where the server tests run.
 
-Everything in the git history becomes visible, so look over what's committed first: right now that's the docs, the glossary, the prototype and `CLAUDE.md`. `email.md` is not committed and stays private as long as it stays uncommitted.
+Everything in the git history becomes visible, so look over what's committed first: right now that's the docs, the glossary, the prototype and `CLAUDE.md`.
 
 1. On GitHub, open the repository → **Settings** → **General**, and scroll to **Danger Zone**.
 2. **Change visibility** → **Public**, and confirm.
