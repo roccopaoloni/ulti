@@ -1,4 +1,4 @@
-# Gym Tracker
+# ULTI
 
 A training log where friends compete on *showing up* and *improving*, not on how much they lift, and where the app tells each lifter when to go heavier and when to back off.
 
@@ -104,6 +104,16 @@ _Rioplatense_: Puntos de progreso
 The part of Points earned by completing Sessions toward one's Weekly Target, including during a Deload Week.
 _Rioplatense_: Puntos de constancia
 
+**Week Stamp**:
+The mark a user earns for a week in which they met their Weekly Target.
+_Avoid_: Badge, achievement
+_Rioplatense_: Sello semanal
+
+**Streak**:
+The number of consecutive weeks for which a user has earned a Week Stamp.
+_Avoid_: Run, combo
+_Rioplatense_: Racha
+
 ## Competition
 
 **Group**:
@@ -150,3 +160,8 @@ _Rioplatense_: División
 A user's Tier and Division in the current Season, such as Gold III.
 _Avoid_: Level, league, elo
 _Rioplatense_: Rango ("Oro III")
+
+**Rank-up**:
+A rise in a user's Rank to a higher Division or a higher Tier.
+_Avoid_: Level-up, promotion
+_Rioplatense_: Subida (de rango)

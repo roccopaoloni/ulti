@@ -1,6 +1,6 @@
 # Benchmark Lifts come from FitnessVolt, not Strength Level
 
-Strength Levels are measured against FitnessVolt's strength-percentile data (14 lifts, CC BY 4.0), copied into our own database and credited on the About screen. Strength Level covers far more exercises (~287), but its terms forbid systematic copying, automated access and "derivative versions of our calculators or standards", and the public GitHub copies of its tables are unlicensed scrapes.
+Strength Levels are measured against FitnessVolt's self-reported gym percentiles (14 lifts, by sex and weight class, CC BY 4.0), copied into our own database and credited on the About screen together with Symmetric Strength, whose dataset they are built from. FitnessVolt also publishes competition percentiles, but only for squat, bench and deadlift, and they skew strong for the same reason as OpenPowerlifting below. Strength Level covers far more exercises (~287), but its terms forbid systematic copying, automated access and "derivative versions of our calculators or standards", and the public GitHub copies of its tables are unlicensed scrapes.
 
 ## Considered Options
 
