@@ -32,6 +32,7 @@ jobs:
       - run: npm ci
       - name: Start the local Supabase stack
         run: npx supabase start -x studio,imgproxy,vector,logflare,realtime,storage-api,postgres-meta,supavisor
+      - run: npm run test:integration
       - name: Bundle Edge Functions the way deploy does
         # `supabase functions deploy` bundles each function with the edge runtime's `bundle`
         # command (it has no dry-run), so run that command with the image `supabase start` pulled.

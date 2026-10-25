@@ -3,10 +3,12 @@
   "private": true,
   "type": "module",
   "workspaces": [
-    "packages/rules"
+    "packages/rules",
+    "integration"
   ],
   "scripts": {
     "test": "npm test -w @ulti/rules",
+    "test:integration": "npm test -w @ulti/integration",
     "typecheck": "npm run typecheck --workspaces --if-present"
   },
   "devDependencies": {
