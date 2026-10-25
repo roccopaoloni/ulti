@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  rules:
+    name: Rules tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
+  integration:
+    name: Integration tests
+    needs: rules
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Start the local Supabase stack
+        run: npx supabase start -x studio,imgproxy,vector,logflare,realtime,storage-api,postgres-meta,supavisor
+      - name: Bundle Edge Functions the way deploy does
+        # `supabase functions deploy` bundles each function with the edge runtime's `bundle`
+        # command (it has no dry-run), so run that command with the image `supabase start` pulled.
+        run: |
+          image=$(docker inspect --format '{{.Config.Image}}' supabase_edge_runtime_ulti)
+          for dir in supabase/functions/*/; do
+            name=$(basename "$dir")
+            echo "Bundling $name"
+            docker run --rm -v "$PWD:$PWD:ro" -v "$RUNNER_TEMP:$RUNNER_TEMP" -w "$PWD" "$image" bundle \
+              --entrypoint "$PWD/${dir}index.ts" \
+              --import-map "$PWD/${dir}deno.json" \
+              --output "$RUNNER_TEMP/$name.eszip"
+          done
+      - name: Spike - call the function that imports the rules package
+        run: curl -fsS http://127.0.0.1:54321/functions/v1/rules-probe

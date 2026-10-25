@@ -8,5 +8,8 @@
   "scripts": {
     "test": "npm test -w @ulti/rules",
     "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "devDependencies": {
+    "supabase": "2.120.0"
   }
 }

@@ -1,0 +1,5 @@
+{
+  "imports": {
+    "@ulti/rules": "../../../packages/rules/src/index.ts"
+  }
+}
