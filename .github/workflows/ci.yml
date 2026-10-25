@@ -36,14 +36,15 @@ jobs:
       - name: Bundle Edge Functions the way deploy does
         # `supabase functions deploy` bundles each function with the edge runtime's `bundle`
         # command (it has no dry-run), so run that command with the image `supabase start` pulled.
-        # The bundler finds each function's deno.json next to its entrypoint.
+        # It runs from each function's directory so it finds that function's deno.json, not the
+        # npm workspace at the repository root.
         run: |
           shopt -s nullglob
           image=$(docker inspect --format '{{.Config.Image}}' supabase_edge_runtime_ulti)
           for dir in supabase/functions/*/; do
             name=$(basename "$dir")
             echo "Bundling $name"
-            docker run --rm -v "$PWD:$PWD:ro" -v "$RUNNER_TEMP:$RUNNER_TEMP" -w "$PWD" "$image" bundle \
+            docker run --rm -v "$PWD:$PWD:ro" -v "$RUNNER_TEMP:$RUNNER_TEMP" -w "$PWD/$dir" "$image" bundle \
               --entrypoint "$PWD/${dir}index.ts" \
               --output "$RUNNER_TEMP/$name.eszip"
             test -s "$RUNNER_TEMP/$name.eszip"
