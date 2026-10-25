@@ -37,6 +37,7 @@ jobs:
         # command (it has no dry-run), so run that command with the image `supabase start` pulled.
         # The bundler finds each function's deno.json next to its entrypoint.
         run: |
+          shopt -s nullglob
           image=$(docker inspect --format '{{.Config.Image}}' supabase_edge_runtime_ulti)
           for dir in supabase/functions/*/; do
             name=$(basename "$dir")
@@ -47,5 +48,3 @@ jobs:
             test -s "$RUNNER_TEMP/$name.eszip"
             ls -l "$RUNNER_TEMP/$name.eszip"
           done
-      - name: Spike - call the function that imports the rules package
-        run: curl -fsS http://127.0.0.1:54321/functions/v1/rules-probe
