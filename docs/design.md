@@ -103,7 +103,7 @@ Week / Month / Year tabs. Each row shows position, avatar, name, Rank badge, sco
 
 ## Sound
 
-The Rank-up sound is **Metal**: a kick and a palm-muted guitar chug for each crack in the old badge, a distorted power chord with kick, snare and crash when it shatters, and a riff that grows with the Tier. Every sound lands on something the user can see happen. The weight comes from distorted low-mids, not sub-bass, because phone speakers drop almost everything under about 150 Hz, and nothing rings high and tonal, because that reads as an achievement chime. The prototype synthesizes it; the app should use recorded or produced audio in the same style.
+The Rank-up sound is **Metal**: a kick and a palm-muted guitar chug for each crack in the old badge, a distorted power chord with kick, snare and crash when it shatters, and a riff that grows with the Tier. Every sound lands on something the user can see happen. The weight comes from distorted low-mids, not sub-bass, because phone speakers drop almost everything under about 150 Hz, and nothing rings high and tonal, because that reads as an achievement chime. The prototype synthesizes it, and the app ships that synthesized sound until recorded or produced audio in the same style exists (see [deferred decisions](./deferred-decisions.md)).
 
 On iPhones the sound **respects the silent switch**, so with the switch on silent a Rank-up plays without sound. ULTI is a web app ([ADR 0003](./adr/0003-offline-first-pwa-not-native.md)), and the only way for a web page to play through the switch is to ask to be treated as media playback, like a video, which also pauses whatever else is playing. Most people lift with music on, and a Rank-up that stops their music is worse than a silent one.
 

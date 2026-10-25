@@ -64,6 +64,16 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
 
+## Development workflow
+
+The development machine has no Docker, so the local Supabase stack runs only inside GitHub Actions.
+
+- Rules package tests need only Node: run them locally as the tight loop.
+- Each ticket goes on its own branch, and the agent working it pushes the branch and opens the PR itself, with `Closes #<ticket>` in the body so merging closes the ticket and unblocks the ones it blocks.
+- Server integration tests run only in CI, so a server change is verified on its PR: follow it with `gh pr checks --watch`.
+- A dev server started on this machine talks to the hosted Supabase project: the same database, and the same Gmail sender, that real users have.
+- Hosting runs on free tiers ([ADR 0006](docs/adr/0006-test-phase-runs-on-free-tiers.md)). Steps only the owner can do (accounts, secrets, dashboards) live in `docs/setup.md`; when a ticket needs one, add it there.
+
 ## Agent skills
 
 ### Issue tracker

@@ -14,3 +14,7 @@ Scoring Modes must score each Scoring Event on its own, so that every leaderboar
 Planks, dead hangs, wall sits and similar holds are logged in seconds, not weight × reps, so e1RM does not apply to them. In v1 they can only be logged as Custom Exercises. Still to decide for v1.1: what counts as a Personal Record for a hold, how it converts to Progress Points, and what "go heavier" means for one.
 
 Assisted exercises (assisted pull-up and dip machines, where less weight means progress) were dropped from the roadmap entirely; they can still be logged as Custom Exercises.
+
+## Produced Rank-up audio (pending)
+
+The design calls for recorded or produced audio in the Metal style (see the design document's Sound section), but nobody on the project can produce it yet, so there is no ticket for it. Until someone can, the app ships the prototype's synthesized sound, which already follows the Sound rules: every sound lands on something visible, the weight comes from distorted low-mids rather than sub-bass, and nothing rings high and tonal. Swapping in produced audio later changes what plays, not when it plays.
