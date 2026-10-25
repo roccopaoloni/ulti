@@ -386,6 +386,10 @@ deno_version = 2
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
+# Public: the uptime monitor calls it with no key.
+[functions.health]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327
