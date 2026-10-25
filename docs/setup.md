@@ -43,7 +43,13 @@ Everything in the git history becomes visible, so look over what's committed fir
    - **Project URL**: shown under the **Connect** button or in **Project Settings → Data API**. It looks like `https://abcdefghijklmnop.supabase.co`.
    - **Project ref**: the `abcdefghijklmnop` part of that URL.
    - **Publishable key**: **Project Settings → API Keys**, the key starting with `sb_publishable_`. Leave the secret key alone; nothing in this guide needs it.
-5. Create a personal access token so GitHub Actions can deploy: click your avatar → **Account preferences** → **Access Tokens** → **Generate new token**, name it `github-actions-ulti`, and copy it. Keep the tab open until step 6, because it's only shown once.
+5. Create a personal access token so GitHub Actions can deploy: open [Access Tokens](https://supabase.com/dashboard/account/tokens) → **Generate new token**, name it `github-actions-ulti`, and scope it to only what CI needs:
+   - Projects: only `ulti`
+   - **Project Settings**: Read, **API Keys**: Read, **API Key Secrets**: Read (these three let `supabase link` connect)
+   - **Edge Functions**: Read-write (to deploy functions)
+   - Nothing else. Migrations don't need the token, because they use the database password.
+
+   A scoped token starts with `sbp_fc`. Avoid one with a **Legacy** badge: that's full account access, reaching every project you'll ever have. Copy the token and keep the tab open until step 6, because it's only shown once.
 
 - [ ] Project URL, project ref and publishable key are noted
 - [ ] The database password and access token are saved somewhere safe
