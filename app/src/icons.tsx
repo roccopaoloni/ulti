@@ -28,3 +28,10 @@ export const tabIcons: Record<Tab, React.ReactElement> = {
     </svg>
   ),
 };
+
+// The back chevron on the sign-in screens, from the prototype.
+export const backIcon = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M15 5l-7 7 7 7" />
+  </svg>
+);
