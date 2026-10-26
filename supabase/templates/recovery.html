@@ -1,0 +1,11 @@
+{{ if eq .Data.language "es" }}
+<h2>Recuperá tu cuenta</h2>
+<p>Escribí este código en ULTI para crear una contraseña nueva:</p>
+<p style="font-size: 32px; font-weight: 700; letter-spacing: 6px">{{ .Token }}</p>
+<p>Vence en una hora. Si no pediste cambiar tu contraseña, ignorá este mail: tu contraseña sigue igual.</p>
+{{ else }}
+<h2>Reset your password</h2>
+<p>Type this code into ULTI to set a new password:</p>
+<p style="font-size: 32px; font-weight: 700; letter-spacing: 6px">{{ .Token }}</p>
+<p>It expires in an hour. If you didn't ask to reset your password, you can ignore this email: your password stays the same.</p>
+{{ end }}

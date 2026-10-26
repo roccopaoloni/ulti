@@ -30,6 +30,7 @@
   --gold: #ffc83d;
   --diamond: #7be7ff;
   --elite: #a98bff;
+  --error: #ff6b5e;
   --scrim: rgba(6, 4, 18, 0.66);
 
   --display: 'Unbounded', 'Arial Black', sans-serif;
@@ -54,6 +55,7 @@
     --gold: #a87900;
     --diamond: #0f8fae;
     --elite: #6a3fe0;
+    --error: #c62828;
     --scrim: rgba(26, 20, 51, 0.45);
     color-scheme: light;
   }
@@ -178,6 +180,119 @@ button {
   font-size: 14px;
   width: 100%;
   text-align: center;
+}
+
+.btn-primary {
+  width: 100%;
+  min-height: 64px;
+  border-radius: 18px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: calc(26px * var(--ds));
+  text-transform: uppercase;
+}
+.btn-primary:disabled {
+  opacity: 0.6;
+}
+.btn-link {
+  padding: 12px;
+  text-align: center;
+  font-weight: 600;
+  color: var(--muted);
+}
+.btn-link.inline {
+  align-self: flex-start;
+  padding-left: 0;
+}
+.iconbtn {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+}
+.iconbtn svg {
+  width: 24px;
+  height: 24px;
+}
+.lead {
+  font-size: 17px;
+  max-width: 34ch;
+}
+.error {
+  color: var(--error);
+  font-weight: 600;
+}
+
+/* Sign-up and sign-in (from the prototype's auth screens): the form scrolls, its buttons stay at the bottom. */
+.auth {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.auth-body {
+  gap: 18px;
+}
+.back {
+  margin-left: -8px;
+}
+.auth-h {
+  font-size: calc(40px * var(--ds));
+}
+.auth-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-block: 10px calc(12px + env(safe-area-inset-bottom, 0px));
+}
+.welcome-mark {
+  width: 88px;
+  height: 88px;
+  border-radius: 22%;
+}
+.welcome-wordmark {
+  font-size: calc(76px * var(--ds));
+}
+.welcome-tagline {
+  font-size: calc(24px * var(--ds));
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.field label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.field input {
+  height: 54px;
+  width: 100%;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--fg);
+  font: 500 17px var(--body);
+  padding: 0 14px;
+}
+.field input:focus {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 1px;
+}
+.field .hint {
+  font-size: 13px;
+  color: var(--muted);
+}
+.field .code-input {
+  height: 72px;
+  text-align: center;
+  letter-spacing: 0.5em;
+  font-weight: 700;
+  font-size: calc(34px * var(--ds));
 }
 
 /* ⓘ: a 28px tap target around a small circled "i". */

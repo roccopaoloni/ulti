@@ -31,6 +31,7 @@ The trademark colour is **hot pink** on deep indigo. Pink is used for primary bu
 | Accent (fills) | #FF4D9D | #FF4D9D |
 | Text on accent | #1A0614 | #1A0614 |
 | Accent as text | #FF4D9D | #C2185F |
+| Error | #FF6B5E | #C62828 |
 | Bronze | #D9894F | #A8602A |
 | Silver | #C3CAD6 | #7A8497 |
 | Gold | #FFC83D | #A87900 |

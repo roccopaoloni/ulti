@@ -12,6 +12,41 @@ type Messages = {
   screens: Record<Tab, { label: string; text: string }>;
   close: string;
   glossary: Record<Term, { term: string; explanation: string }>;
+  auth: {
+    pitch: string;
+    createAccount: string;
+    haveAccount: string;
+    back: string;
+    signUpTitle: string;
+    email: string;
+    password: string;
+    passwordHint: string;
+    // Followed by the email address in bold.
+    codeSentTo: string;
+    checkEmailTitle: string;
+    code: string;
+    resend: string;
+    resent: string;
+    verify: string;
+    signInTitle: string;
+    signIn: string;
+    forgot: string;
+    forgotTitle: string;
+    forgotText: string;
+    sendCode: string;
+    newPassword: string;
+    saveAndSignIn: string;
+    signOut: string;
+    errors: {
+      offline: string;
+      wrongPassword: string;
+      wrongCode: string;
+      tooMany: string;
+      samePassword: string;
+      alreadyRegistered: string;
+      other: string;
+    };
+  };
 };
 
 const en: Messages = {
@@ -41,6 +76,40 @@ const en: Messages = {
     rank: {
       term: 'Rank',
       explanation: 'Your Tier and Division this Season. During a Season it only goes up.',
+    },
+  },
+  auth: {
+    pitch: 'Compete with your friends on who shows up and improves most. Not on who lifts the most.',
+    createAccount: 'Create account',
+    haveAccount: 'I already have an account',
+    back: 'Back',
+    signUpTitle: 'Create your account',
+    email: 'Email',
+    password: 'Password',
+    passwordHint: 'At least 8 characters.',
+    codeSentTo: 'We sent a 6-digit code to',
+    checkEmailTitle: 'Check your email',
+    code: 'Code',
+    resend: 'Resend code',
+    resent: 'We sent you a new code.',
+    verify: 'Verify',
+    signInTitle: 'Welcome back',
+    signIn: 'Sign in',
+    forgot: 'Forgot your password?',
+    forgotTitle: 'Recover your account',
+    forgotText: "We'll send you a code to set a new password.",
+    sendCode: 'Send code',
+    newPassword: 'New password',
+    saveAndSignIn: 'Save and sign in',
+    signOut: 'Sign out',
+    errors: {
+      offline: "Couldn't reach ULTI. Check your connection and try again.",
+      wrongPassword: 'Wrong email or password.',
+      wrongCode: 'That code is wrong or has expired.',
+      tooMany: 'Too many tries. Wait a minute and try again.',
+      samePassword: "That's your current password. Choose a new one.",
+      alreadyRegistered: 'This email already has an account. Sign in instead.',
+      other: 'Something went wrong. Try again.',
     },
   },
 };
@@ -73,6 +142,40 @@ const es: Messages = {
     rank: {
       term: 'Rango',
       explanation: 'Tu liga y división en la temporada. Durante la temporada solo sube.',
+    },
+  },
+  auth: {
+    pitch: 'Competí con tus amigos por quién aparece y mejora más. No por quién levanta más.',
+    createAccount: 'Crear cuenta',
+    haveAccount: 'Ya tengo cuenta',
+    back: 'Volver',
+    signUpTitle: 'Creá tu cuenta',
+    email: 'Email',
+    password: 'Contraseña',
+    passwordHint: 'Mínimo 8 caracteres.',
+    codeSentTo: 'Te mandamos un código de 6 dígitos a',
+    checkEmailTitle: 'Revisá tu mail',
+    code: 'Código',
+    resend: 'Reenviar código',
+    resent: 'Te mandamos un código nuevo.',
+    verify: 'Verificar',
+    signInTitle: 'Hola de nuevo',
+    signIn: 'Entrar',
+    forgot: '¿Olvidaste tu contraseña?',
+    forgotTitle: 'Recuperá tu cuenta',
+    forgotText: 'Te mandamos un código para crear una contraseña nueva.',
+    sendCode: 'Mandar código',
+    newPassword: 'Contraseña nueva',
+    saveAndSignIn: 'Guardar y entrar',
+    signOut: 'Cerrar sesión',
+    errors: {
+      offline: 'No pudimos conectarnos. Revisá tu conexión y probá de nuevo.',
+      wrongPassword: 'El email o la contraseña no son correctos.',
+      wrongCode: 'El código no es correcto o ya venció.',
+      tooMany: 'Demasiados intentos. Esperá un minuto y probá de nuevo.',
+      samePassword: 'Esa es tu contraseña actual. Elegí una nueva.',
+      alreadyRegistered: 'Ya hay una cuenta con este email. Entrá con tu contraseña.',
+      other: 'Algo salió mal. Probá de nuevo.',
     },
   },
 };
