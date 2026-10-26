@@ -373,6 +373,158 @@ button {
   color: var(--accent-text);
 }
 
+/* Groups (from the prototype's Groups tab) and avatars: initials on the colour each user picks. */
+:root {
+  /* Avatar colours are all light, so initials are dark in both themes. */
+  --avatar-ink: #1a1433;
+}
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex: none;
+  background: var(--c);
+  color: var(--avatar-ink);
+  font-weight: 700;
+  font-size: 14px;
+}
+.avatar.large {
+  width: 56px;
+  height: 56px;
+  font-size: 18px;
+}
+.chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin-top: -8px;
+}
+.chip {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.chip[aria-pressed='true'] {
+  background: var(--fg);
+  color: var(--bg);
+  border-color: var(--fg);
+}
+.g-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.g-name {
+  font-size: calc(34px * var(--ds));
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.g-head .btn-ghost {
+  width: auto;
+  flex: none;
+}
+.members {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.member {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+.member:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+.member-name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.member-name .muted {
+  font-weight: 500;
+}
+.owner {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.profile-fields {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+.profile-fields .avatar {
+  margin-top: 22px;
+}
+.profile-fields .field {
+  flex: 1;
+  min-width: 0;
+}
+.field .label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 5px;
+}
+.swatch {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--c);
+}
+.swatch[aria-checked='true'] {
+  box-shadow:
+    0 0 0 3px var(--bg),
+    0 0 0 5px var(--fg);
+}
+.invite-link {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 15px;
+  background: var(--surface-2);
+  border-radius: 12px;
+  padding: 14px;
+  user-select: all;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.danger {
+  color: var(--error);
+}
+.btn-danger {
+  width: 100%;
+  min-height: 56px;
+  border-radius: 18px;
+  background: var(--error);
+  color: var(--bg);
+  font-weight: 700;
+  font-size: 16px;
+}
+.btn-danger:disabled,
+.btn-ghost:disabled {
+  opacity: 0.6;
+}
+
 @keyframes up {
   from {
     transform: translateY(40px);

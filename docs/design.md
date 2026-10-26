@@ -149,6 +149,8 @@ A Division-up within the same Tier skips the cracking: the old crest holds for a
 
 Initials on a colour the user picks. No photo uploads in v1.
 
+The colours are coral, sand, lime, teal, sky blue and pink: all light, so the initials are dark in both themes, and none of them a Tier colour or the accent. The initials are the first letters of the first two words of the display name, or its first two letters if it is one word ("Ana" → AN, "Lu Fernández" → LF).
+
 ## Later (v1.1)
 
 - A shareable image card (Rank-up first, then Session summaries), sized for WhatsApp, where Argentine friend groups live.
