@@ -64,6 +64,16 @@ test('Ana signs up and verifies her email by typing in the 6-digit code it sends
   expect(verified.data.session?.user.email).toBe(address);
 });
 
+test('a password shorter than 8 characters is refused', async () => {
+  const signUp = await device().auth.signUp({
+    email: newAddress('ana'),
+    password: 'squat12',
+    options: { data: { language: 'en' } },
+  });
+
+  expect(signUp.error?.code).toBe('weak_password');
+});
+
 test("Ana can't sign in before she verifies her email, and a code sent again verifies it", async () => {
   const ana = device();
   const address = newAddress('ana');
