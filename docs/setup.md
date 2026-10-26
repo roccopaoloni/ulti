@@ -2,7 +2,7 @@
 
 The steps only the project owner can do: creating accounts, choosing names and handing keys to the pipeline. Everything here is free. [ADR 0006](./adr/0006-test-phase-runs-on-free-tiers.md) explains why these services and not others.
 
-Steps 0–7 are ticket #2 and come before any code; close that issue when they're done, which lets the walking skeleton (#3) start. Step 8 comes after #3 ships.
+Steps 0–7 are ticket #2 and come before any code; close that issue when they're done, which lets the walking skeleton (#3) start. Step 8 comes after #3 ships, and step 9 with sign-up (#4).
 
 Dashboards change their menus from time to time. If a menu named here has moved, search the dashboard for the setting's name.
 
@@ -148,6 +148,42 @@ Supabase pauses free projects after about a week without activity. The `health` 
 3. Add a second monitor the same way for the app itself: `https://<your-app>.vercel.app`.
 
 - [ ] Both monitors show "Up"
+
+## 9. With sign-up (#4): turn on the 6-digit codes
+
+New users verify their email, and anyone who forgot their password resets it, by typing a 6-digit code from an email into the app. The local stack gets these settings from `supabase/config.toml`, but the hosted project's auth settings can only be changed in the dashboard: GitHub Actions' token deliberately can't change them. Do this step before #4's PR is merged (nothing signs up before #4, so doing it early changes nothing), and again whenever either template file changes.
+
+1. In the Supabase project: **Authentication → Sign In / Providers → Email**, set:
+   - **Confirm email**: on
+   - **Email OTP Length**: `6`
+   - **Email OTP Expiration**: `3600` seconds (the emails say the code expires in an hour)
+   - **Minimum password length**: `8` (the app says "At least 8 characters")
+
+   and save.
+2. **Authentication → Emails → Templates**. Open **Confirm sign up** and set:
+   - **Subject**:
+
+     ```
+     {{ if eq .Data.language "es" }}{{ .Token }} es tu código de ULTI{{ else }}{{ .Token }} is your ULTI code{{ end }}
+     ```
+
+   - **Body** (the **Source** tab): the whole of [`supabase/templates/confirmation.html`](../supabase/templates/confirmation.html), pasted as it is.
+
+   Save, then open **Reset password** and set:
+   - **Subject**:
+
+     ```
+     {{ if eq .Data.language "es" }}{{ .Token }} es tu código para recuperar tu cuenta de ULTI{{ else }}{{ .Token }} is your ULTI password reset code{{ end }}
+     ```
+
+   - **Body**: the whole of [`supabase/templates/recovery.html`](../supabase/templates/recovery.html).
+
+   Save. Each email is in the language the app was in when the user signed up.
+3. Once #4 is merged, open the app, create an account with your personal email and check that the email shows a 6-digit code and no link, and that typing the code in signs you in. Then sign out from **Profile**, choose **Forgot your password?**, and check the reset code the same way.
+
+- [ ] Confirm email is on, with 6-digit codes that last 3600 seconds and passwords of at least 8 characters
+- [ ] Both templates are pasted, subjects included
+- [ ] A test sign-up and a password reset worked with codes
 
 ## Later: moving to a real domain
 
