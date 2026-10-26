@@ -3,6 +3,9 @@
 -- The app reads its own rows here and writes none: every write goes through the sync Edge
 -- Function, which writes only the signed-in user's rows. IDs are made on the phone, so every key
 -- starts with user_id: one user's IDs can never reach another user's rows.
+--
+-- Only the owner ever changes a row, so the latest write wins: updated_at is when the phone made
+-- it, and an older write that arrives late changes nothing.
 
 create table public.sessions (
   user_id uuid not null references auth.users (id) on delete cascade,
@@ -13,9 +16,12 @@ create table public.sessions (
   time_zone text not null,
   local_date date not null,
   finished_at timestamptz,
+  updated_at timestamptz not null,
   primary key (user_id, id)
 );
 
+-- Batches can arrive out of order, so a Set may arrive before its Session: it names its Session
+-- without a foreign key, and the recompute leaves it out until its Session arrives.
 create table public.sets (
   user_id uuid not null references auth.users (id) on delete cascade,
   id uuid not null,
@@ -25,8 +31,8 @@ create table public.sets (
   weight_kg numeric not null check (weight_kg >= 0),
   reps integer not null check (reps > 0),
   logged_at timestamptz not null,
-  primary key (user_id, id),
-  foreign key (user_id, session_id) references public.sessions (user_id, id) on delete cascade
+  updated_at timestamptz not null,
+  primary key (user_id, id)
 );
 create index sets_session_idx on public.sets (user_id, session_id);
 
