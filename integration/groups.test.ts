@@ -165,6 +165,26 @@ test('when the Owner leaves, the longest-standing member becomes the Owner and t
   expect((await cy.rpc('reset_invite', { group_id: gymCrew })).error).toBeNull();
 });
 
+test('a Group is deleted once its last member leaves, and its invite link stops working', async () => {
+  const ana = await lifter('Ana', coral);
+  const bea = await lifter('Bea', sky);
+  const cy = await lifter('Cy', teal);
+  const { data: gymCrew } = await ana.rpc('create_group', { name: 'Gym crew' });
+  const [{ invite_code }] = await groupsOf(ana);
+  await bea.rpc('join_group', { invite_code });
+
+  await ana.rpc('leave_group', { group_id: gymCrew });
+  // Bea is still in it, so the Group stays.
+  expect((await groupsOf(bea)).map(({ name }: { name: string }) => name)).toEqual(['Gym crew']);
+  const left = await bea.rpc('leave_group', { group_id: gymCrew });
+
+  expect(left.error).toBeNull();
+  expect(await groupsOf(bea)).toEqual([]);
+  const late = await cy.rpc('join_group', { invite_code });
+  expect(late.error?.message).toBe('invite_not_found');
+  expect(await groupsOf(cy)).toEqual([]);
+});
+
 test('members see each other only as a display name, an avatar colour and who the Owner is, and nobody else sees the Group', async () => {
   const ana = await lifter('Ana', coral);
   const bea = await lifter('Bea', sky);
