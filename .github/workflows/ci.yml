@@ -32,6 +32,9 @@ jobs:
       - run: npm ci
       - name: Start the local Supabase stack
         run: npx supabase start -x studio,imgproxy,vector,logflare,realtime,storage-api,postgres-meta,supavisor
+        env:
+          # Scheduled jobs reach the functions through the API gateway on the stack's Docker network.
+          ULTI_FUNCTIONS_URL: http://kong:8000/functions/v1
       - run: npm run test:integration
       - name: Bundle Edge Functions the way deploy does
         # `supabase functions deploy` bundles each function with the edge runtime's `bundle`
@@ -72,6 +75,9 @@ jobs:
       - run: npx supabase link --project-ref "$SUPABASE_PROJECT_ID"
       - name: Apply migrations
         run: npx supabase db push --yes
+        env:
+          # Written to Vault with the migrations, for the database's scheduled jobs (config.toml).
+          ULTI_FUNCTIONS_URL: https://${{ secrets.SUPABASE_PROJECT_ID }}.supabase.co/functions/v1
       - name: Deploy Edge Functions
         run: npx supabase functions deploy --project-ref "$SUPABASE_PROJECT_ID"
       - name: Check the hosted health endpoint

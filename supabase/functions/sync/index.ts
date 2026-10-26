@@ -2,7 +2,7 @@
 // batch of mutations; the endpoint saves them, then recomputes the user's whole history.
 import { Client } from '@db/postgres';
 import { withSupabase } from '@supabase/server';
-import { recompute } from '../_shared/recompute.ts';
+import { lockUser, recompute } from '../_shared/recompute.ts';
 
 // What the phone saves. updatedAt is when the phone made the write: the latest one wins.
 type SessionRecord = {
@@ -39,7 +39,9 @@ export default {
     try {
       await client.connect();
       const rejected = await save(client, userId, mutations, receivedAt);
-      await recompute(client, userId);
+      // The batch is saved whatever happens next. A failed recompute leaves the user marked dirty,
+      // and the scheduled retry recomputes them.
+      await recompute(client, userId).catch((error) => console.error('Recompute failed', userId, error));
       return Response.json({ rejected });
     } finally {
       await client.end();
@@ -51,6 +53,7 @@ export default {
 async function save(client: Client, userId: string, mutations: Mutation[], receivedAt: number) {
   const transaction = client.createTransaction('save');
   await transaction.begin();
+  await lockUser(transaction, userId);
 
   // A mutation whose ID is already in the log was decided when it first arrived, so it's skipped.
   const { rows: logged } = await transaction.queryObject<{ id: string }>`
@@ -104,6 +107,8 @@ async function save(client: Client, userId: string, mutations: Mutation[], recei
       logged_at = excluded.logged_at,
       updated_at = excluded.updated_at
     where sets.updated_at < excluded.updated_at`;
+  // The user's Scoring Events are out of date until the recompute succeeds.
+  await transaction.queryArray`insert into private.dirty_users (user_id) values (${userId}) on conflict do nothing`;
   await transaction.commit();
   return rejected;
 }
