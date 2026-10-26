@@ -1,0 +1,275 @@
+/* Bundled fonts (design: Typography). Only the Latin subset ships: it covers English and Spanish. */
+@font-face {
+  font-family: 'Unbounded';
+  font-style: normal;
+  font-weight: 200 900;
+  font-display: swap;
+  src: url('@fontsource-variable/unbounded/files/unbounded-latin-wght-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('@fontsource-variable/manrope/files/manrope-latin-wght-normal.woff2') format('woff2');
+}
+
+/* Colour tokens (design: Colour). Dark is designed first; light follows the phone's setting. */
+:root {
+  --bg: #0e0b1f;
+  --surface: #17132f;
+  --surface-2: #211c42;
+  --line: #2f2a58;
+  --fg: #f4f1ff;
+  --muted: #a49fc7;
+  --accent: #ff4d9d;
+  --accent-ink: #1a0614;
+  --accent-text: #ff4d9d;
+  --bronze: #d9894f;
+  --silver: #c3cad6;
+  --gold: #ffc83d;
+  --diamond: #7be7ff;
+  --elite: #a98bff;
+  --scrim: rgba(6, 4, 18, 0.66);
+
+  --display: 'Unbounded', 'Arial Black', sans-serif;
+  --body: 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  /* Unbounded is wide, so display sizes are scaled down (from the prototype). */
+  --ds: 0.66;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f7f4ff;
+    --surface: #ffffff;
+    --surface-2: #ece8fa;
+    --line: #d9d3f0;
+    --fg: #1a1433;
+    --muted: #5c5680;
+    --accent: #ff4d9d;
+    --accent-ink: #1a0614;
+    --accent-text: #c2185f;
+    --bronze: #a8602a;
+    --silver: #7a8497;
+    --gold: #a87900;
+    --diamond: #0f8fae;
+    --elite: #6a3fe0;
+    --scrim: rgba(26, 20, 51, 0.45);
+    color-scheme: light;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font: 15px/1.45 var(--body);
+  /* Numbers don't shift sideways as they change (design: Typography). */
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overflow: hidden;
+}
+h1,
+h2,
+p {
+  margin: 0;
+}
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 2px;
+  border-radius: 10px;
+}
+
+/* One phone-width column: the screen scrolls, the tab bar stays at the bottom. */
+#root {
+  max-width: 440px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.screen {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-block: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.disp {
+  font-family: var(--display);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  line-height: 1;
+}
+.title {
+  font-size: calc(34px * var(--ds));
+}
+.home-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.wordmark {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: calc(44px * var(--ds));
+  line-height: 0.9;
+  letter-spacing: 0.02em;
+}
+.tagline {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 18px;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.muted {
+  color: var(--muted);
+}
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.eyebrow {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn-ghost {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 12px 14px;
+  font-weight: 600;
+  font-size: 14px;
+  width: 100%;
+  text-align: center;
+}
+
+/* ⓘ: a 28px tap target around a small circled "i". */
+.info {
+  width: 28px;
+  height: 28px;
+  margin: -6px -4px;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+}
+.info span {
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  display: grid;
+  place-items: center;
+  font: 700 10px/1 var(--body);
+  color: var(--muted);
+}
+
+/* The ⓘ explanation opens as a bottom sheet. */
+.sheet {
+  inset: auto 0 0;
+  margin: 0 auto;
+  width: 100%;
+  max-width: 440px;
+  padding: 0;
+  background: var(--surface);
+  color: var(--fg);
+  border: 1px solid var(--line);
+  border-bottom: 0;
+  border-radius: 24px 24px 0 0;
+}
+.sheet[open] {
+  animation: up 0.22s ease-out;
+}
+.sheet::backdrop {
+  background: var(--scrim);
+}
+.sheet-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px max(16px, env(safe-area-inset-right, 0px)) calc(14px + env(safe-area-inset-bottom, 0px))
+    max(16px, env(safe-area-inset-left, 0px));
+}
+.sheet-title {
+  font-size: calc(28px * var(--ds));
+}
+
+.tabbar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-top: 1px solid var(--line);
+  padding-block: 4px calc(6px + env(safe-area-inset-bottom, 0px));
+}
+.tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-decoration: none;
+}
+.tab svg {
+  width: 24px;
+  height: 24px;
+}
+.tab[aria-current='page'] {
+  color: var(--fg);
+}
+.tab[aria-current='page'] svg {
+  color: var(--accent-text);
+}
+
+@keyframes up {
+  from {
+    transform: translateY(40px);
+    opacity: 0.4;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+  }
+}
