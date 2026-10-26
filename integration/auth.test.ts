@@ -85,3 +85,27 @@ test("Ana can't sign in before she verifies her email, and a code sent again ver
   const signedIn = await device().auth.signInWithPassword({ email: address, password });
   expect(signedIn.data.session?.user.email).toBe(address);
 });
+
+test('Ana resets a forgotten password with the 6-digit code it sends, not a link', async () => {
+  const address = newAddress('ana');
+  const laptop = device();
+  await laptop.auth.signUp({ email: address, password: 'squat-every-monday', options: { data: { language: 'en' } } });
+  await laptop.auth.verifyOtp({ email: address, token: (await email(address)).code!, type: 'email' });
+
+  const phone = device();
+  const asked = await phone.auth.resetPasswordForEmail(address);
+  expect(asked.error).toBeNull();
+  const { html, code } = await email(address, 2);
+  expect(code).toMatch(/^\d{6}$/);
+  expect(html).not.toMatch(/href|https?:\/\//);
+
+  const verified = await phone.auth.verifyOtp({ email: address, token: code!, type: 'recovery' });
+  expect(verified.error).toBeNull();
+  const changed = await phone.auth.updateUser({ password: 'deadlift-on-fridays' });
+  expect(changed.error).toBeNull();
+
+  const oldPassword = await device().auth.signInWithPassword({ email: address, password: 'squat-every-monday' });
+  expect(oldPassword.error?.code).toBe('invalid_credentials');
+  const newPassword = await device().auth.signInWithPassword({ email: address, password: 'deadlift-on-fridays' });
+  expect(newPassword.data.session?.user.email).toBe(address);
+});
