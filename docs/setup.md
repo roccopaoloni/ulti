@@ -2,7 +2,7 @@
 
 The steps only the project owner can do: creating accounts, choosing names and handing keys to the pipeline. Everything here is free. [ADR 0006](./adr/0006-test-phase-runs-on-free-tiers.md) explains why these services and not others.
 
-Steps 0–7 are ticket #2 and come before any code; close that issue when they're done, which lets the walking skeleton (#3) start. Step 8 comes after #3 ships, and step 9 with sign-up (#4).
+Steps 0–7 are ticket #2 and come before any code; close that issue when they're done, which lets the walking skeleton (#3) start. Step 8 comes after #3 ships, step 9 with sign-up (#4), and step 10 after Groups (#20).
 
 Dashboards change their menus from time to time. If a menu named here has moved, search the dashboard for the setting's name.
 
@@ -184,6 +184,19 @@ New users verify their email, and anyone who forgot their password resets it, by
 - [ ] Confirm email is on, with 6-digit codes that last 3600 seconds and passwords of at least 8 characters
 - [ ] Both templates are pasted, subjects included
 - [ ] A test sign-up and a password reset worked with codes
+
+## 10. After Groups (#20) ships: check an invite on a phone
+
+Nothing needs setting up: the deploy job applies the Groups migration. What CI can't check is how a real phone opens an invite link, because iPhones open links in Safari, never in the installed app.
+
+1. In the installed app, open **Groups → Create a Group**, then **Invite**, and send the link to a second account (another email of yours) over WhatsApp.
+2. On a phone where that second account isn't signed in, tap the link. Safari should open ULTI's welcome screen with a "You're invited" card.
+3. Sign in there, pick a name and colour, and check that the Group opens with both of you in it.
+4. Open the installed app on that phone and sign in with the second account: the Group should be there too.
+5. Back on the first account, **Invite → Reset link**, and check that the old link now says it no longer works.
+
+- [ ] An invite opened in Safari before signing in joined the Group once signed in, and the installed app shows it
+- [ ] A reset link stops working
 
 ## Later: moving to a real domain
 
