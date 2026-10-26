@@ -39,6 +39,8 @@ type Options = {
   connectivity: EventTarget;
   now: () => Date;
   timeZone: () => string;
+  // How long to wait before trying again after a sync fails.
+  retryAfterMs: number;
 };
 
 interface Store extends DBSchema {
@@ -69,16 +71,22 @@ export async function openTraining(userId: string, options: Options) {
     sync();
   }
 
-  // One sync at a time. A sync asked for while one runs follows it, so nothing written meanwhile waits.
+  // One sync at a time. A sync asked for while one runs follows it, so nothing written meanwhile
+  // waits. A failed sync tries again later: offline, or while supabase-js waits out a token refresh
+  // cooldown after reconnecting, which isn't being signed out.
   let running: Promise<void> | null = null;
   let again = false;
+  let retry: ReturnType<typeof setTimeout> | undefined;
   function sync() {
     if (running) {
       again = true;
       return;
     }
+    clearTimeout(retry);
     running = sendOutbox()
-      .catch(() => {})
+      .catch(() => {
+        retry = setTimeout(sync, options.retryAfterMs);
+      })
       .finally(() => {
         running = null;
         if (again) {
@@ -132,6 +140,7 @@ export async function openTraining(userId: string, options: Options) {
 
     close() {
       options.connectivity.removeEventListener('online', onOnline);
+      clearTimeout(retry);
       db.close();
     },
   };
