@@ -114,12 +114,21 @@ end;
 $$;
 
 -- Removes the caller from a Group. If they were its Owner, the longest-standing member left becomes
--- Owner, since that's who the Owner always is.
+-- Owner, since that's who the Owner always is. A Group with no members left is deleted.
 create function public.leave_group(group_id uuid) returns void
 language plpgsql security definer set search_path = '' as $$
 begin
+  -- Leaves of the same Group take turns, so when its last two members leave at once, the second
+  -- one sees it empty.
+  perform 1 from public.groups g where g.id = leave_group.group_id for update;
   delete from public.group_members m
   where m.group_id = leave_group.group_id and m.user_id = (select auth.uid());
+  if not found then
+    return;
+  end if;
+  delete from public.groups g
+  where g.id = leave_group.group_id
+    and not exists (select from public.group_members m where m.group_id = g.id);
 end;
 $$;
 
