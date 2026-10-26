@@ -113,6 +113,16 @@ begin
 end;
 $$;
 
+-- Removes the caller from a Group. If they were its Owner, the longest-standing member left becomes
+-- Owner, since that's who the Owner always is.
+create function public.leave_group(group_id uuid) returns void
+language plpgsql security definer set search_path = '' as $$
+begin
+  delete from public.group_members m
+  where m.group_id = leave_group.group_id and m.user_id = (select auth.uid());
+end;
+$$;
+
 -- The Owner replaces the Group's invite code, so a leaked link stops working. Returns the new code.
 create function public.reset_invite(group_id uuid) returns text
 language plpgsql security definer set search_path = '' as $$
@@ -166,8 +176,10 @@ $$;
 
 -- Signed-in users only: every function works on the caller's own account.
 revoke execute on function
-  public.create_group(text), public.join_group(text), public.reset_invite(uuid), public.my_groups()
+  public.create_group(text), public.join_group(text), public.leave_group(uuid), public.reset_invite(uuid),
+  public.my_groups()
   from public, anon;
 grant execute on function
-  public.create_group(text), public.join_group(text), public.reset_invite(uuid), public.my_groups()
+  public.create_group(text), public.join_group(text), public.leave_group(uuid), public.reset_invite(uuid),
+  public.my_groups()
   to authenticated;
