@@ -54,8 +54,12 @@ default_pool_size = 20
 # Maximum number of client connections allowed.
 max_client_conn = 100
 
-# [db.vault]
-# secret_key = "env(SECRET_VALUE)"
+# Vault secrets, created or updated by `supabase start` and by `supabase db push`. A value whose
+# environment variable isn't set is left as it is.
+[db.vault]
+# Where the database's scheduled jobs reach the Edge Functions. CI sets ULTI_FUNCTIONS_URL to the
+# local stack's API gateway, and when it deploys, to the hosted project's functions.
+functions_url = "env(ULTI_FUNCTIONS_URL)"
 
 [db.migrations]
 # If disabled, migrations will be skipped during a db push or reset.
@@ -406,6 +410,11 @@ deno_version = 2
 
 # Public: the uptime monitor calls it with no key.
 [functions.health]
+verify_jwt = false
+
+# Public: the database's retry job calls it with no key. It takes nothing in and only recomputes
+# users already marked dirty, which is always safe to repeat.
+[functions.recompute]
 verify_jwt = false
 
 [analytics]

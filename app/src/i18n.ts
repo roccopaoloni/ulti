@@ -5,7 +5,7 @@ import type { Tab } from './navigation.ts';
 export type Language = 'en' | 'es';
 
 // Glossary terms that appear in the interface, each explained by an ⓘ.
-export type Term = 'weeklyTarget' | 'routine' | 'group' | 'rank' | 'owner';
+export type Term = 'weeklyTarget' | 'routine' | 'group' | 'rank' | 'owner' | 'session' | 'set' | 'exercise';
 
 type Messages = {
   tagline: string;
@@ -89,6 +89,25 @@ type Messages = {
       other: string;
     };
   };
+  // Logging a Session.
+  session: {
+    start: string;
+    startHint: string;
+    resume: string;
+    // How many Sets the Session in progress has, under "Back to session".
+    logged: (sets: number) => string;
+    title: string;
+    sets: (count: number) => string;
+    legend: string;
+    leave: string;
+    finish: string;
+    empty: string;
+    addExercise: string;
+    chooseExercise: string;
+    weight: string;
+    reps: string;
+    logSet: string;
+  };
 };
 
 const en: Messages = {
@@ -123,6 +142,18 @@ const en: Messages = {
       term: 'Owner',
       explanation:
         "The member who runs a Group: whoever created it, or the member who's been in it longest once the creator leaves. Only the Owner can reset the invite link.",
+    },
+    session: {
+      term: 'Session',
+      explanation: 'One visit to the gym, logged as a sequence of sets.',
+    },
+    set: {
+      term: 'Set',
+      explanation: 'One bout of an exercise, recorded as weight × reps: 100 kg × 5 is five reps with 100 kg.',
+    },
+    exercise: {
+      term: 'Exercise',
+      explanation: "A movement from ULTI's catalog, such as Back squat or Bench press.",
     },
   },
   groups: {
@@ -199,6 +230,23 @@ const en: Messages = {
       other: 'Something went wrong. Try again.',
     },
   },
+  session: {
+    start: 'Start session',
+    startHint: 'It saves on your phone, even with no signal.',
+    resume: 'Back to session',
+    logged: (sets) => (sets === 1 ? '1 set logged' : `${sets} sets logged`),
+    title: 'Session',
+    sets: (count) => (count === 1 ? '1 set' : `${count} sets`),
+    legend: 'Sets: weight × reps',
+    leave: 'Back',
+    finish: 'Finish',
+    empty: 'Add an exercise to start logging sets.',
+    addExercise: 'Add exercise',
+    chooseExercise: 'Choose an exercise',
+    weight: 'Weight in kg',
+    reps: 'Reps',
+    logSet: 'Log set',
+  },
 };
 
 // Rioplatense Spanish, with voseo and the glossary's Spanish terms.
@@ -234,6 +282,18 @@ const es: Messages = {
       term: 'Creador',
       explanation:
         'Quien maneja el grupo: el que lo creó o, si se va, el miembro que está hace más tiempo. Solo el creador puede cambiar el link de invitación.',
+    },
+    session: {
+      term: 'Sesión',
+      explanation: 'Una visita al gimnasio, registrada como una secuencia de series.',
+    },
+    set: {
+      term: 'Serie',
+      explanation: 'Una tanda de un ejercicio, registrada como peso × repeticiones: 100 kg × 5 son cinco repeticiones con 100 kg.',
+    },
+    exercise: {
+      term: 'Ejercicio',
+      explanation: 'Un movimiento del catálogo de ULTI, como Sentadilla o Press banca.',
     },
   },
   groups: {
@@ -309,6 +369,23 @@ const es: Messages = {
       alreadyRegistered: 'Ya hay una cuenta con este email. Entrá con tu contraseña.',
       other: 'Algo salió mal. Probá de nuevo.',
     },
+  },
+  session: {
+    start: 'Empezar sesión',
+    startHint: 'Se guarda en tu teléfono, aunque no haya señal.',
+    resume: 'Volver a la sesión',
+    logged: (sets) => (sets === 1 ? '1 serie registrada' : `${sets} series registradas`),
+    title: 'Sesión',
+    sets: (count) => (count === 1 ? '1 serie' : `${count} series`),
+    legend: 'Series: peso × repeticiones',
+    leave: 'Volver',
+    finish: 'Terminar',
+    empty: 'Agregá un ejercicio para empezar a registrar series.',
+    addExercise: 'Agregar ejercicio',
+    chooseExercise: 'Elegí un ejercicio',
+    weight: 'Peso en kg',
+    reps: 'Repeticiones',
+    logSet: 'Registrar serie',
   },
 };
 

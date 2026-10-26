@@ -1,0 +1,6 @@
+{
+  "imports": {
+    "@db/postgres": "jsr:@db/postgres@0.19.5",
+    "@ulti/rules": "../../../packages/rules/src/index.ts"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "imports": {
+    "@db/postgres": "jsr:@db/postgres@0.19.5",
+    "@supabase/server": "npm:@supabase/server@1.9.1",
+    "@ulti/rules": "../../../packages/rules/src/index.ts"
+  }
+}

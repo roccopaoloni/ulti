@@ -525,6 +525,191 @@ button {
   opacity: 0.6;
 }
 
+/* Logging a Session (from the prototype's List layout). It has the whole screen, with no tab bar. */
+.screen.session {
+  padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+}
+.btn-start {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  padding: 20px;
+  border-radius: 20px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  text-align: left;
+}
+.btn-start .disp {
+  font-size: calc(32px * var(--ds));
+}
+.btn-start small {
+  font-weight: 600;
+  font-size: 14px;
+  opacity: 0.75;
+}
+.s-head {
+  display: grid;
+  grid-template-columns: 40px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding-block: 12px 10px;
+  border-bottom: 1px solid var(--line);
+}
+.s-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: calc(22px * var(--ds));
+  text-transform: uppercase;
+  line-height: 1;
+}
+.s-sub {
+  font-size: 13px;
+  color: var(--muted);
+}
+.btn-ghost.s-finish {
+  width: auto;
+  padding: 8px 14px;
+}
+.legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.ex {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ex-name {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: calc(25px * var(--ds));
+  text-transform: uppercase;
+  line-height: 1;
+}
+.set {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 14px 64px 56px;
+  align-items: center;
+  gap: 6px;
+  min-height: 62px;
+  padding: 6px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+.set.done {
+  background: var(--surface-2);
+  border-color: transparent;
+}
+.tag {
+  display: grid;
+  place-items: center;
+  height: 46px;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: calc(20px * var(--ds));
+  color: var(--muted);
+}
+.cell {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 3px;
+  height: 48px;
+  padding-top: 8px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  font: 700 calc(28px * var(--ds)) var(--body);
+  white-space: nowrap;
+}
+.set.done .cell {
+  background: transparent;
+}
+.cell small {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.cell input,
+input.cell {
+  border: 0;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  text-align: center;
+}
+.cell input {
+  width: 6ch;
+  min-width: 0;
+  padding: 0;
+  text-align: right;
+}
+input.cell {
+  width: 100%;
+  background: var(--surface-2);
+  padding: 0;
+}
+.cell input:focus,
+input.cell:focus {
+  outline: none;
+}
+.cell:focus-within {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 1px;
+}
+.xmark {
+  text-align: center;
+  font-size: 14px;
+  color: var(--muted);
+}
+.check {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 48px;
+  border-radius: 12px;
+  border: 2px solid var(--accent-text);
+  color: var(--accent-text);
+}
+.check svg {
+  width: 24px;
+  height: 24px;
+}
+.check:disabled {
+  border-color: var(--line);
+  color: var(--muted);
+}
+.set.done .check {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+.picks {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 55vh;
+  overflow-y: auto;
+}
+.pick {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  font-weight: 600;
+  font-size: 16px;
+  text-align: left;
+}
+
 @keyframes up {
   from {
     transform: translateY(40px);

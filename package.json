@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "npm run dev -w @ulti/app",
     "build": "npm run build -w @ulti/app",
-    "test": "npm test -w @ulti/rules",
+    "test": "npm test -w @ulti/rules -w @ulti/app",
     "test:integration": "npm test -w @ulti/integration",
     "typecheck": "npm run typecheck --workspaces --if-present"
   },
