@@ -18,7 +18,7 @@ function server() {
 }
 
 // Ana's phone, in Buenos Aires: each test gets its own user, so its own IndexedDB store.
-function anasPhone(network: ReturnType<typeof server>) {
+function anasPhone(network: ReturnType<typeof server>, { retryAfterMs = 60_000 } = {}) {
   const connectivity = new EventTarget();
   const userId = crypto.randomUUID();
   let minutes = 0;
@@ -28,6 +28,7 @@ function anasPhone(network: ReturnType<typeof server>) {
     // Monday 19 October 2026, 18:05 in Buenos Aires, a minute later on every reading.
     now: () => new Date(Date.UTC(2026, 9, 19, 21, 5 + minutes++)),
     timeZone: () => 'America/Argentina/Buenos_Aires',
+    retryAfterMs,
   };
   return { connectivity, open: () => openTraining(userId, options) };
 }
@@ -61,5 +62,29 @@ test('Sets logged offline are queued and sent when the phone is back online', as
     { kind: 'saveSet', exerciseId: 'back-squat', weightKg: 102.5, reps: 4 },
     { kind: 'saveSession', finished: true },
   ]);
+  training.close();
+});
+
+test('every retry resends the same mutation IDs, until the server has them', async () => {
+  const network = server();
+  network.offline = true;
+  const phone = anasPhone(network, { retryAfterMs: 5 });
+  const training = await phone.open();
+  const session = await training.startSession();
+  await training.logSet(session.id, 'bench-press', 80, 8);
+  await training.finishSession(session.id);
+
+  // Back online, the server fails twice before it takes the batch.
+  network.failuresLeft = 2;
+  network.offline = false;
+  phone.connectivity.dispatchEvent(new Event('online'));
+
+  await vi.waitFor(() => expect(network.batches).toHaveLength(3));
+  const ids = network.batches.map((batch) => batch.map((mutation) => mutation.id));
+  expect(ids[1]).toEqual(ids[0]);
+  expect(ids[2]).toEqual(ids[0]);
+  expect(ids[0]).toHaveLength(3);
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(network.batches).toHaveLength(3);
   training.close();
 });
