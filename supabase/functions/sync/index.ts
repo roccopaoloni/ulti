@@ -8,28 +8,35 @@ type SessionRecord = { id: string; startedAt: string; timeZone: string; localDat
 type SetRecord = { id: string; sessionId: string; exerciseId: string; weightKg: number; reps: number; loggedAt: string };
 type Mutation = { id: string; kind: 'saveSession'; session: SessionRecord } | { id: string; kind: 'saveSet'; set: SetRecord };
 
+// Sets dated after the moment the endpoint received them are rejected. A phone's clock can run a
+// little fast, though, and a Set synced the moment it's logged would be lost to that: this much
+// ahead still counts as now.
+const clockAllowanceMs = 5 * 60_000;
+
 export default {
   fetch: withSupabase({ auth: 'user' }, async (req, ctx) => {
+    const receivedAt = Date.now();
     const userId = ctx.userClaims!.id;
     const { mutations } = (await req.json()) as { mutations: Mutation[] };
 
     const client = new Client(Deno.env.get('SUPABASE_DB_URL'));
     try {
       await client.connect();
-      await save(client, userId, mutations);
+      const rejected = await save(client, userId, mutations, receivedAt);
       await recompute(client, userId);
-      return Response.json({ rejected: [] });
+      return Response.json({ rejected });
     } finally {
       await client.end();
     }
   }),
 };
 
-async function save(client: Client, userId: string, mutations: Mutation[]) {
+// Saves the mutations it hasn't seen before, and returns the IDs of those it rejected.
+async function save(client: Client, userId: string, mutations: Mutation[], receivedAt: number) {
   const transaction = client.createTransaction('save');
   await transaction.begin();
 
-  // A mutation whose ID is already in the log was applied when it first arrived, so it's skipped.
+  // A mutation whose ID is already in the log was decided when it first arrived, so it's skipped.
   const { rows: logged } = await transaction.queryObject<{ id: string }>`
     insert into private.mutation_log (user_id, id)
     select ${userId}, id::uuid
@@ -41,9 +48,11 @@ async function save(client: Client, userId: string, mutations: Mutation[]) {
   // A batch can save the same Session or Set twice, as when a Session starts and finishes.
   const sessions = new Map<string, SessionRecord>();
   const sets = new Map<string, SetRecord>();
+  const rejected: string[] = [];
   for (const mutation of mutations) {
     if (!unseen.delete(mutation.id)) continue;
     if (mutation.kind === 'saveSession') sessions.set(mutation.session.id, mutation.session);
+    else if (Date.parse(mutation.set.loggedAt) > receivedAt + clockAllowanceMs) rejected.push(mutation.id);
     else sets.set(mutation.set.id, mutation.set);
   }
 
@@ -69,4 +78,5 @@ async function save(client: Client, userId: string, mutations: Mutation[]) {
       reps = excluded.reps,
       logged_at = excluded.logged_at`;
   await transaction.commit();
+  return rejected;
 }
