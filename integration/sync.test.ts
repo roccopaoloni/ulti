@@ -1,35 +1,13 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { execFileSync } from 'node:child_process';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { expect, test } from 'vitest';
-
-// CI starts the local stack with `supabase start`; its ports are in supabase/config.toml.
-const apiUrl = process.env.SUPABASE_URL ?? 'http://127.0.0.1:54321';
-// Every local stack uses this publishable key (`supabase status` prints it).
-const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY ?? 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH';
-// The local stack's secret key, read from the running stack rather than written down. It only
-// creates the test users, already verified, so these tests don't wait for code emails.
-const secretKey: string =
-  process.env.SUPABASE_SECRET_KEY ??
-  JSON.parse(execFileSync('npx', ['supabase', 'status', '-o', 'json'], { encoding: 'utf8' })).SECRET_KEY;
-
-const noSession = { auth: { persistSession: false, autoRefreshToken: false } };
+import { newUser } from './users.ts';
 
 type Lifter = { id: string; client: SupabaseClient };
 
 // A verified user, signed in on their phone.
 async function lifter(name: string): Promise<Lifter> {
-  const email = `${name}.${crypto.randomUUID()}@example.com`;
-  const password = 'squat-every-monday';
-  const created = await createClient(apiUrl, secretKey, noSession).auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-  });
-  expect(created.error).toBeNull();
-  const client = createClient(apiUrl, publishableKey, noSession);
-  const signedIn = await client.auth.signInWithPassword({ email, password });
-  expect(signedIn.error).toBeNull();
-  return { id: created.data.user!.id, client };
+  const { id, device } = await newUser(name);
+  return { id, client: device };
 }
 
 // What the phone's outbox sends: a batch of mutations, each with an ID made on the phone.
