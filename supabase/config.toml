@@ -254,13 +254,14 @@ otp_expiry = 3600
 # content_path = "./supabase/templates/invite.html"
 
 # The codes are typed into the app, so the emails show {{ .Token }} and never a link: a link would
-# open the browser instead of the installed app. Paths are relative to the repository root.
+# open the browser instead of the installed app. Each email is in the language the app passed as
+# user metadata at sign-up (.Data.language). Paths are relative to the repository root.
 [auth.email.template.confirmation]
-subject = "{{ .Token }} is your ULTI code"
+subject = '{{ if eq .Data.language "es" }}{{ .Token }} es tu código de ULTI{{ else }}{{ .Token }} is your ULTI code{{ end }}'
 content_path = "./supabase/templates/confirmation.html"
 
 [auth.email.template.recovery]
-subject = "{{ .Token }} is your ULTI password reset code"
+subject = '{{ if eq .Data.language "es" }}{{ .Token }} es tu código para recuperar tu cuenta de ULTI{{ else }}{{ .Token }} is your ULTI password reset code{{ end }}'
 content_path = "./supabase/templates/recovery.html"
 
 # Uncomment to customize notification email template

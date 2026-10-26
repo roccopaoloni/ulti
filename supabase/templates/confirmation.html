@@ -1,4 +1,11 @@
+{{ if eq .Data.language "es" }}
+<h2>Confirmá tu email</h2>
+<p>Escribí este código en ULTI para terminar de crear tu cuenta:</p>
+<p style="font-size: 32px; font-weight: 700; letter-spacing: 6px">{{ .Token }}</p>
+<p>Vence en una hora. Si no te registraste en ULTI, ignorá este mail.</p>
+{{ else }}
 <h2>Confirm your email</h2>
 <p>Type this code into ULTI to finish creating your account:</p>
 <p style="font-size: 32px; font-weight: 700; letter-spacing: 6px">{{ .Token }}</p>
 <p>It expires in an hour. If you didn't sign up for ULTI, you can ignore this email.</p>
+{{ end }}
