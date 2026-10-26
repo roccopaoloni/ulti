@@ -2,11 +2,13 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { registerSW } from 'virtual:pwa-register';
 import { App } from './App.tsx';
+import { captureInvite } from './groups.ts';
 import { createI18n, detectLanguage, I18nContext } from './i18n.ts';
 import './styles.css';
 
 const i18n = createI18n(detectLanguage(navigator.languages));
 document.documentElement.lang = i18n.language;
+captureInvite();
 
 registerSW({
   immediate: true,
