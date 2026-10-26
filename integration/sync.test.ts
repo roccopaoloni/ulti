@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { expect, test } from 'vitest';
+import { execFileSync } from 'node:child_process';
+import { expect, test, vi } from 'vitest';
 import { newUser } from './users.ts';
 
 type Lifter = { id: string; client: SupabaseClient };
@@ -245,4 +246,39 @@ test("Bea can't read Ana's training or write it, directly or through a sync", as
   await sync(bea, [{ ...monday.start, id: crypto.randomUUID() }, copied]);
 
   expect(await trainingOf(ana)).toEqual(anasMondayOnTheServer(monday));
+});
+
+// SQL run straight on the local database, in its container (named after project_id in
+// supabase/config.toml), for what no API does: breaking the recompute, and running a scheduled job now.
+function sql(statement: string) {
+  return execFileSync(
+    'docker',
+    ['exec', '-e', 'PGPASSWORD=postgres', 'supabase_db_ulti', 'psql', '-h', '127.0.0.1', '-U', 'postgres', '-tAc', statement],
+    { encoding: 'utf8' },
+  ).trim();
+}
+
+test('if the recompute fails, the Session is saved anyway, and a scheduled job recomputes it later', { timeout: 60_000 }, async () => {
+  const ana = await lifter('ana');
+  const monday = anasMonday();
+  // A Scoring Event left over from an older version of the rules: a recompute replaces it.
+  sql(`insert into public.scoring_events (user_id, id, event) values ('${ana.id}', 'left-over', '{}')`);
+
+  // With nowhere to write its result, the recompute fails.
+  sql('alter table public.scoring_events rename to scoring_events_away');
+  try {
+    expect(await sync(ana, [monday.start, monday.firstSet, monday.secondSet, monday.finish])).toEqual({ rejected: [] });
+  } finally {
+    sql('alter table public.scoring_events_away rename to scoring_events');
+  }
+  expect(await trainingOf(ana)).toEqual({ ...anasMondayOnTheServer(monday), scoringEvents: [{ id: 'left-over' }] });
+
+  // The job retries every five minutes. Run it now rather than wait.
+  expect(sql(`select schedule from cron.job where jobname = 'recompute-dirty-users' and active`)).toBe('*/5 * * * *');
+  sql(`do $$ begin execute (select command from cron.job where jobname = 'recompute-dirty-users'); end $$`);
+
+  await vi.waitFor(async () => expect(await trainingOf(ana)).toEqual(anasMondayOnTheServer(monday)), {
+    timeout: 30_000,
+    interval: 500,
+  });
 });
