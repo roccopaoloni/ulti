@@ -169,6 +169,25 @@ test('a mutation ID the server has already applied is ignored, whatever it carri
   expect(await trainingOf(ana)).toEqual(anasMondayOnTheServer(monday));
 });
 
+test('batches arriving out of order end in the same state', async () => {
+  // Ana's phone sends her Monday in two batches: the start and first Set, then the second Set and
+  // the finish. Each user's IDs are their own, so two users receiving the same two batches in
+  // opposite orders show what each order leaves behind.
+  const inOrder = await lifter('ana');
+  const reversed = await lifter('ana');
+  const monday = anasMonday();
+  const first = [monday.start, monday.firstSet];
+  const second = [monday.secondSet, monday.finish];
+
+  await sync(inOrder, first);
+  await sync(inOrder, second);
+  await sync(reversed, second);
+  await sync(reversed, first);
+
+  expect(await trainingOf(inOrder)).toEqual(anasMondayOnTheServer(monday));
+  expect(await trainingOf(reversed)).toEqual(anasMondayOnTheServer(monday));
+});
+
 test('a Set dated after the moment the server receives it is rejected, and the rest of the batch is saved', async () => {
   const ana = await lifter('ana');
   const monday = anasMonday();
