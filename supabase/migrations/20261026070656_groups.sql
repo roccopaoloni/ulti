@@ -95,6 +95,24 @@ begin
 end;
 $$;
 
+-- Adds the caller to the Group whose current invite code this is, and returns its id. A member who
+-- opens the link again stays as they were, so they keep their place in line to become Owner.
+create function public.join_group(invite_code text) returns uuid
+language plpgsql security definer set search_path = '' as $$
+declare
+  me uuid := (select auth.uid());
+  joined uuid;
+begin
+  perform private.require_profile(me);
+  select g.id into joined from public.groups g where g.invite_code = join_group.invite_code;
+  if joined is null then
+    raise exception 'invite_not_found';
+  end if;
+  insert into public.group_members (group_id, user_id) values (joined, me) on conflict do nothing;
+  return joined;
+end;
+$$;
+
 -- The caller's Groups, in the order they joined them, each with its invite code and its members from
 -- the longest-standing (the Owner) down. Of each member: display name, avatar colour, whether they
 -- are the Owner and whether they are the caller. Nothing else.
@@ -131,5 +149,7 @@ language sql stable security definer set search_path = '' as $$
 $$;
 
 -- Signed-in users only: every function works on the caller's own account.
-revoke execute on function public.create_group(text), public.my_groups() from public, anon;
-grant execute on function public.create_group(text), public.my_groups() to authenticated;
+revoke execute on function public.create_group(text), public.join_group(text), public.my_groups()
+  from public, anon;
+grant execute on function public.create_group(text), public.join_group(text), public.my_groups()
+  to authenticated;
