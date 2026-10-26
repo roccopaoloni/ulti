@@ -15,12 +15,18 @@ function subscribe(onChange: () => void) {
   return () => removeEventListener('popstate', onChange);
 }
 
+export function usePathname() {
+  return useSyncExternalStore(subscribe, () => location.pathname);
+}
+
 export function useCurrentTab(): Tab {
-  const pathname = useSyncExternalStore(subscribe, () => location.pathname);
+  const pathname = usePathname();
   return tabs.find((tab) => paths[tab] === pathname) ?? 'home';
 }
 
-export function navigate(path: string) {
-  history.pushState(null, '', path);
+// `replace` swaps the current history entry, so Back doesn't return to a screen that's done.
+export function navigate(path: string, replace = false) {
+  if (replace) history.replaceState(null, '', path);
+  else history.pushState(null, '', path);
   dispatchEvent(new PopStateEvent('popstate'));
 }

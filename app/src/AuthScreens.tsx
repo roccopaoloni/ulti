@@ -1,8 +1,10 @@
 import { isAuthError, isAuthRetryableFetchError } from '@supabase/supabase-js';
 import { useId, useState, type FormEvent, type InputHTMLAttributes, type ReactNode } from 'react';
 import { supabase } from './auth.ts';
+import { usePendingInvite } from './groups.ts';
 import { useI18n, type I18n } from './i18n.ts';
 import { backIcon } from './icons.tsx';
+import { Info } from './Info.tsx';
 
 type Screen = 'welcome' | 'signUp' | 'verify' | 'signIn' | 'forgot' | 'reset';
 
@@ -63,6 +65,7 @@ export function AuthScreens({ flow, setFlow, signedIn }: { flow: Flow; setFlow: 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const [notice, setNotice] = useState<string>();
+  const invited = usePendingInvite() !== null;
   const email = flow.email.trim();
 
   const go = (screen: Screen) => {
@@ -160,6 +163,14 @@ export function AuthScreens({ flow, setFlow, signedIn }: { flow: Flow; setFlow: 
             <p className="tagline welcome-tagline">{t.tagline}</p>
           </div>
           <p className="lead">{a.pitch}</p>
+          {invited && (
+            <section className="card">
+              <div className="eyebrow">
+                {t.groups.invited} <Info term="group" />
+              </div>
+              <p>{t.groups.invitedText}</p>
+            </section>
+          )}
         </>
       );
       primary = a.createAccount;
@@ -320,7 +331,7 @@ export function AuthScreens({ flow, setFlow, signedIn }: { flow: Flow; setFlow: 
   );
 }
 
-function Field({ label, hint, ...input }: { label: string; hint?: string } & InputHTMLAttributes<HTMLInputElement>) {
+export function Field({ label, hint, ...input }: { label: string; hint?: string } & InputHTMLAttributes<HTMLInputElement>) {
   const id = useId();
   return (
     <div className="field">
