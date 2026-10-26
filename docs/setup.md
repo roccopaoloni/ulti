@@ -85,7 +85,7 @@ Supabase limits how many auth emails go out per hour (**Authentication → Rate 
 ## 4. Create the Vercel project
 
 1. Sign up at [vercel.com](https://vercel.com) with GitHub, on the free **Hobby** plan.
-2. **Add New… → Project**, then import `roccopaoloni/gym-tracker`. Give Vercel access to the repository if it asks.
+2. **Add New… → Project**, then import `roccopaoloni/ulti`. Give Vercel access to the repository if it asks.
 3. **Project Name**: choose it with care, because it becomes the app's address (`ulti-app` gives `ulti-app.vercel.app` if nobody has it). Installed apps and invite links are tied to that address, and changing it later means everyone reinstalls.
 4. Leave the framework, root directory and build settings at their defaults. The walking skeleton (#3) adds a file to the repo that tells Vercel how to build.
 5. Under **Environment Variables**, add both, for all environments:

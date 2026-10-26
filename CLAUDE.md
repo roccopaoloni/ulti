@@ -68,9 +68,10 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 The development machine has no Docker, so the local Supabase stack runs only inside GitHub Actions.
 
+- Work test-first with the `mattpocock-skills:tdd` skill, testing only at three seams: the rules package, the server API (integration tests) and the client outbox (an in-memory IndexedDB and a stubbed network). v1 has no automated UI tests.
 - Rules package tests need only Node: run them locally as the tight loop.
 - Each ticket goes on its own branch, and the agent working it pushes the branch and opens the PR itself, with `Closes #<ticket>` in the body so merging closes the ticket and unblocks the ones it blocks.
-- Server integration tests run only in CI, so a server change is verified on its PR: follow it with `gh pr checks --watch`.
+- Server integration tests run only in CI, so a server change is verified on its PR: follow it with `gh pr checks --watch`. A test that's red in CI counts as red, so push it on its own commit before the implementation.
 - A dev server started on this machine talks to the hosted Supabase project: the same database, and the same Gmail sender, that real users have.
 - Hosting runs on free tiers ([ADR 0006](docs/adr/0006-test-phase-runs-on-free-tiers.md)). Steps only the owner can do (accounts, secrets, dashboards) live in `docs/setup.md`; when a ticket needs one, add it there.
 
@@ -78,7 +79,7 @@ The development machine has no Docker, so the local Supabase stack runs only ins
 
 ### Issue tracker
 
-GitHub Issues on `roccopaoloni/gym-tracker`, via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+GitHub Issues on `roccopaoloni/ulti`, via the `gh` CLI. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 

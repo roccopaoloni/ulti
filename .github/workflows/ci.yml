@@ -71,7 +71,7 @@ jobs:
       - run: npm ci
       - run: npx supabase link --project-ref "$SUPABASE_PROJECT_ID"
       - name: Apply migrations
-        run: npx supabase db push
+        run: npx supabase db push --yes
       - name: Deploy Edge Functions
         run: npx supabase functions deploy --project-ref "$SUPABASE_PROJECT_ID"
       - name: Check the hosted health endpoint

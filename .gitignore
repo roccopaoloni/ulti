@@ -33,8 +33,6 @@ npm-debug.log*
 .DS_Store
 Thumbs.db
 
-# Claude Code per-user settings
+# Claude Code per-user settings and agent worktrees
 .claude/settings.local.json
-
-# Private drafts that must stay out of the public repo
-email.md
+.claude/worktrees/
