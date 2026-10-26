@@ -142,6 +142,29 @@ test('when the Owner resets the invite link, the old link stops working and the 
   expect(withNew).toMatchObject({ error: null, data: gymCrew });
 });
 
+test('when the Owner leaves, the longest-standing member becomes the Owner and the Group carries on', async () => {
+  const ana = await lifter('Ana', coral);
+  const bea = await lifter('Bea', sky);
+  const cy = await lifter('Cy', teal);
+  const { data: gymCrew } = await ana.rpc('create_group', { name: 'Gym crew' });
+  const [{ invite_code }] = await groupsOf(ana);
+  // Cy joins before Bea.
+  await cy.rpc('join_group', { invite_code });
+  await bea.rpc('join_group', { invite_code });
+
+  const left = await ana.rpc('leave_group', { group_id: gymCrew });
+
+  expect(left.error).toBeNull();
+  expect(await groupsOf(ana)).toEqual([]);
+  expect((await groupsOf(bea))[0].members).toEqual([
+    { display_name: 'Cy', avatar_color: teal, owner: true, me: false },
+    { display_name: 'Bea', avatar_color: sky, owner: false, me: true },
+  ]);
+  // As the Owner, Cy can now reset the link, and Bea still can't.
+  expect((await bea.rpc('reset_invite', { group_id: gymCrew })).error?.message).toBe('not_owner');
+  expect((await cy.rpc('reset_invite', { group_id: gymCrew })).error).toBeNull();
+});
+
 test('members see each other only as a display name, an avatar colour and who the Owner is, and nobody else sees the Group', async () => {
   const ana = await lifter('Ana', coral);
   const bea = await lifter('Bea', sky);
