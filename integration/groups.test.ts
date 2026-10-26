@@ -118,6 +118,30 @@ test('an invite is bound to the account that accepts it, so the Group shows up o
   expect((await groupsOf(phone)).map(({ name }: { name: string }) => name)).toEqual(['Gym crew']);
 });
 
+test('when the Owner resets the invite link, the old link stops working and the new one works', async () => {
+  const ana = await lifter('Ana', coral);
+  const bea = await lifter('Bea', sky);
+  const cy = await lifter('Cy', teal);
+  const { data: gymCrew } = await ana.rpc('create_group', { name: 'Gym crew' });
+  const [{ invite_code: leaked }] = await groupsOf(ana);
+  await bea.rpc('join_group', { invite_code: leaked });
+
+  // Only the Owner can reset it: Bea is a member, but not the Owner.
+  const refused = await bea.rpc('reset_invite', { group_id: gymCrew });
+  const reset = await ana.rpc('reset_invite', { group_id: gymCrew });
+
+  expect(refused.error?.message).toBe('not_owner');
+  expect(reset.error).toBeNull();
+  expect(reset.data).not.toBe(leaked);
+  // Every member now shares the new link.
+  expect((await groupsOf(bea))[0].invite_code).toBe(reset.data);
+  const withLeaked = await cy.rpc('join_group', { invite_code: leaked });
+  expect(withLeaked.error?.message).toBe('invite_not_found');
+  expect(await groupsOf(cy)).toEqual([]);
+  const withNew = await cy.rpc('join_group', { invite_code: reset.data });
+  expect(withNew).toMatchObject({ error: null, data: gymCrew });
+});
+
 test('members see each other only as a display name, an avatar colour and who the Owner is, and nobody else sees the Group', async () => {
   const ana = await lifter('Ana', coral);
   const bea = await lifter('Bea', sky);
