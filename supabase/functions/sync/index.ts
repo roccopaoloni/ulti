@@ -26,16 +26,27 @@ export default {
 };
 
 async function save(client: Client, userId: string, mutations: Mutation[]) {
+  const transaction = client.createTransaction('save');
+  await transaction.begin();
+
+  // A mutation whose ID is already in the log was applied when it first arrived, so it's skipped.
+  const { rows: logged } = await transaction.queryObject<{ id: string }>`
+    insert into private.mutation_log (user_id, id)
+    select ${userId}, id::uuid
+    from jsonb_array_elements_text(${JSON.stringify(mutations.map(({ id }) => id))}::jsonb) as id
+    on conflict do nothing
+    returning id::text`;
+  const unseen = new Set(logged.map(({ id }) => id));
+
   // A batch can save the same Session or Set twice, as when a Session starts and finishes.
   const sessions = new Map<string, SessionRecord>();
   const sets = new Map<string, SetRecord>();
   for (const mutation of mutations) {
+    if (!unseen.delete(mutation.id)) continue;
     if (mutation.kind === 'saveSession') sessions.set(mutation.session.id, mutation.session);
     else sets.set(mutation.set.id, mutation.set);
   }
 
-  const transaction = client.createTransaction('save');
-  await transaction.begin();
   await transaction.queryArray`
     insert into public.sessions (user_id, id, started_at, time_zone, local_date, finished_at)
     select ${userId}, s.id, s."startedAt", s."timeZone", s."localDate", s."finishedAt"
