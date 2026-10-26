@@ -113,6 +113,22 @@ begin
 end;
 $$;
 
+-- The Owner replaces the Group's invite code, so a leaked link stops working. Returns the new code.
+create function public.reset_invite(group_id uuid) returns text
+language plpgsql security definer set search_path = '' as $$
+declare
+  code text;
+begin
+  if private.group_owner(reset_invite.group_id) is distinct from (select auth.uid()) then
+    raise exception 'not_owner';
+  end if;
+  update public.groups g set invite_code = private.new_invite_code()
+  where g.id = reset_invite.group_id
+  returning g.invite_code into code;
+  return code;
+end;
+$$;
+
 -- The caller's Groups, in the order they joined them, each with its invite code and its members from
 -- the longest-standing (the Owner) down. Of each member: display name, avatar colour, whether they
 -- are the Owner and whether they are the caller. Nothing else.
@@ -149,7 +165,9 @@ language sql stable security definer set search_path = '' as $$
 $$;
 
 -- Signed-in users only: every function works on the caller's own account.
-revoke execute on function public.create_group(text), public.join_group(text), public.my_groups()
+revoke execute on function
+  public.create_group(text), public.join_group(text), public.reset_invite(uuid), public.my_groups()
   from public, anon;
-grant execute on function public.create_group(text), public.join_group(text), public.my_groups()
+grant execute on function
+  public.create_group(text), public.join_group(text), public.reset_invite(uuid), public.my_groups()
   to authenticated;
