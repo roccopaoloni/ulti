@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  rules:
+    name: Rules tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
+  integration:
+    name: Integration tests
+    needs: rules
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Start the local Supabase stack
+        run: npx supabase start -x studio,imgproxy,vector,logflare,realtime,storage-api,postgres-meta,supavisor
+      - run: npm run test:integration
+      - name: Bundle Edge Functions the way deploy does
+        # `supabase functions deploy` bundles each function with the edge runtime's `bundle`
+        # command (it has no dry-run), so run that command with the image `supabase start` pulled.
+        # It runs from each function's directory so it finds that function's deno.json, not the
+        # npm workspace at the repository root.
+        run: |
+          shopt -s nullglob
+          image=$(docker inspect --format '{{.Config.Image}}' supabase_edge_runtime_ulti)
+          for dir in supabase/functions/*/; do
+            name=$(basename "$dir")
+            echo "Bundling $name"
+            docker run --rm -v "$PWD:$PWD:ro" -v "$RUNNER_TEMP:$RUNNER_TEMP" -w "$PWD/$dir" "$image" bundle \
+              --entrypoint "$PWD/${dir}index.ts" \
+              --output "$RUNNER_TEMP/$name.eszip"
+            test -s "$RUNNER_TEMP/$name.eszip"
+            ls -l "$RUNNER_TEMP/$name.eszip"
+          done
+
+  deploy:
+    name: Deploy the backend
+    # Only a push to main deploys, and only after every test has passed. Vercel deploys the app itself.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: integration
+    runs-on: ubuntu-latest
+    concurrency: deploy-hosted-supabase
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx supabase link --project-ref "$SUPABASE_PROJECT_ID"
+      - name: Apply migrations
+        run: npx supabase db push
+      - name: Deploy Edge Functions
+        run: npx supabase functions deploy --project-ref "$SUPABASE_PROJECT_ID"
+      - name: Check the hosted health endpoint
+        run: curl -fsS --retry 5 --retry-delay 10 --retry-all-errors "https://$SUPABASE_PROJECT_ID.supabase.co/functions/v1/health"

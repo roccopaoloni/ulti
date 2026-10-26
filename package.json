@@ -1,0 +1,20 @@
+{
+  "name": "ulti",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "app",
+    "packages/rules",
+    "integration"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @ulti/app",
+    "build": "npm run build -w @ulti/app",
+    "test": "npm test -w @ulti/rules",
+    "test:integration": "npm test -w @ulti/integration",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "devDependencies": {
+    "supabase": "2.120.0"
+  }
+}

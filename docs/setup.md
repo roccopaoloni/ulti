@@ -46,8 +46,9 @@ Everything in the git history becomes visible, so look over what's committed fir
 5. Create a personal access token so GitHub Actions can deploy: open [Access Tokens](https://supabase.com/dashboard/account/tokens) → **Generate new token**, name it `github-actions-ulti`, and scope it to only what CI needs:
    - Projects: only `ulti`
    - **Project Settings**: Read, **API Keys**: Read, **API Key Secrets**: Read (these three let `supabase link` connect)
+   - **Connection Pooling**: Read (migrations are applied with the database password, but GitHub's runners have no IPv6 and the database's direct address is IPv6-only, so `supabase db push` reads the address of the IPv4 connection pooler instead)
    - **Edge Functions**: Read-write (to deploy functions)
-   - Nothing else. Migrations don't need the token, because they use the database password.
+   - Nothing else.
 
    A scoped token starts with `sbp_fc`. Avoid one with a **Legacy** badge: that's full account access, reaching every project you'll ever have. Copy the token and keep the tab open until step 6, because it's only shown once.
 
