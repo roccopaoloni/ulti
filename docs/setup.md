@@ -2,7 +2,7 @@
 
 The steps only the project owner can do: creating accounts, choosing names and handing keys to the pipeline. Everything here is free. [ADR 0006](./adr/0006-test-phase-runs-on-free-tiers.md) explains why these services and not others.
 
-Steps 0–7 are ticket #2 and come before any code; close that issue when they're done, which lets the walking skeleton (#3) start. Step 8 comes after #3 ships, step 9 with sign-up (#4), and step 10 after Groups (#20).
+Steps 0–7 are ticket #2 and come before any code; close that issue when they're done, which lets the walking skeleton (#3) start. Step 8 comes after #3 ships, step 9 with sign-up (#4), step 10 after Groups (#20), and step 11 after offline logging (#5).
 
 Dashboards change their menus from time to time. If a menu named here has moved, search the dashboard for the setting's name.
 
@@ -197,6 +197,19 @@ Nothing needs setting up: the deploy job applies the Groups migration. What CI c
 
 - [ ] An invite opened in Safari before signing in joined the Group once signed in, and the installed app shows it
 - [ ] A reset link stops working
+
+## 11. After offline logging (#5) ships: log a Session in airplane mode
+
+Nothing needs setting up. The deploy job applies the migrations, which add the 14 Benchmark Lifts and schedule the retry job, writes the functions' address into the project's Vault for that job (built from the `SUPABASE_PROJECT_ID` secret), and deploys the `sync` and `recompute` functions. What CI can't check is a real phone with no signal.
+
+1. Open the installed app once with a signal, signed in, so it keeps a copy of the Exercises.
+2. Turn on airplane mode. **Start session**, add an Exercise, log two Sets, and close the app completely.
+3. Reopen it, still in airplane mode: the Session should be back on screen with both Sets. **Finish** it.
+4. Turn airplane mode off and open the app. In Supabase, **Table Editor → sessions** and **sets** should show the Session and its Sets, with your time zone and the local date.
+5. **Integrations → Cron → Jobs** should list `recompute-dirty-users`, active, every 5 minutes. **Integrations → Vault → Secrets** should list `functions_url`, set to `https://<project-ref>.supabase.co/functions/v1`. If it's missing, the deploy couldn't write it: add it there by hand with that name and value.
+
+- [ ] A Session logged in airplane mode survived closing the app and reached the database once back online
+- [ ] The retry job is active and `functions_url` is in Vault
 
 ## Later: moving to a real domain
 
