@@ -35,3 +35,10 @@ export const backIcon = (
     <path d="M15 5l-7 7 7 7" />
   </svg>
 );
+
+// The ✓ that logs a Set, from the prototype.
+export const checkIcon = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M4.5 12.5 10 18 19.5 6.5" />
+  </svg>
+);

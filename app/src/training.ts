@@ -26,6 +26,9 @@ export type SetRecord = {
   updatedAt: string;
 };
 
+// A catalog Exercise, as the phone keeps it for picking one offline.
+export type Exercise = { id: string; nameEn: string; nameEs: string };
+
 export type Mutation =
   | { id: string; kind: 'saveSession'; session: SessionRecord }
   | { id: string; kind: 'saveSet'; set: SetRecord };
@@ -50,6 +53,8 @@ interface Store extends DBSchema {
   outbox: { key: number; value: Mutation };
   // The Session in progress, kept here so it survives the app reloading into a new version.
   state: { key: 'sessionInProgress'; value: InProgress };
+  // The catalog, as last fetched from the server.
+  exercises: { key: string; value: Exercise };
 }
 
 // The Session being logged and the Exercises added to it, in order, including any with no Sets yet.
@@ -64,6 +69,7 @@ export async function openTraining(userId: string, options: Options) {
       db.createObjectStore('sets', { keyPath: 'id' }).createIndex('bySession', 'sessionId');
       db.createObjectStore('outbox', { autoIncrement: true });
       db.createObjectStore('state');
+      db.createObjectStore('exercises', { keyPath: 'id' });
     },
   });
 
@@ -166,6 +172,13 @@ export async function openTraining(userId: string, options: Options) {
       const sets = await db.getAllFromIndex('sets', 'bySession', inProgress.sessionId);
       sets.sort((a, b) => a.loggedAt.localeCompare(b.loggedAt));
       return { session, exerciseIds: inProgress.exerciseIds, sets };
+    },
+
+    exercises: () => db.getAll('exercises'),
+
+    async saveExercises(exercises: Exercise[]) {
+      const tx = db.transaction('exercises', 'readwrite');
+      await Promise.all([tx.store.clear(), ...exercises.map((exercise) => tx.store.put(exercise)), tx.done]);
     },
 
     close() {

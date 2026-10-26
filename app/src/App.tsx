@@ -7,6 +7,8 @@ import { useI18n, type Term } from './i18n.ts';
 import { tabIcons } from './icons.tsx';
 import { Info } from './Info.tsx';
 import { navigate, paths, tabs, useCurrentTab, usePathname, type Tab } from './navigation.ts';
+import { SessionScreen, StartSession, useLogging } from './SessionScreen.tsx';
+import { useTraining } from './useTraining.ts';
 
 // The glossary term each empty screen introduces.
 const screenTerms: Record<Tab, Term> = {
@@ -38,7 +40,10 @@ function Tabs({ userId }: { userId: string }) {
   const current = useCurrentTab();
   const { label, text } = t.screens[current];
   const [signOutError, setSignOutError] = useState<string>();
+  const training = useTraining(userId);
+  const logging = useLogging(training);
 
+  if (training && logging.open) return <SessionScreen training={training} onLeave={logging.leave} />;
   return (
     <>
       <main className="screen">
@@ -61,6 +66,7 @@ function Tabs({ userId }: { userId: string }) {
             <p className="muted">{text}</p>
           </section>
         )}
+        {current === 'home' && training && <StartSession logging={logging} />}
         {current === 'profile' && (
           <>
             <button
