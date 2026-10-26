@@ -20,6 +20,12 @@ registerSW({
   },
 });
 
+// On a fresh open the browser may install the new version before registerSW is listening, which
+// leaves the old version on screen. So when a new version takes over this page, reload into it.
+if (navigator.serviceWorker?.controller) {
+  navigator.serviceWorker.addEventListener('controllerchange', () => location.reload());
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <I18nContext value={i18n}>
