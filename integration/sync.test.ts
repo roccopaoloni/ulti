@@ -167,6 +167,30 @@ test("Ana's Session reaches the server with its Sets, its UTC timestamp, her tim
   expect(await trainingOf(ana)).toEqual(anasMondayOnTheServer(monday));
 });
 
+test('replaying the same batch changes nothing', async () => {
+  const ana = await lifter('ana');
+  const monday = anasMonday();
+  const batch = [monday.start, monday.firstSet, monday.secondSet, monday.finish];
+  await sync(ana, batch);
+
+  // The phone never heard back, so it sends the batch again, twice.
+  expect(await sync(ana, batch)).toEqual({ rejected: [] });
+  expect(await sync(ana, batch)).toEqual({ rejected: [] });
+
+  expect(await trainingOf(ana)).toEqual(anasMondayOnTheServer(monday));
+});
+
+test('a mutation ID the server has already applied is ignored, whatever it carries', async () => {
+  const ana = await lifter('ana');
+  const monday = anasMonday();
+  await sync(ana, [monday.start, monday.firstSet, monday.secondSet, monday.finish]);
+
+  const sameIdOtherWeight = { ...monday.firstSet, set: { ...monday.firstSet.set, weightKg: 140 } };
+  await sync(ana, [sameIdOtherWeight]);
+
+  expect(await trainingOf(ana)).toEqual(anasMondayOnTheServer(monday));
+});
+
 test("Bea can't read Ana's training or write it, directly or through a sync", async () => {
   const ana = await lifter('ana');
   const bea = await lifter('bea');
