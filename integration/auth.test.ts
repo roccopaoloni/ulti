@@ -109,3 +109,29 @@ test('Ana resets a forgotten password with the 6-digit code it sends, not a link
   const newPassword = await device().auth.signInWithPassword({ email: address, password: 'deadlift-on-fridays' });
   expect(newPassword.data.session?.user.email).toBe(address);
 });
+
+test('Ana, who signed up in English, and Bea, who signed up in Spanish, each get their codes in their language', async () => {
+  // A lifter's sign-up and password reset emails, with each code shown as 123456.
+  const emails = async (language: 'en' | 'es') => {
+    const lifter = device();
+    const address = newAddress(language);
+    await lifter.auth.signUp({ email: address, password: 'squat-every-monday', options: { data: { language } } });
+    const confirmation = await email(address);
+    await lifter.auth.verifyOtp({ email: address, token: confirmation.code!, type: 'email' });
+    await lifter.auth.resetPasswordForEmail(address);
+    const recovery = await email(address, 2);
+    return {
+      subjects: [confirmation, recovery].map(({ subject, code }) => subject.replace(code!, '123456')),
+      bodies: confirmation.html + recovery.html,
+    };
+  };
+
+  const ana = await emails('en');
+  expect(ana.subjects).toEqual(['123456 is your ULTI code', '123456 is your ULTI password reset code']);
+  expect(ana.bodies).toContain('Type this code into ULTI');
+
+  const bea = await emails('es');
+  expect(bea.subjects).toEqual(['123456 es tu código de ULTI', '123456 es tu código para recuperar tu cuenta de ULTI']);
+  expect(bea.bodies).toContain('Escribí este código en ULTI');
+  expect(bea.bodies).not.toContain('Type this code');
+});
