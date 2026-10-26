@@ -191,6 +191,38 @@ test('a mutation ID the server has already applied is ignored, whatever it carri
   expect(await trainingOf(ana)).toEqual(anasMondayOnTheServer(monday));
 });
 
+test('a Set dated after the moment the server receives it is rejected, and the rest of the batch is saved', async () => {
+  const ana = await lifter('ana');
+  const monday = anasMonday();
+  const inAnHour = new Date(Date.now() + 60 * 60_000).toISOString();
+  const future = {
+    id: crypto.randomUUID(),
+    kind: 'saveSet',
+    set: { ...monday.secondSet.set, id: crypto.randomUUID(), loggedAt: inAnHour, updatedAt: inAnHour },
+  };
+
+  const response = await sync(ana, [monday.start, monday.firstSet, monday.secondSet, future, monday.finish]);
+
+  expect(response).toEqual({ rejected: [future.id] });
+  expect(await trainingOf(ana)).toEqual(anasMondayOnTheServer(monday));
+  // The server decides each mutation ID once: sent again, the rejected one still doesn't land.
+  await sync(ana, [future]);
+  expect(await trainingOf(ana)).toEqual(anasMondayOnTheServer(monday));
+});
+
+test('a Set from a phone whose clock runs a minute fast is kept', async () => {
+  const ana = await lifter('ana');
+  const monday = anasMonday();
+  const aMinuteAhead = new Date(Date.now() + 60_000).toISOString();
+  const set = { ...monday.firstSet.set, loggedAt: aMinuteAhead, updatedAt: aMinuteAhead };
+
+  const response = await sync(ana, [monday.start, { ...monday.firstSet, set }]);
+
+  expect(response).toEqual({ rejected: [] });
+  const { sets } = await trainingOf(ana);
+  expect(sets?.map(({ id }) => id)).toEqual([set.id]);
+});
+
 test("Bea can't read Ana's training or write it, directly or through a sync", async () => {
   const ana = await lifter('ana');
   const bea = await lifter('bea');
