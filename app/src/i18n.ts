@@ -68,6 +68,14 @@ type Messages = {
     colors: Record<AvatarColor, string>;
     save: string;
     saved: string;
+    // A member's profile, and the Visibility choices on the user's own.
+    memberSessions: (count: number) => string;
+    memberRecords: string;
+    memberSessionList: string;
+    visibilityTitle: string;
+    visibilityText: string;
+    shareWeights: string;
+    shareSessions: string;
   };
   auth: {
     pitch: string;
@@ -360,6 +368,13 @@ const en: Messages = {
     colors: { coral: 'Coral', sand: 'Sand', lime: 'Lime', teal: 'Teal', sky: 'Sky blue', pink: 'Pink' },
     save: 'Save',
     saved: 'Saved.',
+    memberSessions: (count) => (count === 1 ? '1 Session' : `${count} Sessions`),
+    memberRecords: 'Personal Records',
+    memberSessionList: 'Sessions',
+    visibilityTitle: 'What your Groups see',
+    visibilityText: 'Your points, Rank, Sessions and Personal Records as % are always visible. Choose whether members also see your actual weights and reps, and your full Session details. The same for every Group.',
+    shareWeights: 'Show my actual weights and reps',
+    shareSessions: 'Show my full Session details',
   },
   auth: {
     pitch: 'Compete with your friends on who shows up and improves most. Not on who lifts the most.',
@@ -624,6 +639,13 @@ const es: Messages = {
     colors: { coral: 'Coral', sand: 'Arena', lime: 'Lima', teal: 'Turquesa', sky: 'Celeste', pink: 'Rosa' },
     save: 'Guardar',
     saved: 'Guardado.',
+    memberSessions: (count) => (count === 1 ? '1 sesión' : `${count} sesiones`),
+    memberRecords: 'Récords personales',
+    memberSessionList: 'Sesiones',
+    visibilityTitle: 'Lo que ven tus grupos',
+    visibilityText: 'Tus puntos, tu posición, tus sesiones y tus récords personales en % son siempre visibles. Elegí si los miembros también ven tus pesos y repeticiones reales, y el detalle completo de tus sesiones. Es igual para todos tus grupos.',
+    shareWeights: 'Mostrar mis pesos y repeticiones reales',
+    shareSessions: 'Mostrar el detalle completo de mis sesiones',
   },
   auth: {
     pitch: 'Competí con tus amigos por quién aparece y mejora más. No por quién levanta más.',

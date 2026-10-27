@@ -117,3 +117,13 @@ test('only the Owner changes the Mode, and only to a Mode that exists', async ()
   expect((await setMode(user, groupId, 'chaos', '2026-10-21')).error?.message).toBe('invalid_mode');
   expect(await board(bea, groupId, 'week', '2026-10-28')).toEqual(['standard', 40]);
 });
+
+test("a member's profile scores its Period with the same Mode as the board", async () => {
+  const { user, groupId } = await ana();
+  await setMode(user, groupId, 'prHunt', '2026-09-01');
+  const profile = (period: string) =>
+    user.client.rpc('member_profile', { group_id: groupId, member_id: user.id, period, on_date: '2026-10-21' }).then(({ data }) => data.points);
+
+  expect(await profile('week')).toBe(50);
+  expect(await profile('year')).toBe(170);
+});
