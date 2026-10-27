@@ -5,13 +5,14 @@ import { useI18n } from './i18n.ts';
 import { today } from './profile.ts';
 import type { Training } from './training.ts';
 
-type Standing = { position: number | null; top_percent: number | null };
+type Standing = { points: number; position: number | null; top_percent: number | null };
 
 const roman = ['', 'I', 'II', 'III', 'IV', 'V'];
 
 // Profile: the Rank in the current Season, the user's standing and the progress to the next Division.
 // The Rank comes from the Scoring Events on this phone, so it is there offline; the standing comes
 // from the server's read RPC, which returns only the caller's own numbers, and is left out offline.
+// Online, the server's Points decide the Rank: a new phone holds none of the user's history.
 export function RankCard({ training }: { training: Training }) {
   const { t } = useI18n();
   const r = t.rank;
@@ -26,9 +27,10 @@ export function RankCard({ training }: { training: Training }) {
     );
   }, [training]);
   if (points === null) return null;
+  const seasonPoints = standing?.points ?? points;
   const name = (rank: Rank) => (rank.division === null ? r.tier[rank.tier] : `${r.tier[rank.tier]} ${roman[rank.division]}`);
-  const rank = rankOf(points);
-  const progress = rankProgress(points);
+  const rank = rankOf(seasonPoints);
+  const progress = rankProgress(seasonPoints);
   return (
     <section className="card">
       <div className="eyebrow">{r.title}</div>
