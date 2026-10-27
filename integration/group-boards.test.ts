@@ -145,8 +145,9 @@ test("the board shows a member's points, Session dots and Personal Records, and 
     avatar_color: '#6fb6f7',
     me: false,
     points: 90,
+    // Her Points across the Season, not the week's, put her at the start of Bronze IV.
     tier: 'bronze',
-    division: 5,
+    division: 4,
     weekly_target: 3,
     session_dates: ['2026-10-20'],
     records: [{ exercise: 'back-squat', percent_gain: 5, points: 50 }],
