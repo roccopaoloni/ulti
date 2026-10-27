@@ -1,4 +1,4 @@
-import { incrementInUnits, kgToUnits, labelSets, plannedRows, stepValue, unitsToKg, type PersonalRecord, type RoutineExercise, type SetLabel, type Units } from '@ulti/rules';
+import { incrementInUnits, kgToUnits, labelSets, plannedRows, stepValue, unitsToKg, type GoHeavier, type PersonalRecord, type RoutineExercise, type SetLabel, type Units } from '@ulti/rules';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useI18n } from './i18n.ts';
@@ -7,6 +7,9 @@ import { Info } from './Info.tsx';
 import type { SetRecord, Training } from './training.ts';
 
 type Planned = { weightKg: number; reps: number };
+
+// How long the RIR chips stay after ✓ if the lifter ignores them (design: Logging a Session).
+const RIR_CHIPS_MS = 6000;
 
 // One Exercise of the Session: its Sets so far, then the rows still to do, pre-filled with the
 // last Session's numbers for this Exercise (design: Logging a Session, List layout).
@@ -21,8 +24,11 @@ export function ExerciseBlock({
   sets,
   records,
   calibrating,
+  custom,
   onLog,
   onSetLabel,
+  onRir,
+  onIncrement,
 }: {
   name: string;
   training: Training;
@@ -37,15 +43,37 @@ export function ExerciseBlock({
   // The Personal Records among the Sets, by Set ID, and whether the Exercise is still in Calibration.
   records: Map<string, PersonalRecord>;
   calibrating: boolean;
-  onLog: (weightKg: number, reps: number) => Promise<void>;
+  // A Custom Exercise has no Increment to set and gets no recommendations.
+  custom: boolean;
+  // Logs the Set and returns its ID.
+  onLog: (weightKg: number, reps: number) => Promise<string>;
   onSetLabel: (setId: string, label: SetLabel) => Promise<void>;
+  onRir: (setId: string, rir: number) => Promise<void>;
+  onIncrement: (incrementKg: number) => Promise<void>;
 }) {
-  const { t, formatNumber } = useI18n();
+  const { t, language, formatNumber } = useI18n();
+  const decimalKey = language === 'es' ? ',' : '.';
   const labels = labelSets(sets);
-  const [last, setLast] = useState<Planned[] | null>(null);
+  // The last Session's Sets and the recommendation to go heavier, loaded together so the rows are
+  // pre-filled once.
+  const [loaded, setLoaded] = useState<{ last: Planned[]; heavier: GoHeavier | undefined } | null>(null);
+  const [dismissed, setDismissed] = useState(false);
   useEffect(() => {
-    training.lastSets(exerciseId).then(setLast);
-  }, [training, exerciseId]);
+    Promise.all([training.lastSets(exerciseId), target ? training.goHeavier(exerciseId, target) : undefined]).then(([last, heavier]) =>
+      setLoaded({ last, heavier }),
+    );
+  }, [training, exerciseId, target, incrementKg]);
+  const heavier = dismissed ? undefined : loaded?.heavier;
+  const last = loaded && (heavier ? loaded.last.map(() => ({ weightKg: heavier.weightKg, reps: heavier.reps })) : loaded.last);
+
+  // The chips asking for RIR show for a few seconds after ✓.
+  const [askRir, setAskRir] = useState<string | null>(null);
+  useEffect(() => {
+    if (!askRir) return;
+    const timer = setTimeout(() => setAskRir(null), RIR_CHIPS_MS);
+    return () => clearTimeout(timer);
+  }, [askRir]);
+  const [editingIncrement, setEditingIncrement] = useState<string | null>(null);
 
   // Past the plan, the next Set repeats the last one logged.
   const plan = last && plannedRows(last, target?.sets);
@@ -70,6 +98,25 @@ export function ExerciseBlock({
         </p>
       )}
       {target && <p className="muted">{t.session.target(target.sets, target.repMin, target.repMax)}</p>}
+      {!custom && (
+        <button
+          type="button"
+          className="btn-link inline increment"
+          onClick={() => setEditingIncrement(String(incrementInUnits(incrementKg, units)).replace('.', decimalKey))}
+        >
+          {t.session.increment(formatNumber(incrementInUnits(incrementKg, units), 2), units)}
+        </button>
+      )}
+      {heavier && sets.length === 0 && (
+        <p className="go-heavier">
+          <span className="badge">
+            ↑ +{formatNumber(incrementInUnits(heavier.incrementKg, units), 2)} {units}
+          </span>
+          <button type="button" className="btn-link inline" onClick={() => setDismissed(true)}>
+            {t.session.dismissGoHeavier}
+          </button>
+        </p>
+      )}
       {sets.map((set, index) => (
         <div key={set.id} className="set done">
           <button
@@ -89,8 +136,48 @@ export function ExerciseBlock({
           </span>
         </div>
       ))}
+      {askRir && sets.some((set) => set.id === askRir) && (
+        <div className="rir" role="group" aria-label={t.session.rir}>
+          <span className="muted">RIR</span>
+          {[0, 1, 2, 3, 4].map((rir) => (
+            <button
+              key={rir}
+              type="button"
+              className="rir-chip"
+              onClick={() => {
+                setAskRir(null);
+                onRir(askRir, rir);
+              }}
+            >
+              {rir === 4 ? '4+' : rir}
+            </button>
+          ))}
+        </div>
+      )}
       {plan && (
-        <NextSet key={sets.length} number={sets.length + 1} planned={next} incrementKg={incrementKg} bodyweight={bodyweight} units={units} onLog={onLog} />
+        <NextSet
+          key={`${sets.length}-${heavier ? 'heavier' : ''}`}
+          number={sets.length + 1}
+          planned={next}
+          incrementKg={incrementKg}
+          bodyweight={bodyweight}
+          units={units}
+          onLog={async (weightKg, reps) => setAskRir(await onLog(weightKg, reps))}
+        />
+      )}
+      {editingIncrement !== null && (
+        <Keypad
+          label={t.session.incrementLabel}
+          value={editingIncrement}
+          decimal={decimalKey}
+          step={0.5}
+          onChange={setEditingIncrement}
+          onClose={() => {
+            const typed = Number(editingIncrement.replace(',', '.'));
+            setEditingIncrement(null);
+            if (typed > 0) onIncrement(unitsToKg(typed, units));
+          }}
+        />
       )}
       {plan?.slice(sets.length + 1).map((set, index) => (
         <div key={index} className="set upcoming" aria-hidden="true">
