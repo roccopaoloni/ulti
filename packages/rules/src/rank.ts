@@ -82,3 +82,30 @@ export function rankProgress(seasonRankPoints: number) {
 export const ELITE_POSITION_LIMIT = 1000;
 
 export const showsPosition = (rank: Rank, position: number) => rank.tier === 'elite' && position <= ELITE_POSITION_LIMIT;
+
+export type CrestWing = 'wx' | 'w0' | 'w1' | 'w2' | 'w3' | 'fin';
+
+// What a Rank's crest is made of (design: Rank badges). Each Tier adds a wing layer, and each
+// Division one step you can name: IV studs, III a fin, II a crown spike (side spikes from Gold up),
+// I a glow and a gem flare, with the wings spread wider every step. Elite is drawn at the top step.
+export function crestOf(rank: Rank) {
+  const tier = ['bronze', 'silver', 'gold', 'diamond', 'elite'].indexOf(rank.tier);
+  const step = rank.division === null ? 4 : 5 - rank.division;
+  const wings: CrestWing[] = [];
+  if (tier >= 4) wings.push('wx');
+  if (tier >= 3) wings.push('w0');
+  if (tier >= 2) wings.push('w3');
+  if (tier >= 1) wings.push('w2');
+  if (step >= 2) wings.push('fin');
+  wings.push('w1');
+  return {
+    wings,
+    studs: step >= 1,
+    crown: tier >= 2 || step >= 3,
+    spikes: tier >= 2 && step >= 3,
+    glow: step >= 4,
+    flare: step >= 4,
+    wingScale: Number((0.8 + 0.05 * step).toFixed(3)),
+    gemWidth: 13 + 2 * tier + 1.5 * step,
+  };
+}
