@@ -23,11 +23,11 @@ export async function recompute(client: Client, userId: string) {
   const {
     rows: [{ history }],
   } = await transaction.queryObject<{ history: TrainingHistory }>`
-    select jsonb_build_object('sessions', coalesce(jsonb_agg(
+    select jsonb_build_object('userId', ${userId}::text, 'sessions', coalesce(jsonb_agg(
       jsonb_build_object('localDate', s.local_date, 'sets', coalesce((
         select jsonb_agg(
           jsonb_build_object(
-            'exercise', t.exercise_id, 'custom', x.owner_id is not null, 'weightKg', t.weight_kg, 'reps', t.reps, 'label', t.label
+            'id', t.id, 'exercise', t.exercise_id, 'custom', x.owner_id is not null, 'weightKg', t.weight_kg, 'reps', t.reps, 'label', t.label
           )
           order by t.logged_at, t.id
         )

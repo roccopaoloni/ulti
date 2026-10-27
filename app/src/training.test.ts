@@ -392,3 +392,28 @@ test('a history fetched from the server fills a new phone, without overwriting w
   });
   training.close();
 });
+
+test('a Personal Record is derived on the phone as soon as the Set is logged, offline, and drops out when the Set is deleted', async () => {
+  const network = server();
+  network.offline = true;
+  const training = await anasPhone(network).open();
+  const logSession = async (weightKg: number) => {
+    const session = await training.startSession();
+    const set = await training.logSet(session.id, 'back-squat', weightKg, 6);
+    await training.finishSession(session.id);
+    return set;
+  };
+
+  await logSession(100);
+  await logSession(100);
+  expect((await training.scoring()).events).toEqual([]);
+  const record = await logSession(105);
+
+  const { events, history } = await training.scoring();
+  expect(events.map((e) => [e.setId, e.percentGain, e.progressPoints])).toEqual([[record.id, 5, 50]]);
+  expect(history.sessions).toHaveLength(3);
+
+  await training.deleteSet(record.id);
+  expect((await training.scoring()).events).toEqual([]);
+  training.close();
+});

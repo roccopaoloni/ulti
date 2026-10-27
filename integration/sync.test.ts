@@ -94,7 +94,7 @@ function anasMondayOnTheServer({ sessionId, firstSet, secondSet }: ReturnType<ty
         logged_at: '2026-10-19T21:16:30+00:00',
       },
     ],
-    // No kind of Scoring Event exists yet.
+    // One Session only sets her baseline, so it earns no Scoring Event.
     scoringEvents: [],
   };
 }

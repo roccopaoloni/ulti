@@ -1,4 +1,4 @@
-import { kgToUnits, unitsToKg, type Units } from '@ulti/rules';
+import { kgToUnits, unitsToKg, type PersonalRecord, type Units } from '@ulti/rules';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useI18n } from './i18n.ts';
 import type { Exercise, SetRecord, Training } from './training.ts';
@@ -13,8 +13,13 @@ export function History({ training, units }: { training: Training; units: Units 
   const [sessions, setSessions] = useState<Past[]>([]);
   const [catalog, setCatalog] = useState<Exercise[]>([]);
   const [openId, setOpenId] = useState<string | null>(null);
+  // The Personal Records among all the Sets, by Set ID.
+  const [records, setRecords] = useState(new Map<string, PersonalRecord>());
 
-  const reload = useCallback(async () => setSessions(await training.pastSessions()), [training]);
+  const reload = useCallback(async () => {
+    setSessions(await training.pastSessions());
+    setRecords(new Map((await training.scoring()).events.map((event) => [event.setId, event])));
+  }, [training]);
   useEffect(() => {
     reload();
     training.exercises().then(setCatalog);
@@ -34,6 +39,7 @@ export function History({ training, units }: { training: Training; units: Units 
       {sessions.map(({ session, sets }) => {
         const open = openId === session.id;
         const exerciseIds = [...new Set(sets.map((set) => set.exerciseId))];
+        const points = sets.reduce((sum, set) => sum + (records.get(set.id)?.progressPoints ?? 0), 0);
         return (
           <div key={session.id} className="card">
             <button
@@ -43,7 +49,9 @@ export function History({ training, units }: { training: Training; units: Units 
               onClick={() => setOpenId(open ? null : session.id)}
             >
               <strong>{date(session.localDate)}</strong>
-              <span className="muted">{t.session.sets(sets.length)}</span>
+              <span className="muted">
+                {t.session.sets(sets.length)} · {h.points(points)}
+              </span>
             </button>
             {open &&
               exerciseIds.map((exerciseId) => (
@@ -56,6 +64,7 @@ export function History({ training, units }: { training: Training; units: Units 
                         key={set.id}
                         set={set}
                         units={units}
+                        record={records.get(set.id)}
                         onEdit={async (weightKg, reps) => {
                           await training.editSet(set.id, weightKg, reps);
                           await reload();
@@ -78,11 +87,13 @@ export function History({ training, units }: { training: Training; units: Units 
 function PastSet({
   set,
   units,
+  record,
   onEdit,
   onDelete,
 }: {
   set: SetRecord;
   units: Units;
+  record: PersonalRecord | undefined;
   onEdit: (weightKg: number, reps: number) => Promise<void>;
   onDelete: () => Promise<void>;
 }) {
@@ -109,6 +120,7 @@ function PastSet({
       <div className="past-set">
         <span>
           {formatNumber(kgToUnits(set.weightKg, units), 2)} {units} × {set.reps}
+          {record && ` · PR +${record.percentGain}% · ${t.session.points(record.progressPoints)}`}
         </span>
         <button type="button" className="btn-link" onClick={() => setEditing(true)}>
           {h.edit}

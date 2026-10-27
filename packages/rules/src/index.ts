@@ -1,6 +1,7 @@
 // ULTI's rules: pure functions shared by the client and the server, with no I/O.
 
 export type Set = {
+  id: string;
   exercise: string;
   // A Custom Exercise: its Sets count toward a Session, but never earn Progress Points or get
   // recommendations.
@@ -19,16 +20,96 @@ export type Session = {
 };
 
 export type TrainingHistory = {
+  userId: string;
   sessions: Session[];
 };
 
+// Bump when a change to the rules changes the events they derive, so stored events show which rules made them.
+export const RULES_VERSION = 1;
+
+// A lifter's first Sessions with an Exercise only set their starting best (spec: Calibration).
+export const CALIBRATION_SESSIONS = 2;
+// Only Sets of 1–12 reps can be Personal Records, so a switch to high-rep Sets can't fake one.
+export const MAX_RECORD_REPS = 12;
+// Progress Points per 1% of e1RM gained, before the Strength Level weight, and the most that any
+// single Personal Record earns. Placeholders until the tuning ticket (#31).
+export const POINTS_PER_PERCENT_GAIN = 10;
+export const MAX_POINTS_PER_RECORD = 100;
+// Everyone counts as the 50th percentile until Strength Level weighting lands.
+const DEFAULT_PERCENTILE = 50;
+
+// A new all-time best e1RM on a catalog Exercise (spec: Personal Record).
+export type PersonalRecord = {
+  kind: 'personal-record';
+  id: string;
+  exercise: string;
+  setId: string;
+  localDate: string;
+  previousE1rm: number;
+  newE1rm: number;
+  percentGain: number;
+  strengthLevelPercentile: number;
+  // The bodyweight used, once bodyweight Exercises are scored; null for weighted Exercises.
+  bodyweightKg: number | null;
+  rulesVersion: number;
+  progressPoints: number;
+};
+
 // Each kind of Scoring Event joins this union as its rules land.
-export type ScoringEvent = never;
+export type ScoringEvent = PersonalRecord;
+
+// The estimated one-rep max by the Epley formula, used everywhere (spec: e1RM).
+export function e1rm(weightKg: number, reps: number): number {
+  return weightKg * (1 + reps / 30);
+}
+
+// Whether the Exercise's Sessions so far, the one in progress included, are all still setting the
+// lifter's baseline: the app says so (spec: Calibration copy).
+export function inCalibration(history: TrainingHistory, exercise: string): boolean {
+  const sessions = history.sessions.filter((session) =>
+    workingSets(session).some((set) => set.exercise === exercise && !set.custom),
+  );
+  return sessions.length <= CALIBRATION_SESSIONS;
+}
 
 export function deriveScoringEvents(history: TrainingHistory): ScoringEvent[] {
-  // Only Working Sets reach scoring (spec: Warm-up detection); no Scoring Event kind uses them yet.
-  history.sessions.map(workingSets);
-  return [];
+  const events: ScoringEvent[] = [];
+  const bests = new Map<string, number>();
+  const sessionsDone = new Map<string, number>();
+  for (const session of history.sessions) {
+    // Only Working Sets reach scoring (spec: Warm-up detection), and Custom Exercises never score.
+    const working = workingSets(session).filter((set) => !set.custom);
+    for (const exercise of new Set(working.map((set) => set.exercise))) {
+      const calibrating = (sessionsDone.get(exercise) ?? 0) < CALIBRATION_SESSIONS;
+      sessionsDone.set(exercise, (sessionsDone.get(exercise) ?? 0) + 1);
+      // At most one Personal Record per Exercise per Session, for its best eligible Set, so a jump
+      // split across Sets can't dodge the per-record cap.
+      const eligible = working.filter((s) => s.exercise === exercise && s.reps <= MAX_RECORD_REPS);
+      if (eligible.length === 0) continue;
+      const set = eligible.reduce((top, s) => (e1rm(s.weightKg, s.reps) > e1rm(top.weightKg, top.reps) ? s : top));
+      const value = e1rm(set.weightKg, set.reps);
+      const best = bests.get(exercise) ?? 0;
+      if (value <= best) continue;
+      bests.set(exercise, value);
+      if (calibrating || best === 0) continue;
+      const gain = (value / best - 1) * 100;
+      events.push({
+        kind: 'personal-record',
+        id: `${history.userId}:personal-record:${set.id}`,
+        exercise,
+        setId: set.id,
+        localDate: session.localDate,
+        previousE1rm: best,
+        newE1rm: value,
+        percentGain: Math.round(gain * 100) / 100,
+        strengthLevelPercentile: DEFAULT_PERCENTILE,
+        bodyweightKg: null,
+        rulesVersion: RULES_VERSION,
+        progressPoints: Math.min(MAX_POINTS_PER_RECORD, Math.round(gain * POINTS_PER_PERCENT_GAIN)),
+      });
+    }
+  }
+  return events;
 }
 
 // Labels one Exercise's Sets of one Session, in the order they were logged: a Set is a Warm-up Set

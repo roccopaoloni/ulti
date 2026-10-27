@@ -1,4 +1,4 @@
-import type { Units } from '@ulti/rules';
+import { inCalibration, type Units } from '@ulti/rules';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useI18n } from './i18n.ts';
@@ -100,9 +100,20 @@ export function SessionScreen({ training, units, onLeave }: { training: Training
   const [catalog, setCatalog] = useState<Exercise[]>([]);
   const picker = useRef<HTMLDialogElement>(null);
   const [query, setQuery] = useState('');
+  const [scoring, setScoring] = useState<Awaited<ReturnType<Training['scoring']>> | null>(null);
+  // The "PR!" banner: it floats over the Session and never takes a tap, so logging goes on under it.
+  const [banner, setBanner] = useState<{ key: string; text: string } | null>(null);
   useWakeLock();
+  useEffect(() => {
+    if (!banner) return;
+    const timer = setTimeout(() => setBanner(null), 4000);
+    return () => clearTimeout(timer);
+  }, [banner]);
 
-  const reload = useCallback(async () => setSession(await training.sessionInProgress()), [training]);
+  const reload = useCallback(async () => {
+    setSession(await training.sessionInProgress());
+    setScoring(await training.scoring());
+  }, [training]);
   useEffect(() => {
     reload();
     training.exercises().then(setCatalog);
@@ -154,6 +165,11 @@ export function SessionScreen({ training, units, onLeave }: { training: Training
         </button>
       </header>
       <main className="screen session">
+        {banner && (
+          <div key={banner.key} className="pr-banner" role="status">
+            {banner.text}
+          </div>
+        )}
         <p className="legend">
           {s.legend} <Info term="set" />
         </p>
@@ -167,8 +183,14 @@ export function SessionScreen({ training, units, onLeave }: { training: Training
             incrementKg={catalog.find(({ id }) => id === exerciseId)?.incrementKg ?? 2.5}
             units={units}
             sets={session.sets.filter((set) => set.exerciseId === exerciseId)}
+            records={new Map(scoring?.events.map((event) => [event.setId, event]))}
+            calibrating={scoring ? inCalibration(scoring.history, exerciseId) : false}
             onLog={async (weightKg, reps) => {
-              await training.logSet(sessionId, exerciseId, weightKg, reps);
+              const set = await training.logSet(sessionId, exerciseId, weightKg, reps);
+              const record = (await training.scoring()).events.find((event) => event.setId === set.id);
+              if (record) {
+                setBanner({ key: set.id, text: s.record(name(exerciseId), record.percentGain, record.progressPoints) });
+              }
               await reload();
             }}
             onSetLabel={async (setId, label) => {

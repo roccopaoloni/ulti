@@ -1,8 +1,9 @@
-import { incrementInUnits, kgToUnits, labelSets, stepValue, unitsToKg, type SetLabel, type Units } from '@ulti/rules';
+import { incrementInUnits, kgToUnits, labelSets, stepValue, unitsToKg, type PersonalRecord, type SetLabel, type Units } from '@ulti/rules';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useI18n } from './i18n.ts';
 import { checkIcon } from './icons.tsx';
+import { Info } from './Info.tsx';
 import type { SetRecord, Training } from './training.ts';
 
 type Planned = { weightKg: number; reps: number };
@@ -16,6 +17,8 @@ export function ExerciseBlock({
   incrementKg,
   units,
   sets,
+  records,
+  calibrating,
   onLog,
   onSetLabel,
 }: {
@@ -25,6 +28,9 @@ export function ExerciseBlock({
   incrementKg: number;
   units: Units;
   sets: SetRecord[];
+  // The Personal Records among the Sets, by Set ID, and whether the Exercise is still in Calibration.
+  records: Map<string, PersonalRecord>;
+  calibrating: boolean;
   onLog: (weightKg: number, reps: number) => Promise<void>;
   onSetLabel: (setId: string, label: SetLabel) => Promise<void>;
 }) {
@@ -40,6 +46,11 @@ export function ExerciseBlock({
   return (
     <section className="ex">
       <h2 className="ex-name">{name}</h2>
+      {calibrating && (
+        <p className="calibration">
+          {t.session.calibration} <Info term="calibration" />
+        </p>
+      )}
       {sets.map((set, index) => (
         <div key={set.id} className="set done">
           <button
@@ -58,7 +69,7 @@ export function ExerciseBlock({
           <span className="xmark">×</span>
           <span className="cell">{set.reps}</span>
           <span className="check" aria-hidden="true">
-            {checkIcon}
+            {records.has(set.id) ? <small className="pr-points">{t.session.points(records.get(set.id)!.progressPoints)}</small> : checkIcon}
           </span>
         </div>
       ))}
