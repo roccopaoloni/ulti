@@ -725,3 +725,39 @@ input.cell:focus {
     animation: none !important;
   }
 }
+
+/* The Train tab's history of past Sessions. */
+.history {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.history-head {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0;
+  text-align: left;
+}
+.history-ex {
+  margin: 8px 0 0;
+  font-size: 16px;
+}
+.past-set {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.past-set > span:first-child {
+  flex: 1;
+}
+.past-set input {
+  width: 6ch;
+  padding: 6px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--fg);
+  font: inherit;
+  text-align: center;
+}

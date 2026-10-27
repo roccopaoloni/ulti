@@ -30,7 +30,7 @@ export async function recompute(client: Client, userId: string) {
           order by t.logged_at, t.id
         )
         from public.sets t
-        where t.user_id = s.user_id and t.session_id = s.id
+        where t.user_id = s.user_id and t.session_id = s.id and not t.deleted
       ), '[]'::jsonb))
       order by s.started_at, s.id
     ), '[]'::jsonb)) as history

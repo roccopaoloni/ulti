@@ -132,3 +132,65 @@ test('queued mutations, and the Session in progress, survive the app closing bef
   expect(await after.sessionInProgress()).toEqual({ session, exerciseIds: ['deadlift', 'pendlay-row'], sets: [set] });
   after.close();
 });
+
+test('a past Set edited offline shows its new weight and reps, and goes out as a later write of the same Set', async () => {
+  const network = server();
+  network.offline = true;
+  const phone = anasPhone(network);
+  const training = await phone.open();
+  const session = await training.startSession();
+  const set = await training.logSet(session.id, 'back-squat', 100, 5);
+  await training.finishSession(session.id);
+
+  await training.editSet(set.id, 120, 4);
+
+  const [past] = await training.pastSessions();
+  expect(past.sets.map(({ id, weightKg, reps }) => ({ id, weightKg, reps }))).toEqual([{ id: set.id, weightKg: 120, reps: 4 }]);
+  network.offline = false;
+  phone.connectivity.dispatchEvent(new Event('online'));
+  await vi.waitFor(() => expect(network.batches).toHaveLength(1));
+  const edits = network.batches[0].flatMap((m) => (m.kind === 'saveSet' ? [m.set] : []));
+  expect(edits.map(({ id, weightKg, reps }) => ({ id, weightKg, reps }))).toEqual([
+    { id: set.id, weightKg: 100, reps: 5 },
+    { id: set.id, weightKg: 120, reps: 4 },
+  ]);
+  expect(Date.parse(edits[1].updatedAt)).toBeGreaterThan(Date.parse(edits[0].updatedAt));
+  training.close();
+});
+
+test('a deleted Set disappears from the history and is sent as a deletion', async () => {
+  const network = server();
+  network.offline = true;
+  const phone = anasPhone(network);
+  const training = await phone.open();
+  const session = await training.startSession();
+  const typo = await training.logSet(session.id, 'back-squat', 1000, 5);
+  const kept = await training.logSet(session.id, 'back-squat', 100, 5);
+  await training.finishSession(session.id);
+
+  await training.deleteSet(typo.id);
+
+  const [past] = await training.pastSessions();
+  expect(past.sets.map(({ id }) => id)).toEqual([kept.id]);
+  network.offline = false;
+  phone.connectivity.dispatchEvent(new Event('online'));
+  await vi.waitFor(() => expect(network.batches).toHaveLength(1));
+  const last = network.batches[0].at(-1)!;
+  expect(last.kind === 'saveSet' && { id: last.set.id, deleted: last.set.deleted }).toEqual({ id: typo.id, deleted: true });
+  training.close();
+});
+
+test('past Sessions list newest first, and leave out the one in progress', async () => {
+  const network = server();
+  const phone = anasPhone(network);
+  const training = await phone.open();
+  const monday = await training.startSession();
+  await training.finishSession(monday.id);
+  const tuesday = await training.startSession();
+  await training.finishSession(tuesday.id);
+  const wednesday = await training.startSession();
+
+  expect((await training.pastSessions()).map(({ session }) => session.id)).toEqual([tuesday.id, monday.id]);
+  expect(wednesday.finishedAt).toBeNull();
+  training.close();
+});

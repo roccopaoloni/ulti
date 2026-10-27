@@ -27,6 +27,7 @@ async function trainingOf({ client }: Lifter) {
   const sets = await client
     .from('sets')
     .select('id, session_id, exercise_id, weight_kg, reps, logged_at')
+    .eq('deleted', false)
     .order('logged_at');
   const scoringEvents = await client.from('scoring_events').select('id');
   expect([sessions.error, sets.error, scoringEvents.error]).toEqual([null, null, null]);
@@ -219,6 +220,62 @@ test('a Set from a phone whose clock runs a minute fast is kept', async () => {
   expect(response).toEqual({ rejected: [] });
   const { sets } = await trainingOf(ana);
   expect(sets?.map(({ id }) => id)).toEqual([set.id]);
+});
+
+// Ana fixes a typo in her second Set: the same Set, written again with a later updatedAt.
+function editsSecondSet(monday: ReturnType<typeof anasMonday>, weightKg: number, reps: number, updatedAt: string) {
+  return {
+    id: crypto.randomUUID(),
+    kind: 'saveSet',
+    set: { ...monday.secondSet.set, weightKg, reps, updatedAt },
+  };
+}
+
+test('an edited Set replaces the old one, replaying the edit changes nothing more, and the recompute reads the edit', async () => {
+  const ana = await lifter('ana');
+  const monday = anasMonday();
+  await sync(ana, [monday.start, monday.firstSet, monday.secondSet, monday.finish]);
+  const edit = editsSecondSet(monday, 105, 3, '2026-10-20T12:00:00.000Z');
+
+  await sync(ana, [edit]);
+  await sync(ana, [edit]);
+
+  const expected = anasMondayOnTheServer(monday);
+  expected.sets[1] = { ...expected.sets[1], weight_kg: 105, reps: 3 };
+  expect(await trainingOf(ana)).toEqual(expected);
+  // The recompute ran over the edited history and cleared the user's dirty mark.
+  expect(sql(`select count(*) from private.dirty_users where user_id = '${ana.id}'`)).toBe('0');
+});
+
+test('of two edits to the same Set, the later one wins, whichever arrives first', async () => {
+  const ana = await lifter('ana');
+  const monday = anasMonday();
+  await sync(ana, [monday.start, monday.firstSet, monday.secondSet, monday.finish]);
+  const first = editsSecondSet(monday, 105, 3, '2026-10-20T12:00:00.000Z');
+  const second = editsSecondSet(monday, 107.5, 2, '2026-10-20T12:05:00.000Z');
+
+  await sync(ana, [second]);
+  await sync(ana, [first]);
+
+  const { sets } = await trainingOf(ana);
+  expect(sets?.[1]).toMatchObject({ weight_kg: 107.5, reps: 2 });
+});
+
+test('a deleted Set is gone, replaying the delete changes nothing, and an older edit arriving late does not bring it back', async () => {
+  const ana = await lifter('ana');
+  const monday = anasMonday();
+  await sync(ana, [monday.start, monday.firstSet, monday.secondSet, monday.finish]);
+  const edit = editsSecondSet(monday, 105, 3, '2026-10-20T12:00:00.000Z');
+  const deletion = { ...edit, id: crypto.randomUUID(), set: { ...edit.set, deleted: true, updatedAt: '2026-10-20T12:05:00.000Z' } };
+
+  await sync(ana, [deletion]);
+  await sync(ana, [deletion]);
+  await sync(ana, [edit]);
+
+  const expected = anasMondayOnTheServer(monday);
+  expected.sets.pop();
+  expect(await trainingOf(ana)).toEqual(expected);
+  expect(sql(`select count(*) from private.dirty_users where user_id = '${ana.id}'`)).toBe('0');
 });
 
 test("Bea can't read Ana's training or write it, directly or through a sync", async () => {
