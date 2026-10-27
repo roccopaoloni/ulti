@@ -42,7 +42,9 @@ function squatSession(localDate: string, ...sets: { weightKg: number; reps: numb
 }
 
 // Ana's first two squat Sessions set her baseline (100 × 6); on the 19th, 105 × 6 is a Personal
-// Record worth 50 Progress Points and a gain of 5%; on the 20th she squats 100 × 5 twice.
+// Record worth 50 Progress Points and a gain of 5%; on the 20th she squats 100 × 5 six times,
+// enough for 40 Consistency Points.
+const sixSets = [0, 1, 2, 3, 4, 5].map(() => ({ weightKg: 100, reps: 5 }));
 async function ana() {
   const user = await lifter('Ana');
   await sync(user, [
@@ -50,7 +52,7 @@ async function ana() {
     ...squatSession('2026-10-05', { weightKg: 100, reps: 6 }),
     ...squatSession('2026-10-12', { weightKg: 100, reps: 6 }),
     ...squatSession('2026-10-19', { weightKg: 105, reps: 6 }),
-    ...squatSession('2026-10-20', { weightKg: 100, reps: 5 }, { weightKg: 100, reps: 5 }),
+    ...squatSession('2026-10-20', ...sixSets),
   ]);
   return user;
 }
@@ -126,7 +128,7 @@ test('turning on full Session details lists the Sessions and their Exercises wit
     shares_sessions: true,
     records: [record],
     sessions: [
-      { local_date: '2026-10-20', sets: [{ exercise: 'back-squat' }, { exercise: 'back-squat' }] },
+      { local_date: '2026-10-20', sets: sixSets.map(() => ({ exercise: 'back-squat' })) },
       { local_date: '2026-10-19', sets: [{ exercise: 'back-squat' }] },
     ],
   });
@@ -141,7 +143,7 @@ test('with both on, the Sessions carry every Set weight and reps', async () => {
   const { data } = await profileOf(bea, user, gymCrew);
 
   expect(data.sessions).toEqual([
-    { local_date: '2026-10-20', sets: [{ exercise: 'back-squat', weight_kg: 100, reps: 5 }, { exercise: 'back-squat', weight_kg: 100, reps: 5 }] },
+    { local_date: '2026-10-20', sets: sixSets.map(() => ({ exercise: 'back-squat', weight_kg: 100, reps: 5 })) },
     { local_date: '2026-10-19', sets: [{ exercise: 'back-squat', weight_kg: 105, reps: 6 }] },
   ]);
 });
