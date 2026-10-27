@@ -152,3 +152,11 @@ test('Sessions beyond the Weekly Target earn nothing extra', () => {
 
   expect(events.map((e) => [e.sessionDates, e.consistencyPoints])).toEqual([[['2026-10-19', '2026-10-20', '2026-10-22'], 120]]);
 });
+
+test('a week lists every qualifying Session it had, including those beyond the Weekly Target', () => {
+  const events = consistencyOf(
+    ana([session('2026-10-19'), session('2026-10-20'), session('2026-10-22'), session('2026-10-23'), session('2026-10-24', 5)]),
+  );
+
+  expect(events.map((e) => e.trainedDates)).toEqual([['2026-10-19', '2026-10-20', '2026-10-22', '2026-10-23']]);
+});
