@@ -845,3 +845,18 @@ button.cell {
   font: inherit;
   text-align: center;
 }
+.choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.choices .chip[aria-checked="true"] {
+  background: var(--fg);
+  color: var(--bg);
+  border-color: var(--fg);
+}
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}

@@ -1,5 +1,16 @@
 import { expect, test } from 'vitest';
-import { bodyweightPromptDue, isProfileValue, nextMonday, valueInForce } from './index.ts';
+import { bodyweightPromptDue, isProfileValue, kgToUnits, nextMonday, unitsToKg, valueInForce } from './index.ts';
+
+test('weights are stored in kg and shown in the units the user chose', () => {
+  expect(kgToUnits(100, 'kg')).toBe(100);
+  expect(kgToUnits(100, 'lb')).toBeCloseTo(220.462, 3);
+  expect(unitsToKg(225, 'lb')).toBeCloseTo(102.058, 3);
+  expect(unitsToKg(82.5, 'kg')).toBe(82.5);
+});
+
+test('a weight typed in lb comes back as the same number of lb', () => {
+  expect(kgToUnits(unitsToKg(135, 'lb'), 'lb')).toBeCloseTo(135, 10);
+});
 
 test('a Weekly Target is a whole number from 2 to 6', () => {
   expect([1, 2, 6, 7, 3.5, '4'].map((value) => isProfileValue('weeklyTarget', value))).toEqual([

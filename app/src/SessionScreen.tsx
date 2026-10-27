@@ -92,7 +92,7 @@ export function StartSession({ logging }: { logging: ReturnType<typeof useLoggin
 
 // The Session in progress takes over the whole screen (design: Logging a Session): Exercises
 // added one by one, each with its Sets as weight × reps. Weights are entered and kept in kg.
-export function SessionScreen({ training, onLeave }: { training: Training; onLeave: () => void }) {
+export function SessionScreen({ training, units, onLeave }: { training: Training; units: Units; onLeave: () => void }) {
   const { t, language } = useI18n();
   const s = t.session;
   const [session, setSession] = useState<InProgress | null>(null);
@@ -164,6 +164,7 @@ export function SessionScreen({ training, onLeave }: { training: Training; onLea
             training={training}
             exerciseId={exerciseId}
             incrementKg={catalog.find(({ id }) => id === exerciseId)?.incrementKg ?? 2.5}
+            units={units}
             sets={session.sets.filter((set) => set.exerciseId === exerciseId)}
             onLog={async (weightKg, reps) => {
               await training.logSet(sessionId, exerciseId, weightKg, reps);

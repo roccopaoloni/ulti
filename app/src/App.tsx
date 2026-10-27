@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { signOut, useUser } from './auth.ts';
 import { AuthScreens, useAuthFlow } from './AuthScreens.tsx';
 import { newGroupPath, usePendingInvite } from './groups.ts';
@@ -8,6 +8,8 @@ import { useI18n, type Term } from './i18n.ts';
 import { tabIcons } from './icons.tsx';
 import { Info } from './Info.tsx';
 import { navigate, paths, tabs, useCurrentTab, usePathname, type Tab } from './navigation.ts';
+import { hasEverything, useBodyProfile, useUnits } from './profile.ts';
+import { BodyweightPrompt, Onboarding, ProfileSettings } from './ProfileScreens.tsx';
 import { SessionInProgressBar, SessionScreen, StartSession, useLogging } from './SessionScreen.tsx';
 import { useTraining } from './useTraining.ts';
 
@@ -43,8 +45,20 @@ function Tabs({ userId }: { userId: string }) {
   const [signOutError, setSignOutError] = useState<string>();
   const training = useTraining(userId);
   const logging = useLogging(training);
+  const { profile, ready, reload } = useBodyProfile(userId, training);
+  const storedUnits = useUnits(userId);
+  const units = storedUnits ?? 'kg';
+  const [promptDue, setPromptDue] = useState(false);
 
-  if (training && logging.open) return <SessionScreen training={training} onLeave={logging.leave} />;
+  useEffect(() => {
+    training?.bodyweightPromptDue().then(setPromptDue);
+  }, [training, profile]);
+
+  // Until the user has given their units, sex, bodyweight and Weekly Target, nothing else opens.
+  if (training && ready && !hasEverything(profile, storedUnits)) {
+    return <Onboarding userId={userId} training={training} onDone={reload} />;
+  }
+  if (training && logging.open) return <SessionScreen training={training} units={units} onLeave={logging.leave} />;
   return (
     <>
       <main className="screen">
@@ -67,8 +81,22 @@ function Tabs({ userId }: { userId: string }) {
             <p className="muted">{text}</p>
           </section>
         )}
+        {current === 'home' && training && profile && promptDue && (
+          <BodyweightPrompt
+            training={training}
+            profile={profile}
+            units={units}
+            onDone={async () => {
+              await reload();
+              setPromptDue(await training.bodyweightPromptDue());
+            }}
+          />
+        )}
         {current === 'home' && training && <StartSession logging={logging} />}
         {current === 'train' && training && <History training={training} />}
+        {current === 'profile' && training && profile && (
+          <ProfileSettings userId={userId} training={training} profile={profile} units={units} onSaved={reload} />
+        )}
         {current === 'profile' && (
           <>
             <button

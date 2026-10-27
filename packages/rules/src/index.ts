@@ -100,3 +100,9 @@ export function bodyweightPromptDue(lastAskedOn: string, today: string): boolean
   const days = (Date.parse(`${today}T00:00:00Z`) - Date.parse(`${lastAskedOn}T00:00:00Z`)) / 86_400_000;
   return days >= 14;
 }
+
+// Weights are stored in kg and converted for display.
+export type Units = 'kg' | 'lb';
+const kgPerLb = 0.45359237;
+export const kgToUnits = (kg: number, units: Units) => (units === 'kg' ? kg : kg / kgPerLb);
+export const unitsToKg = (weight: number, units: Units) => (units === 'kg' ? weight : weight * kgPerLb);
