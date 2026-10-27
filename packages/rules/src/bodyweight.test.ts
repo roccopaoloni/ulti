@@ -16,7 +16,7 @@ const history = (bodyweightKg: { effectiveFrom: string; value: number }[], ...se
   userId: 'ana',
   sessions,
   weeklyTargets: [],
-  bodyweightKg,
+  profile: { sex: [], bodyweightKg },
 });
 
 const recordsOf = (training: ReturnType<typeof history>) =>

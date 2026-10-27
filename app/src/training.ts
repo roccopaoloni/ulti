@@ -369,11 +369,12 @@ export async function openTraining(userId: string, options: Options) {
     async scoring(without?: string) {
       const sessions = (await db.getAll('sessions')).filter(({ id }) => id !== without);
       sessions.sort((a, b) => a.startedAt.localeCompare(b.startedAt));
+      const profile = await this.profile();
       const catalog = new Map((await db.getAll('exercises')).map((exercise) => [exercise.id, exercise]));
       const history: TrainingHistory = {
         userId,
-        weeklyTargets: (await this.profile()).weeklyTarget,
-        bodyweightKg: (await this.profile()).bodyweightKg,
+        weeklyTargets: profile.weeklyTarget,
+        profile,
         sessions: await Promise.all(
           sessions.map(async ({ id, localDate }) => {
             const sets = await db.getAllFromIndex('sets', 'bySession', id);

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { expect, test } from 'vitest';
+import { scoringEventsOf as storedScoringEvents } from './sql.ts';
 import { newUser } from './users.ts';
 
 type Lifter = { id: string; client: SupabaseClient };
@@ -37,11 +38,8 @@ function session(startedAt: string, timeZone: string, localDate: string) {
 
 const utcSession = (localDate: string) => session(`${localDate}T12:00:00.000Z`, 'UTC', localDate);
 
-async function scoringEventsOf({ client }: Lifter) {
-  const { data, error } = await client.from('scoring_events').select('id, event').order('id');
-  expect(error).toBeNull();
-  return data!;
-}
+// No user can read Scoring Events through the API, so the tests read them straight from the database.
+const scoringEventsOf = async ({ id }: Lifter) => storedScoringEvents(id);
 
 test("Ana's two qualifying Sessions against a Weekly Target of 3 store the week's Consistency Points, and replaying changes nothing", async () => {
   const ana = await lifter('ana');
