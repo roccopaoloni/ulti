@@ -193,6 +193,9 @@ type Messages = {
     target: (sets: number, repMin: number, repMax: number) => string;
     // The Go heavier recommendation on the pre-filled rows, and the way to dismiss it.
     dismissGoHeavier: string;
+    // The Stall badge on the pre-filled rows (the reset weight, with its units) and the way to dismiss it.
+    stall: (weight: string, units: string) => string;
+    dismissStall: string;
     // The chips after ✓ asking for RIR (0 to 4+), and the Exercise's Increment that ± step by.
     rir: string;
     increment: (amount: string, units: string) => string;
@@ -478,6 +481,8 @@ const en: Messages = {
     startUnplanned: 'Log an unplanned session',
     target: (sets, repMin, repMax) => `${sets} × ${repMin}–${repMax} reps`,
     dismissGoHeavier: 'Keep the same weight',
+    stall: (weight, units) => `Stalled: drop to ${weight} ${units} and build back up`,
+    dismissStall: 'Keep the same weight',
     rir: 'Reps in reserve (RIR)',
     increment: (amount, units) => `Step ${amount} ${units}`,
     incrementLabel: 'Increment',
@@ -751,6 +756,8 @@ const es: Messages = {
     startUnplanned: 'Registrar una sesión sin rutina',
     target: (sets, repMin, repMax) => `${sets} × ${repMin}–${repMax} repeticiones`,
     dismissGoHeavier: 'Mantener el mismo peso',
+    stall: (weight, units) => `Estancado: bajá a ${weight} ${units} y volvé a subir`,
+    dismissStall: 'Mantener el mismo peso',
     rir: 'Repeticiones en reserva (RIR)',
     increment: (amount, units) => `Salto de ${amount} ${units}`,
     incrementLabel: 'Incremento',
