@@ -113,6 +113,10 @@ type Messages = {
     weight: string;
     reps: string;
     logSet: string;
+    // The label on a Set row, which one tap flips: a Warm-up Set or a Working Set.
+    warmUp: string;
+    working: string;
+    flipLabel: (label: string) => string;
     // The bar on every tab while a Session is in progress.
     bar: string;
     // The keypad's buttons.
@@ -272,6 +276,9 @@ const en: Messages = {
     weight: 'Weight in kg',
     reps: 'Reps',
     logSet: 'Log set',
+    warmUp: 'Warm-up',
+    working: 'Working',
+    flipLabel: (label) => `${label}: tap to change`,
     bar: 'Session in progress',
     done: 'Done',
     increase: 'Increase',
@@ -429,6 +436,9 @@ const es: Messages = {
     weight: 'Peso en kg',
     reps: 'Repeticiones',
     logSet: 'Registrar serie',
+    warmUp: 'Entrada en calor',
+    working: 'Efectiva',
+    flipLabel: (label) => `${label}: tocá para cambiar`,
     bar: 'Sesión en curso',
     done: 'Listo',
     increase: 'Subir',

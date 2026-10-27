@@ -169,6 +169,10 @@ export function SessionScreen({ training, onLeave }: { training: Training; onLea
               await training.logSet(sessionId, exerciseId, weightKg, reps);
               await reload();
             }}
+            onSetLabel={async (setId, label) => {
+              await training.setLabel(setId, label);
+              await reload();
+            }}
           />
         ))}
         <button
