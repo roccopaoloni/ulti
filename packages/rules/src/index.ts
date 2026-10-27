@@ -2,6 +2,9 @@
 
 export type Set = {
   exercise: string;
+  // A Custom Exercise: its Sets count toward a Session, but never earn Progress Points or get
+  // recommendations.
+  custom: boolean;
   weightKg: number;
   reps: number;
 };

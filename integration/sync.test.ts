@@ -173,7 +173,7 @@ function customExercise(name: string) {
   return {
     id: crypto.randomUUID(),
     kind: 'saveExercise',
-    exercise: { id: exerciseId, name, updatedAt: '2026-10-19T21:00:00.000Z' },
+    exercise: { id: exerciseId, name },
     exerciseId,
   };
 }
@@ -212,7 +212,7 @@ test("a Custom Exercise can't replace a catalog Exercise or someone else's Custo
   const overCatalog = { ...plank, id: crypto.randomUUID(), exercise: { ...plank.exercise, id: 'back-squat', name: 'Fake' } };
   const attempt = await bea.client.functions.invoke('sync', { body: { mutations: [overCatalog] } });
   expect(attempt.error).not.toBeNull();
-  const overAna = { ...plank, id: crypto.randomUUID(), exercise: { ...plank.exercise, name: 'Bea was here', updatedAt: '2026-10-20T00:00:00.000Z' } };
+  const overAna = { ...plank, id: crypto.randomUUID(), exercise: { ...plank.exercise, name: 'Bea was here' } };
   await sync(bea, [overAna]);
 
   const squat = await ana.client.from('exercises').select('name_en').eq('id', 'back-squat');

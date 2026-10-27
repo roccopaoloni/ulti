@@ -23,7 +23,11 @@ type SetRecord = {
   loggedAt: string;
   updatedAt: string;
 };
-type Mutation = { id: string; kind: 'saveSession'; session: SessionRecord } | { id: string; kind: 'saveSet'; set: SetRecord };
+type ExerciseRecord = { id: string; name: string };
+type Mutation =
+  | { id: string; kind: 'saveSession'; session: SessionRecord }
+  | { id: string; kind: 'saveSet'; set: SetRecord }
+  | { id: string; kind: 'saveExercise'; exercise: ExerciseRecord };
 
 // Sets dated after the moment the endpoint received them are rejected. A phone's clock can run a
 // little fast, though, and a Set synced the moment it's logged would be lost to that: this much
@@ -73,16 +77,26 @@ async function save(client: Client, userId: string, mutations: Mutation[], recei
     const kept = records.get(record.id);
     if (!kept || Date.parse(kept.updatedAt) <= Date.parse(record.updatedAt)) records.set(record.id, record);
   };
+  const exercises = new Map<string, ExerciseRecord>();
   const rejected: string[] = [];
   for (const mutation of mutations) {
     if (!unseen.delete(mutation.id)) continue;
     if (mutation.kind === 'saveSession') keepLatest(sessions, mutation.session);
+    else if (mutation.kind === 'saveExercise') exercises.set(mutation.exercise.id, mutation.exercise);
     else if (Date.parse(mutation.set.loggedAt) > receivedAt + clockAllowanceMs) rejected.push(mutation.id);
     else keepLatest(sets, mutation.set);
   }
 
+  // A Custom Exercise is saved before the Sets that use it. It's named once and never changes, so
+  // an ID that exists already, whoever owns it, is left alone. The one name serves both languages,
+  // and the Increment is a placeholder: Custom Exercises never get recommendations.
   await transaction.queryArray`
-    insert into public.sessions (user_id, id, started_at, time_zone, local_date, finished_at, updated_at)
+    insert into public.exercises (id, name_en, name_es, type, default_increment_kg, owner_id)
+    select e.id, e.name, e.name, 'weighted', 2.5, ${userId}
+    from jsonb_to_recordset(${JSON.stringify([...exercises.values()])}::jsonb) as e(id text, name text)
+    on conflict (id) do nothing`;
+  await transaction.queryArray`
+    insert into public.sessions(user_id, id, started_at, time_zone, local_date, finished_at, updated_at)
     select ${userId}, s.id, s."startedAt", s."timeZone", s."localDate", s."finishedAt", s."updatedAt"
     from jsonb_to_recordset(${JSON.stringify([...sessions.values()])}::jsonb) as s(
       id uuid, "startedAt" timestamptz, "timeZone" text, "localDate" date, "finishedAt" timestamptz, "updatedAt" timestamptz

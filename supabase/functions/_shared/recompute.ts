@@ -26,10 +26,13 @@ export async function recompute(client: Client, userId: string) {
     select jsonb_build_object('sessions', coalesce(jsonb_agg(
       jsonb_build_object('localDate', s.local_date, 'sets', coalesce((
         select jsonb_agg(
-          jsonb_build_object('exercise', t.exercise_id, 'weightKg', t.weight_kg, 'reps', t.reps)
+          jsonb_build_object(
+            'exercise', t.exercise_id, 'custom', x.owner_id is not null, 'weightKg', t.weight_kg, 'reps', t.reps
+          )
           order by t.logged_at, t.id
         )
         from public.sets t
+        join public.exercises x on x.id = t.exercise_id
         where t.user_id = s.user_id and t.session_id = s.id and not t.deleted
       ), '[]'::jsonb))
       order by s.started_at, s.id
