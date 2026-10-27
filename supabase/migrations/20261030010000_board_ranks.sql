@@ -7,10 +7,10 @@
 create function private.rank_of(points numeric) returns jsonb
 language sql immutable set search_path = '' as $$
   select case
-    when rank_of.points >= 3000 then jsonb_build_object('tier', 'elite', 'division', null)
+    when rank_of.points >= 3300 then jsonb_build_object('tier', 'elite', 'division', null)
     else (
       select jsonb_build_object('tier', c.tier, 'division', 5 - floor((rank_of.points - c.start) / c.span)::int)
-      from (values ('bronze', 0, 60), ('silver', 300, 100), ('gold', 800, 180), ('diamond', 1700, 260)) as c(tier, start, span)
+      from (values ('bronze', 0, 160), ('silver', 800, 100), ('gold', 1300, 200), ('diamond', 2300, 200)) as c(tier, start, span)
       where rank_of.points >= c.start
       order by c.start desc
       limit 1
@@ -33,8 +33,94 @@ $$;
 
 revoke execute on function private.season_rank_points(uuid, date) from public, anon, authenticated;
 
--- member_profile() and group_board() as 20261028030000_member_profiles.sql made them, with each
--- member's 'tier' and 'division' added.
+-- group_board() and member_profile() as 20261028095000_scoring_modes.sql made them, with each
+-- member's 'tier' and 'division' added and nothing else changed.
+
+create or replace function public.group_board(group_id uuid, period text, on_date date) returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+declare
+  me uuid := (select auth.uid());
+  first_day date;
+  next_day date;
+  this_week date := date_trunc('week', group_board.on_date::timestamp)::date;
+  mode text;
+begin
+  if not exists (select from public.group_members m where m.group_id = group_board.group_id and m.user_id = me) then
+    raise exception 'not_member';
+  end if;
+  if group_board.period not in ('week', 'month', 'year') then
+    raise exception 'invalid_period';
+  end if;
+  first_day := date_trunc(group_board.period, group_board.on_date::timestamp)::date;
+  next_day := (first_day + ('1 ' || group_board.period)::interval)::date;
+  mode := case when group_board.period = 'year' then 'standard' else private.scoring_mode(group_board.group_id, first_day) end;
+
+  return jsonb_build_object(
+    'scoring_mode', mode,
+    'next_scoring_mode', coalesce((
+      select m.mode from public.group_scoring_modes m
+      where m.group_id = group_board.group_id order by m.changed_on desc limit 1
+    ), 'standard'),
+    'members', coalesce((
+    select jsonb_agg(
+      jsonb_build_object(
+        'user_id', r.user_id,
+        'position', r.position,
+        'display_name', r.display_name,
+        'avatar_color', r.avatar_color,
+        'me', r.user_id = me,
+        'points', r.points,
+        'tier', private.rank_of(private.season_rank_points(r.user_id, group_board.on_date)) -> 'tier',
+        'division', private.rank_of(private.season_rank_points(r.user_id, group_board.on_date)) -> 'division',
+        'weekly_target', coalesce(
+          (select (e.event ->> 'weeklyTarget')::int from public.scoring_events e
+            where e.user_id = r.user_id and e.event ->> 'kind' = 'consistency' and (e.event ->> 'week')::date = this_week),
+          (select (h.value #>> '{}')::int from public.profile_history h
+            where h.user_id = r.user_id and h.field = 'weeklyTarget' and h.effective_from <= group_board.on_date
+            order by h.effective_from desc limit 1)
+        ),
+        'session_dates', coalesce(
+          (select e.event -> 'sessionDates' from public.scoring_events e
+            where e.user_id = r.user_id and e.event ->> 'kind' = 'consistency' and (e.event ->> 'week')::date = this_week),
+          '[]'::jsonb
+        ),
+        'records', coalesce((
+          select jsonb_agg(jsonb_build_object(
+            'exercise', p.event ->> 'exercise',
+            'percent_gain', (p.event ->> 'percentGain')::numeric,
+            'points', (p.event ->> 'progressPoints')::numeric
+          ) order by private.event_date(p.event) desc, p.id)
+          from (
+            select e.id, e.event from public.scoring_events e
+            where e.user_id = r.user_id and e.event ->> 'kind' = 'personal-record'
+              and private.event_date(e.event) >= first_day and private.event_date(e.event) < next_day
+            order by private.event_date(e.event) desc, e.id
+            limit 3
+          ) p
+        ), '[]'::jsonb)
+      )
+      order by r.position, r.display_name, r.user_id
+    )
+    from (
+      select
+        rank() over (order by s.points desc) as position,
+        s.user_id, s.display_name, s.avatar_color, s.points
+      from (
+        select m.user_id, pr.display_name, pr.avatar_color, coalesce(sum(private.event_mode_points(e.event, mode)), 0) as points
+        from public.group_members m
+        join public.profiles pr on pr.user_id = m.user_id
+        left join public.scoring_events e
+          on e.user_id = m.user_id
+          and private.event_date(e.event) >= first_day and private.event_date(e.event) < next_day
+        where m.group_id = group_board.group_id
+        group by m.user_id, pr.display_name, pr.avatar_color
+      ) s
+    ) r
+  ), '[]'::jsonb));
+end;
+$$;
+
+-- member_profile() mirrors the board of the same Period, so it scores with the same Mode.
 create or replace function public.member_profile(group_id uuid, member_id uuid, period text, on_date date) returns jsonb
 language plpgsql stable security definer set search_path = '' as $$
 declare
@@ -42,6 +128,7 @@ declare
   first_day date;
   next_day date;
   result jsonb;
+  mode text;
 begin
   if not exists (select from public.group_members m where m.group_id = member_profile.group_id and m.user_id = me)
     or not exists (select from public.group_members m where m.group_id = member_profile.group_id and m.user_id = member_profile.member_id) then
@@ -52,6 +139,7 @@ begin
   end if;
   first_day := date_trunc(member_profile.period, member_profile.on_date::timestamp)::date;
   next_day := (first_day + ('1 ' || member_profile.period)::interval)::date;
+  mode := case when member_profile.period = 'year' then 'standard' else private.scoring_mode(member_profile.group_id, first_day) end;
 
   select jsonb_build_object(
     'display_name', r.display_name,
@@ -108,7 +196,7 @@ begin
       q.user_id, q.display_name, q.avatar_color, q.points, q.share_weights, q.share_sessions
     from (
       select m.user_id, pr.display_name, pr.avatar_color, pr.share_weights, pr.share_sessions,
-        coalesce(sum(private.event_points(e.event)), 0) as points
+        coalesce(sum(private.event_mode_points(e.event, mode)), 0) as points
       from public.group_members m
       join public.profiles pr on pr.user_id = m.user_id
       left join public.scoring_events e
@@ -121,81 +209,5 @@ begin
   where r.user_id = member_profile.member_id;
 
   return result;
-end;
-$$;
-
-create or replace function public.group_board(group_id uuid, period text, on_date date) returns jsonb
-language plpgsql stable security definer set search_path = '' as $$
-declare
-  me uuid := (select auth.uid());
-  first_day date;
-  next_day date;
-  this_week date := date_trunc('week', group_board.on_date::timestamp)::date;
-begin
-  if not exists (select from public.group_members m where m.group_id = group_board.group_id and m.user_id = me) then
-    raise exception 'not_member';
-  end if;
-  if group_board.period not in ('week', 'month', 'year') then
-    raise exception 'invalid_period';
-  end if;
-  first_day := date_trunc(group_board.period, group_board.on_date::timestamp)::date;
-  next_day := (first_day + ('1 ' || group_board.period)::interval)::date;
-
-  return jsonb_build_object('members', coalesce((
-    select jsonb_agg(
-      jsonb_build_object(
-        'user_id', r.user_id,
-        'position', r.position,
-        'display_name', r.display_name,
-        'avatar_color', r.avatar_color,
-        'me', r.user_id = me,
-        'points', r.points,
-        'tier', private.rank_of(private.season_rank_points(r.user_id, group_board.on_date)) -> 'tier',
-        'division', private.rank_of(private.season_rank_points(r.user_id, group_board.on_date)) -> 'division',
-        'weekly_target', coalesce(
-          (select (e.event ->> 'weeklyTarget')::int from public.scoring_events e
-            where e.user_id = r.user_id and e.event ->> 'kind' = 'consistency' and (e.event ->> 'week')::date = this_week),
-          (select (h.value #>> '{}')::int from public.profile_history h
-            where h.user_id = r.user_id and h.field = 'weeklyTarget' and h.effective_from <= group_board.on_date
-            order by h.effective_from desc limit 1)
-        ),
-        'session_dates', coalesce(
-          (select e.event -> 'sessionDates' from public.scoring_events e
-            where e.user_id = r.user_id and e.event ->> 'kind' = 'consistency' and (e.event ->> 'week')::date = this_week),
-          '[]'::jsonb
-        ),
-        'records', coalesce((
-          select jsonb_agg(jsonb_build_object(
-            'exercise', p.event ->> 'exercise',
-            'percent_gain', (p.event ->> 'percentGain')::numeric,
-            'points', (p.event ->> 'progressPoints')::numeric
-          ) order by private.event_date(p.event) desc, p.id)
-          from (
-            select e.id, e.event from public.scoring_events e
-            where e.user_id = r.user_id and e.event ->> 'kind' = 'personal-record'
-              and private.event_date(e.event) >= first_day and private.event_date(e.event) < next_day
-            order by private.event_date(e.event) desc, e.id
-            limit 3
-          ) p
-        ), '[]'::jsonb)
-      )
-      order by r.position, r.display_name, r.user_id
-    )
-    from (
-      select
-        rank() over (order by s.points desc) as position,
-        s.user_id, s.display_name, s.avatar_color, s.points
-      from (
-        select m.user_id, pr.display_name, pr.avatar_color, coalesce(sum(private.event_points(e.event)), 0) as points
-        from public.group_members m
-        join public.profiles pr on pr.user_id = m.user_id
-        left join public.scoring_events e
-          on e.user_id = m.user_id
-          and private.event_date(e.event) >= first_day and private.event_date(e.event) < next_day
-        where m.group_id = group_board.group_id
-        group by m.user_id, pr.display_name, pr.avatar_color
-      ) s
-    ) r
-  ), '[]'::jsonb));
 end;
 $$;
