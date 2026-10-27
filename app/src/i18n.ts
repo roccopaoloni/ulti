@@ -113,6 +113,13 @@ type Messages = {
     weight: string;
     reps: string;
     logSet: string;
+    // The bar on every tab while a Session is in progress.
+    bar: string;
+    // The keypad's buttons.
+    done: string;
+    increase: string;
+    decrease: string;
+    backspace: string;
   };
   // The Train tab's history of past Sessions.
   history: {
@@ -265,6 +272,11 @@ const en: Messages = {
     weight: 'Weight in kg',
     reps: 'Reps',
     logSet: 'Log set',
+    bar: 'Session in progress',
+    done: 'Done',
+    increase: 'Increase',
+    decrease: 'Decrease',
+    backspace: 'Delete',
   },
   history: {
     title: 'Past sessions',
@@ -417,6 +429,11 @@ const es: Messages = {
     weight: 'Peso en kg',
     reps: 'Repeticiones',
     logSet: 'Registrar serie',
+    bar: 'Sesión en curso',
+    done: 'Listo',
+    increase: 'Subir',
+    decrease: 'Bajar',
+    backspace: 'Borrar',
   },
   history: {
     title: 'Sesiones anteriores',

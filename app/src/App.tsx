@@ -8,7 +8,7 @@ import { useI18n, type Term } from './i18n.ts';
 import { tabIcons } from './icons.tsx';
 import { Info } from './Info.tsx';
 import { navigate, paths, tabs, useCurrentTab, usePathname, type Tab } from './navigation.ts';
-import { SessionScreen, StartSession, useLogging } from './SessionScreen.tsx';
+import { SessionInProgressBar, SessionScreen, StartSession, useLogging } from './SessionScreen.tsx';
 import { useTraining } from './useTraining.ts';
 
 // The glossary term each empty screen introduces.
@@ -90,6 +90,7 @@ function Tabs({ userId }: { userId: string }) {
           </>
         )}
       </main>
+      <SessionInProgressBar logging={logging} />
       <nav className="tabbar">
         {tabs.map((tab) => (
           <a

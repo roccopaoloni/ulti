@@ -30,7 +30,14 @@ export type SetRecord = {
 
 // An Exercise, as the phone keeps it for picking one offline: from the catalog, or a Custom Exercise
 // of this user's (spec: Catalog seed). A Custom Exercise has one name and no equipment.
-export type Exercise = { id: string; nameEn: string; nameEs: string; equipment: string | null; custom: boolean };
+export type Exercise = {
+  id: string;
+  nameEn: string;
+  nameEs: string;
+  equipment: string | null;
+  custom: boolean;
+  incrementKg: number;
+};
 
 export type Mutation =
   | { id: string; kind: 'saveSession'; session: SessionRecord }
@@ -87,7 +94,7 @@ export async function openTraining(userId: string, options: Options) {
       else await tx.objectStore('sets').put(mutation.set);
     } else {
       const { id, name } = mutation.exercise;
-      await tx.objectStore('exercises').put({ id, nameEn: name, nameEs: name, equipment: null, custom: true });
+      await tx.objectStore('exercises').put({ id, nameEn: name, nameEs: name, equipment: null, custom: true, incrementKg: 2.5 });
     }
     await tx.objectStore('outbox').add(mutation);
     if (inProgress) await tx.objectStore('state').put(inProgress, 'sessionInProgress');
@@ -206,6 +213,17 @@ export async function openTraining(userId: string, options: Options) {
       const sets = await db.getAllFromIndex('sets', 'bySession', inProgress.sessionId);
       sets.sort((a, b) => a.loggedAt.localeCompare(b.loggedAt));
       return { session, exerciseIds: inProgress.exerciseIds, sets };
+    },
+
+    // The Exercise's Sets from the last Session that had it, other than the one in progress: what
+    // the next Session's rows are pre-filled with.
+    async lastSets(exerciseId: string) {
+      const inProgress = await db.get('state', 'sessionInProgress');
+      const sets = (await db.getAll('sets')).filter((set) => set.exerciseId === exerciseId && set.sessionId !== inProgress?.sessionId);
+      if (sets.length === 0) return [];
+      const sessions = await Promise.all([...new Set(sets.map((set) => set.sessionId))].map((id) => db.get('sessions', id)));
+      const last = sessions.reduce((a, b) => (a!.startedAt > b!.startedAt ? a : b))!;
+      return sets.filter((set) => set.sessionId === last.id).sort((a, b) => a.loggedAt.localeCompare(b.loggedAt));
     },
 
     exercises: () => db.getAll('exercises'),
