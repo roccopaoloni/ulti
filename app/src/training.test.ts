@@ -555,8 +555,10 @@ test('a pull-up Set with added weight logs offline, queues as the added weight, 
   // 80 kg × 1.2 = 96, then (80 + 4) kg × 1.2 = 100.8: a 5% gain.
   const { events } = await training.scoring();
   expect(events.map((e) => [e.setId, e.bodyweightKg, e.percentGain, e.progressPoints])).toEqual([[record.id, 80, 5, 50]]);
+  training.close();
+});
 
-const benchCatalog = [{ id: 'bench-press', nameEn: 'Bench press', nameEs: 'Press banca', equipment: 'barbell', custom: false, incrementKg: 2.5 }];
+const benchCatalog = [{ id: 'bench-press', nameEn: 'Bench press', nameEs: 'Press banca', equipment: 'barbell', custom: false, incrementKg: 2.5, bodyweight: false }];
 const benchRange = { repMin: 8, repMax: 12 };
 
 // Ana finishes a Bench Press Session of the given Sets, as [weightKg, reps, rir?].
