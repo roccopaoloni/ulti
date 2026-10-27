@@ -221,6 +221,18 @@ Nothing needs setting up. The deploy job applies the migration that adds `delete
 
 - [ ] An edit and a delete made in airplane mode reached the database once back online
 
+## 13. After Period finalization (#27) ships: check the finalizer and see a crown
+
+Nothing needs setting up. The deploy job applies the migration that creates `period_results` and schedules the finalizer inside the database (no Edge Function, no secret). What CI can't check is the crown moment on a real phone.
+
+1. **Integrations → Cron → Jobs** should list `finalize-periods`, active, every 5 minutes.
+2. With two accounts in a Group, train with one of them during a week, then wait for that week to end everywhere (Monday afternoon UTC at the latest). Don't call `private.finalize_periods` with a future date to speed this up: it would freeze every real Group's current week early, for good.
+3. Open the app signed in as the trainee. A gold full-screen moment should say you won the week. Tap once to open it, tap again to skip ahead, then **Continue**. Reopen the app: it should not come back. Check the same on another phone or browser: it should not come back there either.
+4. **Table Editor → period_results** keeps one row per member per frozen Period.
+
+- [ ] The finalizer job is active
+- [ ] The crown moment showed once on the next open, and the sound played (silent switch off)
+
 ## Later: moving to a real domain
 
 When the test proves ULTI is worth it, buy a domain (about US$10–15 a year) and:

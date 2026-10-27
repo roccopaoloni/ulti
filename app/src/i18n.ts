@@ -275,6 +275,16 @@ type Messages = {
     headline: (headline: Headline, tierName: (tier: Tier) => string) => string;
     chip: (chip: Chip) => string;
   };
+  // The crown moment for winning a Period (design: Celebrations).
+  crown: {
+    news: string;
+    tapHint: string;
+    continue: string;
+    title: Record<'week' | 'month' | 'year', string>;
+    headline: (period: 'week' | 'month' | 'year', group: string, sharedWith: number) => string;
+    points: (points: number) => string;
+    shared: (sharedWith: number) => string;
+  };
   // The Train tab's history of past Sessions.
   history: {
     title: string;
@@ -612,6 +622,18 @@ const en: Messages = {
       }
     },
   },
+  crown: {
+    news: 'You have news',
+    tapHint: 'Tap to open',
+    continue: 'Continue',
+    title: { week: 'Week won', month: 'Month won', year: 'Year won' },
+    headline: (period, group, sharedWith) => {
+      const when = { week: 'the week', month: 'the month', year: 'the year' }[period];
+      return sharedWith > 0 ? `You share first place for ${when} in ${group}.` : `You came first for ${when} in ${group}.`;
+    },
+    points: (points) => `${points.toLocaleString('en')} pts`,
+    shared: (sharedWith) => (sharedWith === 1 ? 'Tied with 1 other' : `Tied with ${sharedWith} others`),
+  },
   history: {
     title: 'Past sessions',
     empty: 'Your finished sessions will show up here.',
@@ -943,6 +965,18 @@ const es: Messages = {
         case 'points': return `${c.points.toLocaleString('es')} pts`;
       }
     },
+  },
+  crown: {
+    news: 'Tenés novedades',
+    tapHint: 'Tocá para abrir',
+    continue: 'Seguir',
+    title: { week: 'Semana ganada', month: 'Mes ganado', year: 'Año ganado' },
+    headline: (period, group, sharedWith) => {
+      const when = { week: 'la semana', month: 'el mes', year: 'el año' }[period];
+      return sharedWith > 0 ? `Compartís el primer puesto de ${when} en ${group}.` : `Ganaste ${when} en ${group}.`;
+    },
+    points: (points) => `${points.toLocaleString('es')} pts`,
+    shared: (sharedWith) => (sharedWith === 1 ? 'Empatado con 1 más' : `Empatado con ${sharedWith} más`),
   },
   history: {
     title: 'Sesiones anteriores',
