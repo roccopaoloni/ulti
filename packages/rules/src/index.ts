@@ -11,6 +11,8 @@ export type Set = {
   reps: number;
   // A bodyweight Exercise such as pull-ups or dips: its e1RM load is the lifter's average bodyweight plus weightKg.
   bodyweight?: boolean;
+  // Reps in reserve, when the lifter logged it (spec: RIR), 0 to 4 where 4 means 4 or more.
+  rir?: number;
   // The lifter's one-tap override of the detected label (spec: Warm-up detection).
   label?: SetLabel;
 };
@@ -333,4 +335,24 @@ export function plannedRows<T>(lastSets: readonly T[], plannedSets: number | und
   const rows: (T | undefined)[] = [...lastSets];
   while (rows.length < (plannedSets ?? 0)) rows.push(lastSets.at(-1));
   return rows;
+}
+
+// What an Exercise is trained to in a Routine, and the Increment that applies to it.
+export type GoHeavierRule = { repMin: number; repMax: number; incrementKg: number };
+export type GoHeavier = { weightKg: number; reps: number; incrementKg: number };
+
+// Double progression (spec: Go heavier): once every Working Set of the Exercise's last Session
+// reached the top of its Rep Range, the next Session is the Increment heavier with reps back at the
+// bottom of the range.
+export function recommendGoHeavier(history: TrainingHistory, exercise: string, rule: GoHeavierRule): GoHeavier | undefined {
+  const sessions = history.sessions
+    .map((session) => workingSets(session).filter((set) => set.exercise === exercise && !set.custom))
+    .filter((working) => working.length > 0);
+  const reachedTop = (working: Set[] | undefined) => !!working && working.every((set) => set.reps >= rule.repMax);
+  const working = sessions.at(-1);
+  if (!working || !reachedTop(working)) return undefined;
+  // A Set taken to RIR 0 means the lifter is still grinding: wait for one more qualifying Session.
+  if (working.some((set) => set.rir === 0) && !reachedTop(sessions.at(-2))) return undefined;
+  const weightKg = Math.max(...working.map((set) => set.weightKg));
+  return { weightKg: weightKg + rule.incrementKg, reps: rule.repMin, incrementKg: rule.incrementKg };
 }

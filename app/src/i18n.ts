@@ -169,6 +169,12 @@ type Messages = {
     startUnplanned: string;
     // A Routine Day's plan for an Exercise, under its name: Sets × Rep Range.
     target: (sets: number, repMin: number, repMax: number) => string;
+    // The Go heavier recommendation on the pre-filled rows, and the way to dismiss it.
+    dismissGoHeavier: string;
+    // The chips after ✓ asking for RIR (0 to 4+), and the Exercise's Increment that ± step by.
+    rir: string;
+    increment: (amount: string, units: string) => string;
+    incrementLabel: string;
   };
   // The Train tab's Routine.
   routine: {
@@ -417,6 +423,10 @@ const en: Messages = {
     startNext: (day) => `Next: ${day}`,
     startUnplanned: 'Log an unplanned session',
     target: (sets, repMin, repMax) => `${sets} × ${repMin}–${repMax} reps`,
+    dismissGoHeavier: 'Keep the same weight',
+    rir: 'Reps in reserve (RIR)',
+    increment: (amount, units) => `Step ${amount} ${units}`,
+    incrementLabel: 'Increment',
   },
   routine: {
     title: 'Routine',
@@ -655,6 +665,10 @@ const es: Messages = {
     startNext: (day) => `Sigue: ${day}`,
     startUnplanned: 'Registrar una sesión sin rutina',
     target: (sets, repMin, repMax) => `${sets} × ${repMin}–${repMax} repeticiones`,
+    dismissGoHeavier: 'Mantener el mismo peso',
+    rir: 'Repeticiones en reserva (RIR)',
+    increment: (amount, units) => `Salto de ${amount} ${units}`,
+    incrementLabel: 'Incremento',
   },
   routine: {
     title: 'Rutina',
