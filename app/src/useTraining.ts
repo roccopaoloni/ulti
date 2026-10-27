@@ -31,6 +31,12 @@ async function refreshCatalog(training: Training) {
   );
 }
 
+// The Routine the server holds, for a phone that is new to this user.
+async function refreshRoutine(training: Training) {
+  const { data } = await supabase.from('routines').select('id, days, updated_at');
+  for (const row of data ?? []) await training.saveRoutineFromServer({ id: row.id, days: row.days, updatedAt: row.updated_at });
+}
+
 // The signed-in user's training on this phone, once its store is open.
 export function useTraining(userId: string): Training | null {
   const [training, setTraining] = useState<Training | null>(null);
@@ -53,6 +59,7 @@ export function useTraining(userId: string): Training | null {
       opened = store;
       setTraining(store);
       refreshCatalog(store);
+      refreshRoutine(store).catch(() => {});
       addEventListener('online', onOnline);
     });
     return () => {

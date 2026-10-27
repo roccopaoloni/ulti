@@ -1,4 +1,4 @@
-import { inCalibration, type Units } from '@ulti/rules';
+import { inCalibration, type RoutineDay, type Units } from '@ulti/rules';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useI18n } from './i18n.ts';
@@ -26,8 +26,9 @@ export function useLogging(training: Training | null) {
   return {
     inProgress,
     open: training !== null && open,
-    async start() {
-      if (!inProgress) await training!.startSession();
+    // Starts a Session, from a Routine Day or unplanned, or returns to the one in progress.
+    async start(routineDayId?: string) {
+      if (!inProgress) await training!.startSession(routineDayId);
       setOpen(true);
     },
     async leave() {
@@ -43,7 +44,7 @@ export function SessionInProgressBar({ logging }: { logging: ReturnType<typeof u
   const { t } = useI18n();
   if (!logging.inProgress || logging.open) return null;
   return (
-    <button type="button" className="resume-bar" onClick={logging.start}>
+    <button type="button" className="resume-bar" onClick={() => logging.start()}>
       <span>
         <strong>{t.session.bar}</strong>
         <small>{t.session.logged(logging.inProgress.sets.length)}</small>
@@ -80,15 +81,27 @@ function useWakeLock() {
 }
 
 // The button on Home that starts a Session, or returns to the one in progress.
-export function StartSession({ logging }: { logging: ReturnType<typeof useLogging> }) {
+// The Routine's next Session is suggested, with a way to log an unplanned one instead.
+export function StartSession({ logging, training }: { logging: ReturnType<typeof useLogging>; training: Training }) {
   const { t } = useI18n();
   const s = t.session;
   const { inProgress } = logging;
+  const [next, setNext] = useState<RoutineDay | null>(null);
+  useEffect(() => {
+    training.nextRoutineDay().then(setNext);
+  }, [training, inProgress]);
   return (
-    <button type="button" className="btn-start" onClick={logging.start}>
-      <span className="disp">{inProgress ? s.resume : s.start}</span>
-      <small>{inProgress ? s.logged(inProgress.sets.length) : s.startHint}</small>
-    </button>
+    <>
+      <button type="button" className="btn-start" onClick={() => logging.start(next?.id)}>
+        <span className="disp">{inProgress ? s.resume : s.start}</span>
+        <small>{inProgress ? s.logged(inProgress.sets.length) : next ? s.startNext(next.name) : s.startHint}</small>
+      </button>
+      {next && !inProgress && (
+        <button type="button" className="btn-link" onClick={() => logging.start()}>
+          {s.startUnplanned}
+        </button>
+      )}
+    </>
   );
 }
 
@@ -189,6 +202,7 @@ export function SessionScreen({ training, units, onLeave }: { training: Training
             exerciseId={exerciseId}
             incrementKg={catalog.find(({ id }) => id === exerciseId)?.incrementKg ?? 2.5}
             units={units}
+            target={session.plan.find((planned) => planned.exerciseId === exerciseId)}
             sets={session.sets.filter((set) => set.exerciseId === exerciseId)}
             records={new Map(scoring?.events.map((event) => [event.setId, event]))}
             calibrating={scoring ? inCalibration(scoring.history, exerciseId) : false}

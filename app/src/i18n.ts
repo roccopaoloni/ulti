@@ -152,6 +152,32 @@ type Messages = {
     points: (points: number) => string;
     // Shown on an Exercise during Calibration.
     calibration: string;
+    // Home's button, when the Routine suggests the next Session, and the way to log without it.
+    startNext: (day: string) => string;
+    startUnplanned: string;
+    // A Routine Day's plan for an Exercise, under its name: Sets × Rep Range.
+    target: (sets: number, repMin: number, repMax: number) => string;
+  };
+  // The Train tab's Routine.
+  routine: {
+    title: string;
+    empty: string;
+    day: (number: number) => string;
+    dayName: string;
+    removeDay: string;
+    addDay: string;
+    exercise: string;
+    pickExercise: string;
+    addExercise: string;
+    removeExercise: string;
+    sets: string;
+    // "Repeticiones objetivo" in Spanish, never "rango".
+    repRange: string;
+    from: string;
+    to: string;
+    save: string;
+    suggestion: (count: number) => string;
+    useSuggestion: string;
   };
   // Consistency Points, Week Stamps and the Streak.
   consistency: {
@@ -363,6 +389,28 @@ const en: Messages = {
     record: (exercise, percentGain, points) => `PR! ${exercise} +${percentGain}% · +${points} pts`,
     points: (points) => `+${points} pts`,
     calibration: 'Your first sessions set your baseline',
+    startNext: (day) => `Next: ${day}`,
+    startUnplanned: 'Log an unplanned session',
+    target: (sets, repMin, repMax) => `${sets} × ${repMin}–${repMax} reps`,
+  },
+  routine: {
+    title: 'Routine',
+    empty: 'Add the sessions of your week, each with its exercises.',
+    day: (number) => `Session ${number}`,
+    dayName: 'Name',
+    removeDay: 'Remove session',
+    addDay: 'Add session',
+    exercise: 'Exercise',
+    pickExercise: 'Choose an exercise',
+    addExercise: 'Add exercise',
+    removeExercise: 'Remove exercise',
+    sets: 'Sets',
+    repRange: 'Rep Range',
+    from: 'From',
+    to: 'To',
+    save: 'Save Routine',
+    suggestion: (count) => `Your Routine suggests a Weekly Target of ${count} per week.`,
+    useSuggestion: 'Use it',
   },
   consistency: {
     thisWeek: 'This week',
@@ -570,6 +618,28 @@ const es: Messages = {
     record: (exercise, percentGain, points) => `¡PR! ${exercise} +${percentGain}% · +${points} pts`,
     points: (points) => `+${points} pts`,
     calibration: 'Tus primeras sesiones fijan tu base',
+    startNext: (day) => `Sigue: ${day}`,
+    startUnplanned: 'Registrar una sesión sin rutina',
+    target: (sets, repMin, repMax) => `${sets} × ${repMin}–${repMax} repeticiones`,
+  },
+  routine: {
+    title: 'Rutina',
+    empty: 'Agregá las sesiones de tu semana, cada una con sus ejercicios.',
+    day: (number) => `Sesión ${number}`,
+    dayName: 'Nombre',
+    removeDay: 'Quitar sesión',
+    addDay: 'Agregar sesión',
+    exercise: 'Ejercicio',
+    pickExercise: 'Elegí un ejercicio',
+    addExercise: 'Agregar ejercicio',
+    removeExercise: 'Quitar ejercicio',
+    sets: 'Series',
+    repRange: 'Repeticiones objetivo',
+    from: 'Desde',
+    to: 'Hasta',
+    save: 'Guardar rutina',
+    suggestion: (count) => `Tu rutina sugiere un objetivo semanal de ${count} por semana.`,
+    useSuggestion: 'Usarlo',
   },
   consistency: {
     thisWeek: 'Esta semana',
