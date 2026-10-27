@@ -125,3 +125,31 @@ test("flipping the Set's label to Warm-up removes the Personal Record it had ear
 
   expect(await scoringEventsOf(ana)).toEqual([]);
 });
+
+test("Ana's sex and bodyweight weight her Personal Record, the event records what was used, and nobody else can read it", async () => {
+  const ana = await lifter('ana');
+  const bea = await lifter('bea');
+  const entry = (field: string, value: unknown) => ({
+    id: crypto.randomUUID(),
+    kind: 'saveProfileEntry',
+    entry: { field, effectiveFrom: '2026-10-01', value, updatedAt: '2026-10-01T09:00:00.000Z' },
+  });
+  await sync(ana, [
+    entry('sex', 'male'),
+    entry('bodyweightKg', 83),
+    ...squatSession('2026-10-05', 100, 6).mutations,
+    ...squatSession('2026-10-12', 100, 6).mutations,
+    ...squatSession('2026-10-19', 105, 6).mutations,
+  ]);
+
+  // A male 83 kg lifter's 126 kg e1RM squat is at the 53.93rd percentile of FitnessVolt's gym
+  // standards, which weights the 5% gain's 50 points up to 55.
+  const [{ event }] = await scoringEventsOf(ana);
+  expect(event.strengthLevelPercentile).toBeCloseTo(53.93, 1);
+  expect(event.bodyweightKg).toBe(83);
+  expect(event.progressPoints).toBe(55);
+
+  expect(await scoringEventsOf(bea)).toEqual([]);
+  const { data } = await bea.client.from('profile_history').select('*');
+  expect(data).toEqual([]);
+});
