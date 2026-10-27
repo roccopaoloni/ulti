@@ -16,6 +16,13 @@ export function setUnits(userId: string, units: Units) {
   void supabase.from('profiles').upsert({ user_id: userId, units }).then(() => {}, () => {});
 }
 
+// The logging layout (design: Logging a Session). Like the language, it is a choice about this
+// phone's screen, so it lives only on the phone.
+export type Layout = 'list' | 'focus';
+const layoutKey = (userId: string) => `ulti-layout:${userId}`;
+export const useLayout = (userId: string): Layout => useStored<Layout>(layoutKey(userId)) ?? 'list';
+export const setLayout = (userId: string, layout: Layout) => write(layoutKey(userId), layout);
+
 // The language the user picked, over the phone's own.
 export const languageKey = 'ulti-language';
 export const setLanguage = (language: Language) => write(languageKey, language);
