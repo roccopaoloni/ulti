@@ -245,7 +245,7 @@ export function Badge({ rank, tierName, mode, plaque }: { rank: Rank; tierName: 
     });
   }
   return (
-    <svg className={`badge ${mode === 'lg' ? 'b-anim' : ''}`} viewBox="0 0 200 200" style={style} role="img" aria-label={label}>
+    <svg className={`rank-badge ${mode === 'lg' ? 'b-anim' : ''}`} viewBox="0 0 200 200" style={style} role="img" aria-label={label}>
       {step >= 4 && <circle className="aura" cx="100" cy="88" r="100" fill={`url(#bh-${rank.tier})`} />}
       {elite && <g className="bray"><g className="spin">{rays(24, 40, 100, 82, 1.4)}</g></g>}
       <Crest rank={rank} />

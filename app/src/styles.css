@@ -1045,14 +1045,14 @@ prefers-reduced-motion switches every animation off, so it stays off the badge. 
 .badge-lg .disp {
   font-size: calc(38px * var(--ds));
 }
-.badge-lg .badge {
+.badge-lg .rank-badge {
   width: 132px;
   height: auto;
   flex: none;
   margin: -8px -6px -8px -10px;
   filter: drop-shadow(0 8px 18px color-mix(in srgb, var(--t) 35%, transparent));
 }
-.badge .shine {
+.rank-badge .shine {
   transform: translateX(-60px);
 }
 .b-anim .shine {
@@ -1069,7 +1069,7 @@ prefers-reduced-motion switches every animation off, so it stays off the badge. 
   transform-origin: 100px 100px;
   animation: bspin 60s linear infinite;
 }
-.badge .plaque {
+.rank-badge .plaque {
   font-family: var(--display);
   font-weight: 800;
   fill: #fff;
