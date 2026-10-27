@@ -44,6 +44,15 @@ type Messages = {
     join: string;
     joining: string;
     inviteNotFound: string;
+    periods: { week: string; month: string; year: string };
+    // A member's points and sessions on a board row, and a Personal Record chip ("Bench +3%").
+    boardPoints: (points: number) => string;
+    leader: string;
+    // The Home race card: "2nd of 5, 40 pts behind Ana", or the lead when ahead.
+    race: (position: number, size: number) => string;
+    behind: (points: number, name: string) => string;
+    ahead: (points: number, name: string) => string;
+    leading: string;
     retry: string;
     notNow: string;
     profileTitle: string;
@@ -293,6 +302,17 @@ const en: Messages = {
     join: 'Join the Group',
     joining: 'Joining the Group…',
     inviteNotFound: "This invite link doesn't work anymore. Ask your friend for a new one.",
+    periods: { week: 'Week', month: 'Month', year: 'Year' },
+    boardPoints: (points) => `${points} pts`,
+    leader: 'Leader',
+    race: (position, size) => {
+      const teens = position % 100 >= 11 && position % 100 <= 13;
+      const suffix = teens ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[position % 10] ?? 'th';
+      return `${position}${suffix} of ${size}`;
+    },
+    behind: (points, name) => `${points} pts behind ${name}`,
+    ahead: (points, name) => `${points} pts ahead of ${name}`,
+    leading: 'Leading the way',
     retry: 'Try again',
     notNow: 'Not now',
     profileTitle: 'How your friends see you',
@@ -522,6 +542,13 @@ const es: Messages = {
     join: 'Entrar al grupo',
     joining: 'Entrando al grupo…',
     inviteNotFound: 'Este link de invitación ya no funciona. Pedile uno nuevo a tu amigo.',
+    periods: { week: 'Semana', month: 'Mes', year: 'Año' },
+    boardPoints: (points) => `${points} pts`,
+    leader: 'Líder',
+    race: (position, size) => `${position}º de ${size}`,
+    behind: (points, name) => `${points} pts detrás de ${name}`,
+    ahead: (points, name) => `${points} pts delante de ${name}`,
+    leading: 'Vas al frente',
     retry: 'Probar de nuevo',
     notNow: 'Ahora no',
     profileTitle: 'Cómo te ven tus amigos',
