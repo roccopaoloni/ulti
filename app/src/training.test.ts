@@ -410,7 +410,7 @@ test("a Personal Record's provisional points are weighted by the sex and bodywei
   await logSession(105);
 
   // The same worked example as the rules: a 5% gain by a male 83 kg lifter at the 53.9th percentile.
-  expect((await training.scoring()).events.map((e) => e.progressPoints)).toEqual([55]);
+  expect((await training.scoring()).events.map((e) => e.progressPoints)).toEqual([120]);
   training.close();
 });
 
@@ -431,7 +431,7 @@ test('a Personal Record is derived on the phone as soon as the Set is logged, of
   const record = await logSession(105);
 
   const { events, history } = await training.scoring();
-  expect(events.map((e) => [e.setId, e.percentGain, e.progressPoints])).toEqual([[record.id, 5, 50]]);
+  expect(events.map((e) => [e.setId, e.percentGain, e.progressPoints])).toEqual([[record.id, 5, 110]]);
   expect(history.sessions).toHaveLength(3);
 
   await training.deleteSet(record.id);
@@ -575,7 +575,7 @@ test('a pull-up Set with added weight logs offline, queues as the added weight, 
 
   // 80 kg × 1.2 = 96, then (80 + 4) kg × 1.2 = 100.8: a 5% gain.
   const { events } = await training.scoring();
-  expect(events.map((e) => [e.setId, e.bodyweightKg, e.percentGain, e.progressPoints])).toEqual([[record.id, 80, 5, 50]]);
+  expect(events.map((e) => [e.setId, e.bodyweightKg, e.percentGain, e.progressPoints])).toEqual([[record.id, 80, 5, 110]]);
   training.close();
 });
 

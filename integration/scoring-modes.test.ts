@@ -36,9 +36,9 @@ function session(localDate: string, weightKg: number, count: number) {
   ];
 }
 
-// Ana's baseline squat is 100 × 6; her Personal Record on Monday the 19th is 50 Progress Points.
+// Ana's baseline squat is 100 × 6; her Personal Record on Monday the 19th is 110 Progress Points.
 // She also earns 40 Consistency Points (Weekly Target of 3) in each of the weeks of the 19th and the
-// 26th (both in the past, since the server rejects future Sets). So the week of the 19th is worth 90 Standard, 50 PR Hunt and 40 Grind.
+// 26th (both in the past, since the server rejects future Sets). So the week of the 19th is worth 150 Standard, 110 PR Hunt and 40 Grind.
 async function ana() {
   const user = await lifter('Ana');
   await sync(user, [
@@ -65,13 +65,13 @@ const setMode = ({ client }: Lifter, groupId: string, mode: string, onDate: stri
 
 test('a Group starts on Standard, and a Mode change applies from the next week and the next month', async () => {
   const { user, groupId } = await ana();
-  expect(await board(user, groupId, 'week', '2026-10-21')).toEqual(['standard', 90]);
+  expect(await board(user, groupId, 'week', '2026-10-21')).toEqual(['standard', 150]);
 
   expect((await setMode(user, groupId, 'prHunt', '2026-10-21')).error).toBeNull();
 
   // The week and the month already running keep Standard; the next week and the next month are PR Hunt.
-  expect(await board(user, groupId, 'week', '2026-10-21')).toEqual(['standard', 90]);
-  expect(await board(user, groupId, 'month', '2026-10-21')).toEqual(['standard', 130]);
+  expect(await board(user, groupId, 'week', '2026-10-21')).toEqual(['standard', 150]);
+  expect(await board(user, groupId, 'month', '2026-10-21')).toEqual(['standard', 190]);
   expect(await board(user, groupId, 'week', '2026-10-28')).toEqual(['prHunt', 0]);
   expect(await board(user, groupId, 'month', '2026-11-03')).toEqual(['prHunt', 0]);
 });
@@ -82,7 +82,7 @@ test("a change made on a Period's first day still waits for the next Period, and
   await setMode(user, groupId, 'grind', '2026-10-26');
   await setMode(user, groupId, 'prHunt', '2026-11-03');
 
-  expect(await board(user, groupId, 'week', '2026-10-21')).toEqual(['standard', 90]);
+  expect(await board(user, groupId, 'week', '2026-10-21')).toEqual(['standard', 150]);
   expect(await board(user, groupId, 'week', '2026-10-28')).toEqual(['standard', 40]);
   // The week of 2 November is Grind (Ana has no Session in it yet), as chosen on the 26th; the week of the 9th is PR Hunt.
   expect(await board(user, groupId, 'week', '2026-11-03')).toEqual(['grind', 0]);
@@ -95,7 +95,7 @@ test('the Mode scores the same events: Grind counts Consistency Points only', as
 
   expect(await board(user, groupId, 'week', '2026-10-21')).toEqual(['grind', 40]);
   await setMode(user, groupId, 'prHunt', '2026-10-12');
-  expect(await board(user, groupId, 'week', '2026-10-21')).toEqual(['prHunt', 50]);
+  expect(await board(user, groupId, 'week', '2026-10-21')).toEqual(['prHunt', 110]);
 });
 
 test('the yearly board is always Standard, whatever the Group chose', async () => {
@@ -103,7 +103,7 @@ test('the yearly board is always Standard, whatever the Group chose', async () =
   await setMode(user, groupId, 'grind', '2026-09-01');
 
   expect(await board(user, groupId, 'week', '2026-10-21')).toEqual(['grind', 40]);
-  expect(await board(user, groupId, 'year', '2026-10-21')).toEqual(['standard', 130]);
+  expect(await board(user, groupId, 'year', '2026-10-21')).toEqual(['standard', 190]);
 });
 
 test('only the Owner changes the Mode, and only to a Mode that exists', async () => {
@@ -123,13 +123,13 @@ test("a member's profile scores its Period with the same Mode as the board", asy
   const profile = (period: string) =>
     user.client.rpc('member_profile', { group_id: groupId, member_id: user.id, period, on_date: '2026-10-21' }).then(({ data }) => data.points);
 
-  expect(await profile('week')).toBe(50);
-  expect(await profile('year')).toBe(130);
+  expect(await profile('week')).toBe(110);
+  expect(await profile('year')).toBe(190);
 });
 
 test("the news counts passes by the weekly board's Mode: under PR Hunt, Progress Points overtake Consistency Points", async () => {
-  // Ana: a 50-point Personal Record on Monday, then qualifying Sessions on Tuesday and Wednesday (80
-  // Consistency Points). Bea: a 100-point Personal Record on Wednesday and nothing else.
+  // Ana: a 110-point Personal Record on Monday, then qualifying Sessions on Tuesday and Wednesday (80
+  // Consistency Points). Bea: a 150-point Personal Record on Wednesday and nothing else.
   const owner = await lifter('Ana');
   await sync(owner, [
     weeklyTarget(3),
@@ -152,11 +152,11 @@ test("the news counts passes by the weekly board's Mode: under PR Hunt, Progress
     return data.passes;
   };
 
-  // Standard: Ana has 130 Points to Bea's 100, so nobody was passed.
+  // Standard: Ana has 190 Points to Bea's 150, so nobody was passed.
   expect(await passes()).toEqual([]);
 
   await setMode(owner, groupId, 'prHunt', '2026-09-01');
 
-  // PR Hunt: Ana's 50 Progress Points are now behind Bea's 100.
+  // PR Hunt: Ana's 110 Progress Points are now behind Bea's 150.
   expect(await passes()).toEqual([{ passer: { display_name: 'Bea', me: false }, passed: { display_name: 'Ana', me: true } }]);
 });

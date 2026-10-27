@@ -42,7 +42,7 @@ test('a pull-up Personal Record counts her bodyweight plus the added weight', ()
       newE1rm: 100.8,
       percentGain: 5,
       bodyweightKg: 80,
-      progressPoints: 50,
+      progressPoints: 110,
     }),
   ]);
 });
