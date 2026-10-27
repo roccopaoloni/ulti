@@ -417,3 +417,27 @@ test('a Personal Record is derived on the phone as soon as the Set is logged, of
   expect((await training.scoring()).events).toEqual([]);
   training.close();
 });
+
+test("a week's Consistency Points are derived on the phone as Sessions finish, offline, against the Weekly Target in force", async () => {
+  const network = server();
+  network.offline = true;
+  const training = await anasPhone(network).open();
+  await training.setProfile('weeklyTarget', 3);
+  const trainSession = async (sets: number) => {
+    const session = await training.startSession();
+    for (let i = 0; i < sets; i++) await training.logSet(session.id, 'back-squat', 100, 5);
+    await training.finishSession(session.id);
+  };
+
+  await trainSession(6);
+  expect((await training.scoring()).consistency.map((week) => [week.week, week.sessionDates.length, week.consistencyPoints])).toEqual([
+    ['2026-10-19', 1, 40],
+  ]);
+  // Five Sets are not a qualifying Session.
+  await trainSession(5);
+  await trainSession(6);
+
+  const { consistency } = await training.scoring();
+  expect(consistency.map((week) => [week.week, week.weeklyTarget, week.consistencyPoints])).toEqual([['2026-10-19', 3, 80]]);
+  training.close();
+});

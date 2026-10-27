@@ -2,6 +2,7 @@ import { inCalibration, type Units } from '@ulti/rules';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useI18n } from './i18n.ts';
+import { SessionSummary, weekProgress, type WeekProgress } from './Consistency.tsx';
 import { ExerciseBlock } from './ExerciseBlock.tsx';
 import { backIcon } from './icons.tsx';
 import { Info } from './Info.tsx';
@@ -103,6 +104,7 @@ export function SessionScreen({ training, units, onLeave }: { training: Training
   const [scoring, setScoring] = useState<Awaited<ReturnType<Training['scoring']>> | null>(null);
   // The "PR!" banner: it floats over the Session and never takes a tap, so logging goes on under it.
   const [banner, setBanner] = useState<{ key: string; text: string } | null>(null);
+  const [summary, setSummary] = useState<{ progress: WeekProgress; earned: number } | null>(null);
   useWakeLock();
   useEffect(() => {
     if (!banner) return;
@@ -119,6 +121,7 @@ export function SessionScreen({ training, units, onLeave }: { training: Training
     training.exercises().then(setCatalog);
   }, [training, reload]);
 
+  if (summary) return <SessionSummary {...summary} onClose={onLeave} />;
   if (!session) return null;
   const sessionId = session.session.id;
   const nameOf = (exercise: Exercise) => (language === 'es' ? exercise.nameEs : exercise.nameEn);
@@ -144,8 +147,12 @@ export function SessionScreen({ training, units, onLeave }: { training: Training
   }
 
   async function finish() {
+    const profile = await training.profile();
+    const progressOf = async (without?: string) => weekProgress((await training.scoring(without)).consistency, profile);
+    const before = await progressOf(sessionId);
     await training.finishSession(sessionId);
-    onLeave();
+    const progress = await progressOf();
+    setSummary({ progress, earned: progress.points - before.points });
   }
 
   return (

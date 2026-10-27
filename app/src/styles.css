@@ -899,3 +899,35 @@ button.cell {
 .pr-points {
   font: 700 12px var(--body);
 }
+
+/* Consistency: the Weekly Target's dots, the Session summary and the Week Stamps. */
+.dots {
+  display: flex;
+  gap: 8px;
+}
+.dot {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--line);
+}
+.dot.filled {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.dot.pop {
+  animation: pr-pop 0.5s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+.stamps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.stamp {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 12px;
+  font-weight: 600;
+}

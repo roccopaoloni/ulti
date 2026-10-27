@@ -142,9 +142,7 @@ function deriveConsistency(history: TrainingHistory): ConsistencyWeek[] {
   const qualifying = history.sessions.filter((session) => workingSets(session).length >= QUALIFYING_WORKING_SETS);
   const events: ConsistencyWeek[] = [];
   for (const week of [...new Set(qualifying.map((session) => weekStart(session.localDate)))].sort()) {
-    // A change applies from the next Monday, so the target in force is the one on the week's Monday;
-    // the very first target also covers the week it was set in.
-    const weeklyTarget = valueInForce(history.weeklyTargets, week) ?? valueInForce(history.weeklyTargets, weekEnd(week));
+    const weeklyTarget = weeklyTargetOf(history.weeklyTargets, week);
     if (weeklyTarget === undefined) continue;
     const sessionDates = qualifying
       .filter((session) => weekStart(session.localDate) === week)
@@ -161,6 +159,13 @@ function deriveConsistency(history: TrainingHistory): ConsistencyWeek[] {
     });
   }
   return events;
+}
+
+// The Weekly Target a week (given by its Monday) is scored with. A change applies from the next
+// Monday, so the target in force is the one on the week's Monday; the very first target also covers
+// the week it was set in.
+export function weeklyTargetOf(weeklyTargets: Dated<number>[], week: string): number | undefined {
+  return valueInForce(weeklyTargets, week) ?? valueInForce(weeklyTargets, weekEnd(week));
 }
 
 // The weeks (as their Mondays) in which the Weekly Target was met, Deload Weeks included (spec: Week Stamps).
