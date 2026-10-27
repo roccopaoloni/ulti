@@ -11,6 +11,7 @@ import { Info } from './Info.tsx';
 import { navigate, paths, tabs, useCurrentTab, usePathname, type Tab } from './navigation.ts';
 import { hasEverything, useBodyProfile, useUnits } from './profile.ts';
 import { BodyweightPrompt, Onboarding, ProfileSettings } from './ProfileScreens.tsx';
+import { RoutineEditor } from './RoutineScreen.tsx';
 import { SessionInProgressBar, SessionScreen, StartSession, useLogging } from './SessionScreen.tsx';
 import { useTraining } from './useTraining.ts';
 
@@ -94,7 +95,8 @@ function Tabs({ userId }: { userId: string }) {
           />
         )}
         {current === 'home' && training && profile && <WeekCard training={training} profile={profile} />}
-        {current === 'home' && training && <StartSession logging={logging} />}
+        {current === 'home' && training && <StartSession logging={logging} training={training} />}
+        {current === 'train' && training && <RoutineEditor training={training} profile={profile} onProfileSaved={reload} />}
         {current === 'train' && training && <History training={training} units={units} />}
         {current === 'profile' && training && <StampsCard training={training} />}
         {current === 'profile' && training && profile && (

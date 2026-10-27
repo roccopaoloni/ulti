@@ -2,8 +2,11 @@ import {
   bodyweightPromptDue,
   deriveScoringEvents,
   nextMonday,
+  nextRoutineDay,
   type Dated,
   type ProfileField,
+  type RoutineDay,
+  type RoutineExercise,
   type Sex,
   type SetLabel,
   type TrainingHistory,
@@ -22,6 +25,8 @@ export type SessionRecord = {
   timeZone: string;
   localDate: string;
   finishedAt: string | null;
+  // The Routine Day it was started from; none for an unplanned Session.
+  routineDayId?: string;
   // When this phone last changed it: the server keeps the latest write.
   updatedAt: string;
 };
@@ -63,11 +68,16 @@ export type Profile = {
 };
 
 
+// The user's Routine: its Sessions in the order they are done. The user has one; if two phones each
+// made one, the latest write is the Routine.
+export type RoutineRecord = { id: string; days: RoutineDay[]; updatedAt: string };
+
 export type Mutation =
   | { id: string; kind: 'saveSession'; session: SessionRecord }
   | { id: string; kind: 'saveSet'; set: SetRecord }
   | { id: string; kind: 'saveExercise'; exercise: { id: string; name: string } }
-  | { id: string; kind: 'saveProfileEntry'; entry: ProfileEntry };
+  | { id: string; kind: 'saveProfileEntry'; entry: ProfileEntry }
+  | { id: string; kind: 'saveRoutine'; routine: RoutineRecord };
 
 // The sync endpoint: it resolves once the server has the batch, and throws otherwise.
 export type Send = (mutations: Mutation[]) => Promise<{ rejected: string[] }>;
@@ -94,15 +104,17 @@ interface Store extends DBSchema {
   // The catalog, as last fetched from the server.
   exercises: { key: string; value: Exercise };
   profile: { key: [string, string]; value: ProfileEntry };
+  routines: { key: string; value: RoutineRecord };
 }
 
-// The Session being logged and the Exercises added to it, in order, including any with no Sets yet.
-type InProgress = { sessionId: string; exerciseIds: string[] };
+// The Session being logged and the Exercises added to it, in order, including any with no Sets yet,
+// and what the Routine Day it came from planned for them.
+type InProgress = { sessionId: string; exerciseIds: string[]; plan?: RoutineExercise[] };
 
 export type Training = Awaited<ReturnType<typeof openTraining>>;
 
 export async function openTraining(userId: string, options: Options) {
-  const db = await openDB<Store>(`ulti-${userId}`, 2, {
+  const db = await openDB<Store>(`ulti-${userId}`, 3, {
     upgrade(db, oldVersion) {
       if (oldVersion < 1) {
         db.createObjectStore('sessions', { keyPath: 'id' });
@@ -115,15 +127,19 @@ export async function openTraining(userId: string, options: Options) {
         db.createObjectStore('profile', { keyPath: ['field', 'effectiveFrom'] });
         db.createObjectStore('bodyweightPrompt');
       }
+      if (oldVersion < 3) {
+        db.createObjectStore('routines', { keyPath: 'id' });
+      }
     },
   });
 
   // Saves a record and queues its mutation in one transaction, with the Session in progress when
   // it changes: none of them exists without the others.
   async function write(mutation: Mutation, inProgress?: InProgress | null) {
-    const tx = db.transaction(['sessions', 'sets', 'exercises', 'outbox', 'state', 'profile'], 'readwrite');
+    const tx = db.transaction(['sessions', 'sets', 'exercises', 'outbox', 'state', 'profile', 'routines'], 'readwrite');
     if (mutation.kind === 'saveSession') await tx.objectStore('sessions').put(mutation.session);
     else if (mutation.kind === 'saveProfileEntry') await tx.objectStore('profile').put(mutation.entry);
+    else if (mutation.kind === 'saveRoutine') await tx.objectStore('routines').put(mutation.routine);
     else if (mutation.kind === 'saveSet') {
       if (mutation.set.deleted) await tx.objectStore('sets').delete(mutation.set.id);
       else await tx.objectStore('sets').put(mutation.set);
@@ -181,7 +197,9 @@ export async function openTraining(userId: string, options: Options) {
   const stamp = () => options.now().toISOString();
 
   return {
-    async startSession() {
+    // Starts a Session, from a Routine Day or unplanned. A Routine Day's Exercises are set up in order.
+    async startSession(routineDayId?: string) {
+      const day = routineDayId ? (await this.routine())?.days.find(({ id }) => id === routineDayId) : undefined;
       const now = options.now();
       const timeZone = options.timeZone();
       const session: SessionRecord = {
@@ -190,9 +208,14 @@ export async function openTraining(userId: string, options: Options) {
         timeZone,
         localDate: localDate(now, timeZone),
         finishedAt: null,
+        ...(day && { routineDayId: day.id }),
         updatedAt: now.toISOString(),
       };
-      await write({ id: crypto.randomUUID(), kind: 'saveSession', session }, { sessionId: session.id, exerciseIds: [] });
+      const plan = day?.exercises ?? [];
+      await write(
+        { id: crypto.randomUUID(), kind: 'saveSession', session },
+        { sessionId: session.id, exerciseIds: plan.map(({ exerciseId }) => exerciseId), plan },
+      );
       return session;
     },
 
@@ -253,7 +276,7 @@ export async function openTraining(userId: string, options: Options) {
       const session = (await db.get('sessions', inProgress.sessionId))!;
       const sets = await db.getAllFromIndex('sets', 'bySession', inProgress.sessionId);
       sets.sort((a, b) => a.loggedAt.localeCompare(b.loggedAt));
-      return { session, exerciseIds: inProgress.exerciseIds, sets };
+      return { session, exerciseIds: inProgress.exerciseIds, plan: inProgress.plan ?? [], sets };
     },
 
     // The Exercise's Sets from the last Session that had it, other than the one in progress: what
@@ -350,6 +373,36 @@ export async function openTraining(userId: string, options: Options) {
         events: all.filter((event) => event.kind === 'personal-record'),
         consistency: all.filter((event) => event.kind === 'consistency'),
       };
+    },
+
+    // The user's Routine, the latest written, or null before they make one.
+    async routine() {
+      const all = await db.getAll('routines');
+      return all.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0] ?? null;
+    },
+
+    // The Routine Day to do next, or null before there is a Routine.
+    async nextRoutineDay() {
+      const days = (await this.routine())?.days;
+      if (!days?.length) return null;
+      const fromRoutine = (await db.getAll('sessions')).filter((session) => session.routineDayId);
+      const last = fromRoutine.sort((a, b) => b.startedAt.localeCompare(a.startedAt))[0];
+      const id = nextRoutineDay(days.map((day) => day.id), last?.routineDayId);
+      return days.find((day) => day.id === id)!;
+    },
+
+    // Creates the Routine, or replaces its Sessions: the same Routine written again, so the latest
+    // write wins.
+    async saveRoutine(days: RoutineDay[]) {
+      const id = (await this.routine())?.id ?? crypto.randomUUID();
+      await write({ id: crypto.randomUUID(), kind: 'saveRoutine', routine: { id, days, updatedAt: stamp() } });
+    },
+
+    // Keeps the Routine the server holds, as on a phone that is new to this user, unless the phone
+    // has a later write of it.
+    async saveRoutineFromServer(routine: RoutineRecord) {
+      const kept = await db.get('routines', routine.id);
+      if (!kept || kept.updatedAt < routine.updatedAt) await db.put('routines', routine);
     },
 
     exercises: () => db.getAll('exercises'),

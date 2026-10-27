@@ -1,4 +1,4 @@
-import { incrementInUnits, kgToUnits, labelSets, stepValue, unitsToKg, type PersonalRecord, type SetLabel, type Units } from '@ulti/rules';
+import { incrementInUnits, kgToUnits, labelSets, plannedRows, stepValue, unitsToKg, type PersonalRecord, type RoutineExercise, type SetLabel, type Units } from '@ulti/rules';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useI18n } from './i18n.ts';
@@ -16,6 +16,7 @@ export function ExerciseBlock({
   exerciseId,
   incrementKg,
   units,
+  target,
   sets,
   records,
   calibrating,
@@ -27,6 +28,8 @@ export function ExerciseBlock({
   exerciseId: string;
   incrementKg: number;
   units: Units;
+  // What the Routine plans for this Exercise, when the Session came from one.
+  target?: RoutineExercise;
   sets: SetRecord[];
   // The Personal Records among the Sets, by Set ID, and whether the Exercise is still in Calibration.
   records: Map<string, PersonalRecord>;
@@ -36,12 +39,13 @@ export function ExerciseBlock({
 }) {
   const { t, formatNumber } = useI18n();
   const labels = labelSets(sets);
-  const [plan, setPlan] = useState<Planned[] | null>(null);
+  const [last, setLast] = useState<Planned[] | null>(null);
   useEffect(() => {
-    training.lastSets(exerciseId).then(setPlan);
+    training.lastSets(exerciseId).then(setLast);
   }, [training, exerciseId]);
 
   // Past the plan, the next Set repeats the last one logged.
+  const plan = last && plannedRows(last, target?.sets);
   const next = plan ? (plan[sets.length] ?? sets.at(-1)) : undefined;
   return (
     <section className="ex">
@@ -51,6 +55,7 @@ export function ExerciseBlock({
           {t.session.calibration} <Info term="calibration" />
         </p>
       )}
+      {target && <p className="muted">{t.session.target(target.sets, target.repMin, target.repMax)}</p>}
       {sets.map((set, index) => (
         <div key={set.id} className="set done">
           <button
@@ -80,11 +85,11 @@ export function ExerciseBlock({
         <div key={index} className="set upcoming" aria-hidden="true">
           <span className="tag">{sets.length + index + 2}</span>
           <span className="cell">
-            {formatNumber(kgToUnits(set.weightKg, units), 2)}
+            {set ? formatNumber(kgToUnits(set.weightKg, units), 2) : '–'}
             <small>{units}</small>
           </span>
           <span className="xmark">×</span>
-          <span className="cell">{set.reps}</span>
+          <span className="cell">{set?.reps ?? '–'}</span>
           <span />
         </div>
       ))}

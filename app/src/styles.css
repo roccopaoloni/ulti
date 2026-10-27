@@ -900,6 +900,34 @@ button.cell {
   font: 700 12px var(--body);
 }
 
+/* The Routine editor on the Train tab. */
+.routine {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.routine-ex {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-block: 12px;
+}
+.routine-nums {
+  display: flex;
+  align-items: end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.routine-nums label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+}
+.routine-nums input {
+  width: 56px;
+}
+
 /* Consistency: the Weekly Target's dots, the Session summary and the Week Stamps. */
 .dots {
   display: flex;
