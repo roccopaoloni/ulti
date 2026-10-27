@@ -126,3 +126,37 @@ test("a member's profile scores its Period with the same Mode as the board", asy
   expect(await profile('week')).toBe(50);
   expect(await profile('year')).toBe(130);
 });
+
+test("the news counts passes by the weekly board's Mode: under PR Hunt, Progress Points overtake Consistency Points", async () => {
+  // Ana: a 50-point Personal Record on Monday, then qualifying Sessions on Tuesday and Wednesday (80
+  // Consistency Points). Bea: a 100-point Personal Record on Wednesday and nothing else.
+  const owner = await lifter('Ana');
+  await sync(owner, [
+    weeklyTarget(3),
+    ...session('2026-10-05', 100, 1),
+    ...session('2026-10-12', 100, 1),
+    ...session('2026-10-19', 105, 1),
+    ...session('2026-10-20', 100, 6),
+    ...session('2026-10-21', 100, 6),
+  ]);
+  const bea = await lifter('Bea');
+  await sync(bea, [weeklyTarget(3), ...session('2026-10-05', 100, 1), ...session('2026-10-12', 100, 1), ...session('2026-10-21', 110, 1)]);
+  const { data: id } = await owner.client.rpc('create_group', { name: 'Gym crew' });
+  const groupId = id as string;
+  const [{ invite_code }] = (await owner.client.rpc('my_groups')).data;
+  await bea.client.rpc('join_group', { invite_code });
+  const passes = async () => {
+    // Ana last visited on Tuesday the 20th.
+    const { data, error } = await owner.client.rpc('group_news', { group_id: groupId, since: '2026-10-20', on_date: '2026-10-21' });
+    expect(error).toBeNull();
+    return data.passes;
+  };
+
+  // Standard: Ana has 130 Points to Bea's 100, so nobody was passed.
+  expect(await passes()).toEqual([]);
+
+  await setMode(owner, groupId, 'prHunt', '2026-09-01');
+
+  // PR Hunt: Ana's 50 Progress Points are now behind Bea's 100.
+  expect(await passes()).toEqual([{ passer: { display_name: 'Bea', me: false }, passed: { display_name: 'Ana', me: true } }]);
+});
