@@ -63,6 +63,14 @@ type Messages = {
     colors: Record<AvatarColor, string>;
     save: string;
     saved: string;
+    // A member's profile, and the Visibility choices on the user's own.
+    memberSessions: (count: number) => string;
+    memberRecords: string;
+    memberSessionList: string;
+    visibilityTitle: string;
+    visibilityText: string;
+    shareWeights: string;
+    shareSessions: string;
   };
   auth: {
     pitch: string;
@@ -106,6 +114,9 @@ type Messages = {
     privacy: string;
     units: string;
     language: string;
+    layout: string;
+    layoutList: string;
+    layoutFocus: string;
     sex: string;
     male: string;
     female: string;
@@ -149,6 +160,12 @@ type Messages = {
     bodyweightLoad: (added: string) => string;
     reps: string;
     logSet: string;
+    // Focus layout: the Set shown, the chips' group, and the controls around the big numbers.
+    focusSet: (number: number) => string;
+    focusSets: string;
+    focusExercises: string;
+    previous: string;
+    next: string;
     // The label on a Set row, which one tap flips: a Warm-up Set or a Working Set.
     warmUp: string;
     working: string;
@@ -346,6 +363,13 @@ const en: Messages = {
     colors: { coral: 'Coral', sand: 'Sand', lime: 'Lime', teal: 'Teal', sky: 'Sky blue', pink: 'Pink' },
     save: 'Save',
     saved: 'Saved.',
+    memberSessions: (count) => (count === 1 ? '1 Session' : `${count} Sessions`),
+    memberRecords: 'Personal Records',
+    memberSessionList: 'Sessions',
+    visibilityTitle: 'What your Groups see',
+    visibilityText: 'Your points, Rank, Sessions and Personal Records as % are always visible. Choose whether members also see your actual weights and reps, and your full Session details. The same for every Group.',
+    shareWeights: 'Show my actual weights and reps',
+    shareSessions: 'Show my full Session details',
   },
   auth: {
     pitch: 'Compete with your friends on who shows up and improves most. Not on who lifts the most.',
@@ -387,6 +411,9 @@ const en: Messages = {
     privacy: 'Your sex, bodyweight and Strength Level are never shown to anyone, not even your Group.',
     units: 'Units',
     language: 'Language',
+    layout: 'Logging layout',
+    layoutList: 'List',
+    layoutFocus: 'Focus',
     sex: 'Sex',
     male: 'Male',
     female: 'Female',
@@ -424,6 +451,11 @@ const en: Messages = {
     bodyweightLoad: (added) => (added ? `BW +${added}` : 'BW'),
     reps: 'Reps',
     logSet: 'Log set',
+    focusSet: (number) => `Set ${number}`,
+    focusSets: 'Sets',
+    focusExercises: 'Exercises',
+    previous: 'Previous',
+    next: 'Next',
     warmUp: 'Warm-up',
     working: 'Working',
     flipLabel: (label) => `${label}: tap to change`,
@@ -601,6 +633,13 @@ const es: Messages = {
     colors: { coral: 'Coral', sand: 'Arena', lime: 'Lima', teal: 'Turquesa', sky: 'Celeste', pink: 'Rosa' },
     save: 'Guardar',
     saved: 'Guardado.',
+    memberSessions: (count) => (count === 1 ? '1 sesión' : `${count} sesiones`),
+    memberRecords: 'Récords personales',
+    memberSessionList: 'Sesiones',
+    visibilityTitle: 'Lo que ven tus grupos',
+    visibilityText: 'Tus puntos, tu posición, tus sesiones y tus récords personales en % son siempre visibles. Elegí si los miembros también ven tus pesos y repeticiones reales, y el detalle completo de tus sesiones. Es igual para todos tus grupos.',
+    shareWeights: 'Mostrar mis pesos y repeticiones reales',
+    shareSessions: 'Mostrar el detalle completo de mis sesiones',
   },
   auth: {
     pitch: 'Competí con tus amigos por quién aparece y mejora más. No por quién levanta más.',
@@ -642,6 +681,9 @@ const es: Messages = {
     privacy: 'Tu sexo, tu peso corporal y tu nivel de fuerza no los ve nadie, ni siquiera tu grupo.',
     units: 'Unidades',
     language: 'Idioma',
+    layout: 'Diseño del registro',
+    layoutList: 'Lista',
+    layoutFocus: 'Foco',
     sex: 'Sexo',
     male: 'Masculino',
     female: 'Femenino',
@@ -679,6 +721,11 @@ const es: Messages = {
     bodyweightLoad: (added) => (added ? `PC +${added}` : 'PC'),
     reps: 'Repeticiones',
     logSet: 'Registrar serie',
+    focusSet: (number) => `Serie ${number}`,
+    focusSets: 'Series',
+    focusExercises: 'Ejercicios',
+    previous: 'Anterior',
+    next: 'Siguiente',
     warmUp: 'Entrada en calor',
     working: 'Efectiva',
     flipLabel: (label) => `${label}: tocá para cambiar`,
