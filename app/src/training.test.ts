@@ -252,3 +252,28 @@ test('a Custom Exercise created offline is pickable at once, survives a catalog 
   expect(set).toMatchObject({ kind: 'saveSet', set: { exerciseId: plank.id, weightKg: 10, reps: 1 } });
   training.close();
 });
+
+test("a Set's label flipped offline shows at once and goes out as a later write of the same Set, which a retry resends unchanged", async () => {
+  const network = server();
+  network.offline = true;
+  const phone = anasPhone(network);
+  const training = await phone.open();
+  const session = await training.startSession();
+  const set = await training.logSet(session.id, 'back-squat', 60, 5);
+
+  await training.setLabel(set.id, 'working');
+
+  const inProgress = await training.sessionInProgress();
+  expect(inProgress?.sets.map(({ id, label }) => ({ id, label }))).toEqual([{ id: set.id, label: 'working' }]);
+  network.offline = false;
+  phone.connectivity.dispatchEvent(new Event('online'));
+  await vi.waitFor(() => expect(network.batches).toHaveLength(1));
+  const writes = network.batches[0].flatMap((m) => (m.kind === 'saveSet' ? [{ mutation: m.id, ...m.set }] : []));
+  expect(writes.map(({ id, label }) => ({ id, label }))).toEqual([
+    { id: set.id, label: undefined },
+    { id: set.id, label: 'working' },
+  ]);
+  expect(Date.parse(writes[1].updatedAt)).toBeGreaterThan(Date.parse(writes[0].updatedAt));
+  expect(writes[0].mutation).not.toBe(writes[1].mutation);
+  training.close();
+});

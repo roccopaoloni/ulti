@@ -1,3 +1,4 @@
+import type { SetLabel } from '@ulti/rules';
 import { openDB, type DBSchema } from 'idb';
 
 // The user's own training lives on the phone, in IndexedDB, so logging never needs a signal
@@ -22,6 +23,8 @@ export type SetRecord = {
   exerciseId: string;
   weightKg: number;
   reps: number;
+  // Set when the lifter overrides the detected label; otherwise the rules detect it.
+  label?: SetLabel;
   // A deleted Set is sent once more marked deleted, so the server forgets it too.
   deleted?: boolean;
   loggedAt: string;
@@ -179,6 +182,12 @@ export async function openTraining(userId: string, options: Options) {
     async editSet(setId: string, weightKg: number, reps: number) {
       const set = (await db.get('sets', setId))!;
       await write({ id: crypto.randomUUID(), kind: 'saveSet', set: { ...set, weightKg, reps, updatedAt: stamp() } });
+    },
+
+    // The lifter's one-tap override of a Set's detected label: written like an edit.
+    async setLabel(setId: string, label: SetLabel) {
+      const set = (await db.get('sets', setId))!;
+      await write({ id: crypto.randomUUID(), kind: 'saveSet', set: { ...set, label, updatedAt: stamp() } });
     },
 
     async deleteSet(setId: string) {

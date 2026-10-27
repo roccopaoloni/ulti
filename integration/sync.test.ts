@@ -424,3 +424,34 @@ test('if the recompute fails, the Session is saved anyway, and a scheduled job r
     interval: 500,
   });
 });
+
+test("a Set's label override syncs, the later flip wins whichever arrives first, and the recompute runs over it", async () => {
+  const ana = await lifter('ana');
+  const monday = anasMonday();
+  await sync(ana, [monday.start, monday.firstSet, monday.secondSet, monday.finish]);
+  const flip = (label: string, updatedAt: string) => ({
+    id: crypto.randomUUID(),
+    kind: 'saveSet',
+    set: { ...monday.firstSet.set, label, updatedAt },
+  });
+  const toWarmUp = flip('warm-up', '2026-10-20T12:00:00.000Z');
+  const backToWorking = flip('working', '2026-10-20T12:05:00.000Z');
+  const labels = async () => {
+    const { data, error } = await ana.client.from('sets').select('id, label').order('logged_at');
+    expect(error).toBeNull();
+    return data;
+  };
+
+  expect(await labels()).toEqual([
+    { id: monday.firstSet.set.id, label: null },
+    { id: monday.secondSet.set.id, label: null },
+  ]);
+  await sync(ana, [backToWorking]);
+  await sync(ana, [toWarmUp]);
+
+  expect(await labels()).toEqual([
+    { id: monday.firstSet.set.id, label: 'working' },
+    { id: monday.secondSet.set.id, label: null },
+  ]);
+  expect(sql(`select count(*) from private.dirty_users where user_id = '${ana.id}'`)).toBe('0');
+});

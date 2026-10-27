@@ -1,4 +1,4 @@
-import { stepValue } from '@ulti/rules';
+import { labelSets, stepValue, type SetLabel } from '@ulti/rules';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useI18n } from './i18n.ts';
@@ -16,6 +16,7 @@ export function ExerciseBlock({
   incrementKg,
   sets,
   onLog,
+  onSetLabel,
 }: {
   name: string;
   training: Training;
@@ -23,8 +24,10 @@ export function ExerciseBlock({
   incrementKg: number;
   sets: SetRecord[];
   onLog: (weightKg: number, reps: number) => Promise<void>;
+  onSetLabel: (setId: string, label: SetLabel) => Promise<void>;
 }) {
-  const { formatNumber } = useI18n();
+  const { t, formatNumber } = useI18n();
+  const labels = labelSets(sets);
   const [plan, setPlan] = useState<Planned[] | null>(null);
   useEffect(() => {
     training.lastSets(exerciseId).then(setPlan);
@@ -37,7 +40,15 @@ export function ExerciseBlock({
       <h2 className="ex-name">{name}</h2>
       {sets.map((set, index) => (
         <div key={set.id} className="set done">
-          <span className="tag">{index + 1}</span>
+          <button
+            type="button"
+            className={`tag label-${labels[index]}`}
+            aria-label={t.session.flipLabel(labels[index] === 'warm-up' ? t.session.warmUp : t.session.working)}
+            onClick={() => onSetLabel(set.id, labels[index] === 'warm-up' ? 'working' : 'warm-up')}
+          >
+            {index + 1}
+            <small>{labels[index] === 'warm-up' ? t.session.warmUp : t.session.working}</small>
+          </button>
           <span className="cell">
             {formatNumber(set.weightKg, 2)}
             <small>kg</small>

@@ -619,6 +619,21 @@ button {
   font-size: calc(20px * var(--ds));
   color: var(--muted);
 }
+button.tag {
+  gap: 0;
+  align-content: center;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.tag small {
+  font: 600 9px var(--body);
+  text-transform: uppercase;
+}
+.tag.label-warm-up {
+  font-style: italic;
+  opacity: 0.7;
+}
 .cell {
   display: flex;
   align-items: baseline;
