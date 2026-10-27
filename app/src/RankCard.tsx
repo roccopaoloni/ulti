@@ -12,7 +12,8 @@ const roman = ['', 'I', 'II', 'III', 'IV', 'V'];
 // Profile: the Rank in the current Season, the user's standing and the progress to the next Division.
 // The Rank comes from the Scoring Events on this phone, so it is there offline; the standing comes
 // from the server's read RPC, which returns only the caller's own numbers, and is left out offline.
-// Online, the server's Points decide the Rank: a new phone holds none of the user's history.
+// Online, the higher of the two decides the Rank: a new phone holds none of the user's history,
+// and the server hasn't yet seen a Session logged offline.
 export function RankCard({ training }: { training: Training }) {
   const { t } = useI18n();
   const r = t.rank;
@@ -27,7 +28,7 @@ export function RankCard({ training }: { training: Training }) {
     );
   }, [training]);
   if (points === null) return null;
-  const seasonPoints = standing?.points ?? points;
+  const seasonPoints = Math.max(points, standing?.points ?? 0);
   const name = (rank: Rank) => (rank.division === null ? r.tier[rank.tier] : `${r.tier[rank.tier]} ${roman[rank.division]}`);
   const rank = rankOf(seasonPoints);
   const progress = rankProgress(seasonPoints);
