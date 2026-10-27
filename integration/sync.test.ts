@@ -27,6 +27,7 @@ async function trainingOf({ client }: Lifter) {
   const sets = await client
     .from('sets')
     .select('id, session_id, exercise_id, weight_kg, reps, logged_at')
+    .eq('deleted', false)
     .order('logged_at');
   const scoringEvents = await client.from('scoring_events').select('id');
   expect([sessions.error, sets.error, scoringEvents.error]).toEqual([null, null, null]);

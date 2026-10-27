@@ -19,6 +19,7 @@ type SetRecord = {
   exerciseId: string;
   weightKg: number;
   reps: number;
+  deleted?: boolean;
   loggedAt: string;
   updatedAt: string;
 };
@@ -94,16 +95,17 @@ async function save(client: Client, userId: string, mutations: Mutation[], recei
       updated_at = excluded.updated_at
     where sessions.updated_at < excluded.updated_at`;
   await transaction.queryArray`
-    insert into public.sets (user_id, id, session_id, exercise_id, weight_kg, reps, logged_at, updated_at)
-    select ${userId}, s.id, s."sessionId", s."exerciseId", s."weightKg", s.reps, s."loggedAt", s."updatedAt"
+    insert into public.sets (user_id, id, session_id, exercise_id, weight_kg, reps, deleted, logged_at, updated_at)
+    select ${userId}, s.id, s."sessionId", s."exerciseId", s."weightKg", s.reps, coalesce(s.deleted, false), s."loggedAt", s."updatedAt"
     from jsonb_to_recordset(${JSON.stringify([...sets.values()])}::jsonb) as s(
-      id uuid, "sessionId" uuid, "exerciseId" text, "weightKg" numeric, reps integer, "loggedAt" timestamptz, "updatedAt" timestamptz
+      id uuid, "sessionId" uuid, "exerciseId" text, "weightKg" numeric, reps integer, deleted boolean, "loggedAt" timestamptz, "updatedAt" timestamptz
     )
     on conflict (user_id, id) do update set
       session_id = excluded.session_id,
       exercise_id = excluded.exercise_id,
       weight_kg = excluded.weight_kg,
       reps = excluded.reps,
+      deleted = excluded.deleted,
       logged_at = excluded.logged_at,
       updated_at = excluded.updated_at
     where sets.updated_at < excluded.updated_at`;
