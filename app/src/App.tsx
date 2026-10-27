@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { signOut, useUser } from './auth.ts';
 import { AuthScreens, useAuthFlow } from './AuthScreens.tsx';
-import { RaceCards } from './Boards.tsx';
+import { FriendsTrainedToday, RaceCards, SinceLastVisit } from './Boards.tsx';
 import { newGroupPath, usePendingInvite } from './groups.ts';
 import { CreateGroup, GroupsTab, JoinInvite, ProfileCard } from './GroupsScreens.tsx';
 import { StampsCard, WeekCard } from './Consistency.tsx';
@@ -97,9 +97,11 @@ function Tabs({ userId }: { userId: string }) {
             }}
           />
         )}
+        {current === 'home' && <SinceLastVisit userId={userId} />}
         {current === 'home' && training && profile && <WeekCard training={training} profile={profile} />}
         {current === 'home' && training && <StartSession logging={logging} training={training} />}
         {current === 'home' && <RaceCards userId={userId} />}
+        {current === 'home' && <FriendsTrainedToday userId={userId} />}
         {current === 'train' && training && <RoutineEditor training={training} profile={profile} onProfileSaved={reload} />}
         {current === 'train' && training && <History training={training} units={units} />}
         {current === 'profile' && training && <RankCard training={training} />}
