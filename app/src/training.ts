@@ -22,6 +22,8 @@ export type SetRecord = {
   exerciseId: string;
   weightKg: number;
   reps: number;
+  // A deleted Set is sent once more marked deleted, so the server forgets it too.
+  deleted?: boolean;
   loggedAt: string;
   updatedAt: string;
 };
@@ -78,6 +80,7 @@ export async function openTraining(userId: string, options: Options) {
   async function write(mutation: Mutation, inProgress?: InProgress | null) {
     const tx = db.transaction(['sessions', 'sets', 'outbox', 'state'], 'readwrite');
     if (mutation.kind === 'saveSession') await tx.objectStore('sessions').put(mutation.session);
+    else if (mutation.set.deleted) await tx.objectStore('sets').delete(mutation.set.id);
     else await tx.objectStore('sets').put(mutation.set);
     await tx.objectStore('outbox').add(mutation);
     if (inProgress) await tx.objectStore('state').put(inProgress, 'sessionInProgress');
@@ -156,6 +159,30 @@ export async function openTraining(userId: string, options: Options) {
       const set: SetRecord = { id: crypto.randomUUID(), sessionId, exerciseId, weightKg, reps, loggedAt, updatedAt: loggedAt };
       await write({ id: crypto.randomUUID(), kind: 'saveSet', set });
       return set;
+    },
+
+    // Fixes a Set's weight and reps: the same Set written again, so the latest write wins.
+    async editSet(setId: string, weightKg: number, reps: number) {
+      const set = (await db.get('sets', setId))!;
+      await write({ id: crypto.randomUUID(), kind: 'saveSet', set: { ...set, weightKg, reps, updatedAt: stamp() } });
+    },
+
+    async deleteSet(setId: string) {
+      const set = (await db.get('sets', setId))!;
+      await write({ id: crypto.randomUUID(), kind: 'saveSet', set: { ...set, deleted: true, updatedAt: stamp() } });
+    },
+
+    // The finished Sessions, newest first, each with its Sets in the order they were logged.
+    async pastSessions() {
+      const finished = (await db.getAll('sessions')).filter((session) => session.finishedAt !== null);
+      finished.sort((a, b) => b.startedAt.localeCompare(a.startedAt));
+      return Promise.all(
+        finished.map(async (session) => {
+          const sets = await db.getAllFromIndex('sets', 'bySession', session.id);
+          sets.sort((a, b) => a.loggedAt.localeCompare(b.loggedAt));
+          return { session, sets };
+        }),
+      );
     },
 
     async finishSession(sessionId: string) {

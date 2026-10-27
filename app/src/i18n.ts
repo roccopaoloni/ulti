@@ -108,6 +108,15 @@ type Messages = {
     reps: string;
     logSet: string;
   };
+  // The Train tab's history of past Sessions.
+  history: {
+    title: string;
+    empty: string;
+    edit: string;
+    delete: string;
+    save: string;
+    cancel: string;
+  };
 };
 
 const en: Messages = {
@@ -246,6 +255,14 @@ const en: Messages = {
     weight: 'Weight in kg',
     reps: 'Reps',
     logSet: 'Log set',
+  },
+  history: {
+    title: 'Past sessions',
+    empty: 'Your finished sessions will show up here.',
+    edit: 'Edit',
+    delete: 'Delete',
+    save: 'Save',
+    cancel: 'Cancel',
   },
 };
 
@@ -386,6 +403,14 @@ const es: Messages = {
     weight: 'Peso en kg',
     reps: 'Repeticiones',
     logSet: 'Registrar serie',
+  },
+  history: {
+    title: 'Sesiones anteriores',
+    empty: 'Acá vas a ver las sesiones que termines.',
+    edit: 'Editar',
+    delete: 'Borrar',
+    save: 'Guardar',
+    cancel: 'Cancelar',
   },
 };
 

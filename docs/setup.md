@@ -211,6 +211,16 @@ Nothing needs setting up. The deploy job applies the migrations, which add the 1
 - [ ] A Session logged in airplane mode survived closing the app and reached the database once back online
 - [ ] The retry job is active and `functions_url` is in Vault
 
+## 12. After Session history (#8) ships: fix a Set in airplane mode
+
+Nothing needs setting up. The deploy job applies the migration that adds `deleted` to `sets`.
+
+1. With a signal, finish a Session with at least two Sets, then turn on airplane mode.
+2. **Train** lists the Session at the top. Open it, edit one Set's weight and delete the other.
+3. Turn airplane mode off and open the app. In Supabase, **Table Editor → sets** should show the edited weight on one row and `deleted` true on the other.
+
+- [ ] An edit and a delete made in airplane mode reached the database once back online
+
 ## Later: moving to a real domain
 
 When the test proves ULTI is worth it, buy a domain (about US$10–15 a year) and:
