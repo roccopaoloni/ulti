@@ -6,6 +6,7 @@ import { SessionSummary, weekProgress, type WeekProgress } from './Consistency.t
 import { ExerciseBlock } from './ExerciseBlock.tsx';
 import { backIcon } from './icons.tsx';
 import { Info } from './Info.tsx';
+import type { Layout } from './profile.ts';
 import type { Exercise, Training } from './training.ts';
 
 type InProgress = NonNullable<Awaited<ReturnType<Training['sessionInProgress']>>>;
@@ -107,7 +108,7 @@ export function StartSession({ logging, training }: { logging: ReturnType<typeof
 
 // The Session in progress takes over the whole screen (design: Logging a Session): Exercises
 // added one by one, each with its Sets as weight × reps. Weights are entered and shown in the user's units and kept in kg.
-export function SessionScreen({ training, units, onLeave }: { training: Training; units: Units; onLeave: () => void }) {
+export function SessionScreen({ training, units, layout, onLeave }: { training: Training; units: Units; layout: Layout; onLeave: () => void }) {
   const { t, language } = useI18n();
   const s = t.session;
   const [session, setSession] = useState<InProgress | null>(null);
@@ -118,6 +119,8 @@ export function SessionScreen({ training, units, onLeave }: { training: Training
   // The "PR!" banner: it floats over the Session and never takes a tap, so logging goes on under it.
   const [banner, setBanner] = useState<{ key: string; text: string } | null>(null);
   const [summary, setSummary] = useState<{ progress: WeekProgress; earned: number } | null>(null);
+  // The Focus layout shows one Exercise at a time: the one picked, or else the first.
+  const [focusedId, setFocusedId] = useState<string | null>(null);
   useWakeLock();
   useEffect(() => {
     if (!banner) return;
@@ -137,6 +140,7 @@ export function SessionScreen({ training, units, onLeave }: { training: Training
   if (summary) return <SessionSummary {...summary} onClose={onLeave} />;
   if (!session) return null;
   const sessionId = session.session.id;
+  const focused = session.exerciseIds.includes(focusedId ?? '') ? focusedId : session.exerciseIds[0];
   const nameOf = (exercise: Exercise) => (language === 'es' ? exercise.nameEs : exercise.nameEn);
   const name = (id: string) => {
     const exercise = catalog.find((candidate) => candidate.id === id);
@@ -155,6 +159,7 @@ export function SessionScreen({ training, units, onLeave }: { training: Training
     picker.current?.close();
     setQuery('');
     await training.addExercise(sessionId, exerciseId);
+    setFocusedId(exerciseId);
     setCatalog(await training.exercises());
     await reload();
   }
@@ -194,9 +199,24 @@ export function SessionScreen({ training, units, onLeave }: { training: Training
           {s.legend} <Info term="set" />
         </p>
         {session.exerciseIds.length === 0 && <p className="muted">{s.empty}</p>}
-        {session.exerciseIds.map((exerciseId) => (
+        {layout === 'focus' && session.exerciseIds.length > 1 && (
+          <div className="f-prog" role="group" aria-label={s.focusExercises}>
+            {session.exerciseIds.map((exerciseId) => (
+              <button
+                key={exerciseId}
+                type="button"
+                aria-label={name(exerciseId)}
+                aria-current={exerciseId === focused}
+                className={exerciseId === focused ? 'on' : ''}
+                onClick={() => setFocusedId(exerciseId)}
+              />
+            ))}
+          </div>
+        )}
+        {session.exerciseIds.filter((exerciseId) => layout === 'list' || exerciseId === focused).map((exerciseId) => (
           <ExerciseBlock
             key={exerciseId}
+            focus={layout === 'focus'}
             name={name(exerciseId)}
             training={training}
             exerciseId={exerciseId}

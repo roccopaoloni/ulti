@@ -121,6 +121,7 @@ export const inviteLink = (code: string) => `${location.origin}/i/${code}`;
 // week's Session dots and latest Personal Records, and nothing more.
 export type Period = 'week' | 'month' | 'year';
 export type BoardRow = {
+  user_id: string;
   position: number;
   display_name: string;
   avatar_color: string;
@@ -140,4 +141,72 @@ export const useBoard = (userId: string, groupId: string, period: Period) => use
 export async function refreshBoard(userId: string, groupId: string, period: Period) {
   const board = await call<Board>(supabase.rpc('group_board', { group_id: groupId, period, on_date: today() }));
   write(boardKey(userId, groupId, period), board);
+}
+
+// What group_news() returns: the other members who already trained today, and who passed whom in
+// the week since the caller's last visit. Names and colours only; the server hides the rest.
+type Who = { display_name: string; me: boolean };
+export type News = {
+  trained_today: { display_name: string; avatar_color: string }[];
+  passes: { passer: Who; passed: Who }[];
+};
+// Kept as last fetched with the day it was fetched for, so "today" never shows a day late offline.
+type StoredNews = News & { date: string };
+
+const newsKey = (userId: string, groupId: string) => `ulti-news:${userId}:${groupId}`;
+const visitKey = (userId: string) => `ulti-last-visit:${userId}`;
+
+export function useNews(userId: string, groupId: string) {
+  const stored = useStored<StoredNews>(newsKey(userId, groupId));
+  return stored?.date === today() ? stored : null;
+}
+
+// The day of the last visit is read once per page load, so the news stays on Home while the user
+// moves between tabs. Without a last visit there is nothing to catch up on.
+const sinceThisLoad = new Map<string, string | null>();
+function lastVisit(userId: string) {
+  if (!sinceThisLoad.has(userId)) sinceThisLoad.set(userId, JSON.parse(localStorage.getItem(visitKey(userId)) ?? 'null'));
+  return sinceThisLoad.get(userId)!;
+}
+
+export async function refreshNews(userId: string, groupId: string) {
+  const news = await call<News>(supabase.rpc('group_news', { group_id: groupId, since: lastVisit(userId) ?? today(), on_date: today() }));
+  write(newsKey(userId, groupId), { ...news, date: today() });
+}
+
+// Today becomes the last visit once the news has been fetched, so a visit that never got the news
+// (offline) leaves it for the next one.
+export const markVisit = (userId: string) => write(visitKey(userId), today());
+
+// What member_profile() returns of a member: always their points, position, Session count and
+// Personal Records as %; the weights and reps and the Sessions only if they allow it.
+export type MemberProfile = {
+  display_name: string;
+  avatar_color: string;
+  me: boolean;
+  position: number;
+  points: number;
+  session_count: number;
+  shares_weights: boolean;
+  shares_sessions: boolean;
+  records: { exercise: string; percent_gain: number; points: number; local_date: string; weight_kg?: number; reps?: number }[];
+  sessions: { local_date: string; sets: { exercise: string; weight_kg?: number; reps?: number }[] }[] | null;
+};
+
+export const fetchMemberProfile = (groupId: string, memberId: string, period: Period) =>
+  call<MemberProfile>(supabase.rpc('member_profile', { group_id: groupId, member_id: memberId, period, on_date: today() }));
+
+// What the user lets Group members see (Visibility): one choice for every Group, off by default.
+export type Visibility = { share_weights: boolean; share_sessions: boolean };
+const visibilityKey = (userId: string) => `ulti-visibility:${userId}`;
+export const useVisibility = (userId: string) => useStored<Visibility>(visibilityKey(userId));
+
+export async function refreshVisibility(userId: string) {
+  const row = await call<Visibility | null>(supabase.from('profiles').select('share_weights, share_sessions').maybeSingle());
+  write(visibilityKey(userId), row ?? { share_weights: false, share_sessions: false });
+}
+
+export async function saveVisibility(userId: string, visibility: Visibility) {
+  await call(supabase.from('profiles').upsert({ user_id: userId, ...visibility }));
+  write(visibilityKey(userId), visibility);
 }
