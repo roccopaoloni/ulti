@@ -42,8 +42,8 @@ test("a Personal Record records the percentile and bodyweight used: a male 83 kg
   const record = squatRecord({ sex: 'male', bodyweightKg: 83 }, 120, 126);
   expect(record.strengthLevelPercentile).toBeCloseTo(53.93, 1);
   expect(record.bodyweightKg).toBe(83);
-  // 5% gain × 10 points × a weight a little over 1 for being a little above the 50th.
-  expect(record.progressPoints).toBe(55);
+  // 5% gain × 22 points × a weight a little over 1 for being a little above the 50th.
+  expect(record.progressPoints).toBe(120);
 });
 
 test("a 1% gain at an advanced level is worth about the same as a 5% gain at a beginner level", () => {
@@ -52,9 +52,9 @@ test("a 1% gain at an advanced level is worth about the same as a 5% gain at a b
   const advanced = squatRecord({ sex: 'male', bodyweightKg: 83 }, 165, 166.65);
   expect(beginner.percentGain).toBe(5);
   expect(advanced.percentGain).toBe(1);
-  expect(beginner.progressPoints).toBe(25);
-  // 166.65 kg is a little past the 90th (90.8), so it earns a point more.
-  expect(advanced.progressPoints).toBe(26);
+  expect(beginner.progressPoints).toBe(54);
+  // 166.65 kg is a little past the 90th (90.8), so it earns a couple of points more.
+  expect(advanced.progressPoints).toBe(56);
 });
 
 test('the weight class is the lightest one that holds the bodyweight, and a missing class falls back to the nearest the lift has', () => {

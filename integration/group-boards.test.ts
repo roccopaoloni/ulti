@@ -114,7 +114,7 @@ test('a Session counts on its own local date: Sunday night in Buenos Aires is in
 });
 
 // A Session with one Working Set of back squat. Ana's first two set her baseline (100 × 6); her
-// third, 105 × 6, is a Personal Record worth 50 Progress Points and a gain of 5%.
+// third, 105 × 6, is a Personal Record worth 110 Progress Points and a gain of 5%.
 function squatSession(localDate: string, weightKg: number) {
   const sessionId = crypto.randomUUID();
   const at = `${localDate}T21:00:00.000Z`;
@@ -138,17 +138,17 @@ test("the board shows a member's points, Session dots and Personal Records, and 
 
   const { members } = await board(bea, gymCrew, 'week', wednesday);
 
-  // 50 Progress Points and 40 Consistency Points. The Session dots count the qualifying Sessions.
+  // 110 Progress Points and 40 Consistency Points. The Session dots count the qualifying Sessions.
   expect(members[0]).toEqual({
     user_id: ana.id,
     position: 1,
     display_name: 'Ana',
     avatar_color: '#6fb6f7',
     me: false,
-    points: 90,
+    points: 150,
     weekly_target: 3,
     session_dates: ['2026-10-20'],
-    records: [{ exercise: 'back-squat', percent_gain: 5, points: 50 }],
+    records: [{ exercise: 'back-squat', percent_gain: 5, points: 110 }],
   });
   // Nor can Bea read Ana's events, or the bodyweight and sex Ana gave, from the tables.
   for (const table of ['scoring_events', 'profile_history']) {
