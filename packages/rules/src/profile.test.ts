@@ -1,11 +1,17 @@
 import { expect, test } from 'vitest';
-import { bodyweightPromptDue, isProfileValue, kgToUnits, nextMonday, unitsToKg, valueInForce } from './index.ts';
+import { bodyweightPromptDue, incrementInUnits, isProfileValue, kgToUnits, nextMonday, unitsToKg, valueInForce } from './index.ts';
 
 test('weights are stored in kg and shown in the units the user chose', () => {
   expect(kgToUnits(100, 'kg')).toBe(100);
   expect(kgToUnits(100, 'lb')).toBeCloseTo(220.462, 3);
   expect(unitsToKg(225, 'lb')).toBeCloseTo(102.058, 3);
   expect(unitsToKg(82.5, 'kg')).toBe(82.5);
+});
+
+test("an Exercise's Increment steps by a loadable amount in the user's units", () => {
+  expect(incrementInUnits(2.5, 'kg')).toBe(2.5);
+  expect(incrementInUnits(2.5, 'lb')).toBe(5.5);
+  expect(incrementInUnits(5, 'lb')).toBe(11);
 });
 
 test('a weight typed in lb comes back as the same number of lb', () => {

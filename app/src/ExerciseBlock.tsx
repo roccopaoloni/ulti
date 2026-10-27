@@ -1,4 +1,4 @@
-import { labelSets, stepValue, type SetLabel } from '@ulti/rules';
+import { incrementInUnits, kgToUnits, labelSets, stepValue, unitsToKg, type SetLabel, type Units } from '@ulti/rules';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useI18n } from './i18n.ts';
@@ -14,6 +14,7 @@ export function ExerciseBlock({
   training,
   exerciseId,
   incrementKg,
+  units,
   sets,
   onLog,
   onSetLabel,
@@ -22,6 +23,7 @@ export function ExerciseBlock({
   training: Training;
   exerciseId: string;
   incrementKg: number;
+  units: Units;
   sets: SetRecord[];
   onLog: (weightKg: number, reps: number) => Promise<void>;
   onSetLabel: (setId: string, label: SetLabel) => Promise<void>;
@@ -50,8 +52,8 @@ export function ExerciseBlock({
             <small>{labels[index] === 'warm-up' ? t.session.warmUp : t.session.working}</small>
           </button>
           <span className="cell">
-            {formatNumber(set.weightKg, 2)}
-            <small>kg</small>
+            {formatNumber(kgToUnits(set.weightKg, units), 2)}
+            <small>{units}</small>
           </span>
           <span className="xmark">×</span>
           <span className="cell">{set.reps}</span>
@@ -61,14 +63,14 @@ export function ExerciseBlock({
         </div>
       ))}
       {plan && (
-        <NextSet key={sets.length} number={sets.length + 1} planned={next} incrementKg={incrementKg} onLog={onLog} />
+        <NextSet key={sets.length} number={sets.length + 1} planned={next} incrementKg={incrementKg} units={units} onLog={onLog} />
       )}
       {plan?.slice(sets.length + 1).map((set, index) => (
         <div key={index} className="set upcoming" aria-hidden="true">
           <span className="tag">{sets.length + index + 2}</span>
           <span className="cell">
-            {formatNumber(set.weightKg, 2)}
-            <small>kg</small>
+            {formatNumber(kgToUnits(set.weightKg, units), 2)}
+            <small>{units}</small>
           </span>
           <span className="xmark">×</span>
           <span className="cell">{set.reps}</span>
@@ -84,24 +86,27 @@ function NextSet({
   number,
   planned,
   incrementKg,
+  units,
   onLog,
 }: {
   number: number;
   planned: Planned | undefined;
   incrementKg: number;
+  units: Units;
   onLog: (weightKg: number, reps: number) => Promise<void>;
 }) {
   const { t, language } = useI18n();
   const s = t.session;
   // The keypad's decimal key matches the language (design: Numbers).
   const decimal = language === 'es' ? ',' : '.';
-  const [weight, setWeight] = useState(planned ? String(planned.weightKg).replace('.', decimal) : '');
+  const [weight, setWeight] = useState(planned ? String(Math.round(kgToUnits(planned.weightKg, units) * 100) / 100).replace('.', decimal) : '');
   const [reps, setReps] = useState(planned ? String(planned.reps) : '');
   const [editing, setEditing] = useState<'weight' | 'reps' | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const weightKg = Number(weight.replace(',', '.'));
-  const valid = weight.trim() !== '' && Number.isFinite(weightKg) && weightKg >= 0 && /^[1-9]\d*$/.test(reps);
+  const typedWeight = Number(weight.replace(',', '.'));
+  const weightKg = unitsToKg(typedWeight, units);
+  const valid = weight.trim() !== '' && Number.isFinite(typedWeight) && typedWeight >= 0 && /^[1-9]\d*$/.test(reps);
 
   async function log() {
     if (!valid || busy) return;
@@ -115,7 +120,7 @@ function NextSet({
       <span className="tag">{number}</span>
       <button type="button" className="cell" aria-label={s.weight} onClick={() => setEditing('weight')}>
         {weight || '–'}
-        <small>kg</small>
+        <small>{units}</small>
       </button>
       <span className="xmark">×</span>
       <button type="button" className="cell" aria-label={s.reps} onClick={() => setEditing('reps')}>
@@ -129,7 +134,7 @@ function NextSet({
           label={editing === 'weight' ? s.weight : s.reps}
           value={editing === 'weight' ? weight : reps}
           decimal={editing === 'weight' ? decimal : null}
-          step={editing === 'weight' ? incrementKg : 1}
+          step={editing === 'weight' ? incrementInUnits(incrementKg, units) : 1}
           onChange={editing === 'weight' ? setWeight : setReps}
           onClose={() => setEditing(null)}
         />

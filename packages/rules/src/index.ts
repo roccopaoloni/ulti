@@ -106,3 +106,7 @@ export type Units = 'kg' | 'lb';
 const kgPerLb = 0.45359237;
 export const kgToUnits = (kg: number, units: Units) => (units === 'kg' ? kg : kg / kgPerLb);
 export const unitsToKg = (weight: number, units: Units) => (units === 'kg' ? weight : weight * kgPerLb);
+
+// The Increment shown in the user's units: the nearest half, since a plate pair in lb is never finer.
+export const incrementInUnits = (incrementKg: number, units: Units) =>
+  units === 'kg' ? incrementKg : Math.round(kgToUnits(incrementKg, units) * 2) / 2;
