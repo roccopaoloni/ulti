@@ -90,14 +90,23 @@ test("each Exercise has its own baseline: a new Exercise's first Sessions do not
   expect(events.map((e) => [e.exercise, e.progressPoints])).toEqual([['back-squat', 50]]);
 });
 
-test('beating the best twice in one Session gives two Personal Records, the second measured from the first', () => {
-  const events = deriveScoringEvents(
-    history(...baseline, session('2026-10-19', set('back-squat', 105, 6), set('back-squat', 110, 6))),
-  );
-  expect(events.map((e) => [e.previousE1rm, e.newE1rm])).toEqual([
-    [120, 126],
-    [126, 132],
-  ]);
+test("a ramp within one Session gives one Personal Record, from the pre-Session best to the Session's best Set, capped", () => {
+  // 105, 110 and 120 × 6 each beat 120, but splitting a jump across Sets must not dodge the cap.
+  const top = set('back-squat', 130, 6);
+  const ramp = session('2026-10-19', set('back-squat', 105, 6), set('back-squat', 110, 6), set('back-squat', 120, 6), top);
+
+  const events = deriveScoringEvents(history(...baseline, ramp));
+
+  expect(events).toHaveLength(1);
+  expect(events[0]).toMatchObject({ setId: top.id, previousE1rm: 120, progressPoints: 100 });
+  expect(events[0].newE1rm).toBeCloseTo(156);
+});
+
+test("the Session's best Set earns the record even when it was not the last one logged", () => {
+  const top = set('back-squat', 110, 6);
+  const events = deriveScoringEvents(history(...baseline, session('2026-10-19', top, set('back-squat', 105, 6))));
+
+  expect(events.map((e) => e.setId)).toEqual([top.id]);
 });
 
 test('a single Personal Record is capped, so a typo cannot win the week', () => {

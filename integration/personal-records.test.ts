@@ -98,6 +98,26 @@ test('deleting the Set that set a Personal Record removes the event', async () =
   expect(await scoringEventsOf(ana)).toEqual([]);
 });
 
+test('a ramp in one Session stores a single Personal Record, for its best Set', async () => {
+  const { ana, third } = await anaWithARecord();
+  const ramp = (weightKg: number, minute: number) => ({
+    id: crypto.randomUUID(),
+    kind: 'saveSet',
+    set: {
+      ...third.setRecord,
+      id: crypto.randomUUID(),
+      weightKg,
+      loggedAt: `2026-10-19T21:0${minute}:00.000Z`,
+      updatedAt: `2026-10-19T21:0${minute}:00.000Z`,
+    },
+  });
+  const top = ramp(120, 3);
+
+  await sync(ana, [ramp(110, 1), top, ramp(115, 5)]);
+
+  expect((await scoringEventsOf(ana)).map(({ event }) => [event.setId, event.previousE1rm])).toEqual([[top.set.id, 120]]);
+});
+
 test("flipping the Set's label to Warm-up removes the Personal Record it had earned", async () => {
   const { ana, third } = await anaWithARecord();
 

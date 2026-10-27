@@ -82,28 +82,31 @@ export function deriveScoringEvents(history: TrainingHistory): ScoringEvent[] {
     for (const exercise of new Set(working.map((set) => set.exercise))) {
       const calibrating = (sessionsDone.get(exercise) ?? 0) < CALIBRATION_SESSIONS;
       sessionsDone.set(exercise, (sessionsDone.get(exercise) ?? 0) + 1);
-      for (const set of working.filter((s) => s.exercise === exercise && s.reps <= MAX_RECORD_REPS)) {
-        const value = e1rm(set.weightKg, set.reps);
-        const best = bests.get(exercise) ?? 0;
-        if (value <= best) continue;
-        bests.set(exercise, value);
-        if (calibrating || best === 0) continue;
-        const gain = (value / best - 1) * 100;
-        events.push({
-          kind: 'personal-record',
-          id: `${history.userId}:personal-record:${set.id}`,
-          exercise,
-          setId: set.id,
-          localDate: session.localDate,
-          previousE1rm: best,
-          newE1rm: value,
-          percentGain: Math.round(gain * 100) / 100,
-          strengthLevelPercentile: DEFAULT_PERCENTILE,
-          bodyweightKg: null,
-          rulesVersion: RULES_VERSION,
-          progressPoints: Math.min(MAX_POINTS_PER_RECORD, Math.round(gain * POINTS_PER_PERCENT_GAIN)),
-        });
-      }
+      // At most one Personal Record per Exercise per Session, for its best eligible Set, so a jump
+      // split across Sets can't dodge the per-record cap.
+      const eligible = working.filter((s) => s.exercise === exercise && s.reps <= MAX_RECORD_REPS);
+      if (eligible.length === 0) continue;
+      const set = eligible.reduce((top, s) => (e1rm(s.weightKg, s.reps) > e1rm(top.weightKg, top.reps) ? s : top));
+      const value = e1rm(set.weightKg, set.reps);
+      const best = bests.get(exercise) ?? 0;
+      if (value <= best) continue;
+      bests.set(exercise, value);
+      if (calibrating || best === 0) continue;
+      const gain = (value / best - 1) * 100;
+      events.push({
+        kind: 'personal-record',
+        id: `${history.userId}:personal-record:${set.id}`,
+        exercise,
+        setId: set.id,
+        localDate: session.localDate,
+        previousE1rm: best,
+        newE1rm: value,
+        percentGain: Math.round(gain * 100) / 100,
+        strengthLevelPercentile: DEFAULT_PERCENTILE,
+        bodyweightKg: null,
+        rulesVersion: RULES_VERSION,
+        progressPoints: Math.min(MAX_POINTS_PER_RECORD, Math.round(gain * POINTS_PER_PERCENT_GAIN)),
+      });
     }
   }
   return events;
