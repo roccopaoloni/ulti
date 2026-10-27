@@ -1,4 +1,4 @@
-import { incrementInUnits, kgToUnits, labelSets, plannedRows, stepValue, unitsToKg, type GoHeavier, type PersonalRecord, type RoutineExercise, type SetLabel, type Units } from '@ulti/rules';
+import { incrementInUnits, kgToUnits, labelSets, plannedRows, stepValue, unitsToKg, type Recommendation,type PersonalRecord, type RoutineExercise, type SetLabel, type Units } from '@ulti/rules';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useI18n } from './i18n.ts';
@@ -57,17 +57,19 @@ export function ExerciseBlock({
   const { t, language, formatNumber } = useI18n();
   const decimalKey = language === 'es' ? ',' : '.';
   const labels = labelSets(sets);
-  // The last Session's Sets and the recommendation to go heavier, loaded together so the rows are
-  // pre-filled once.
-  const [loaded, setLoaded] = useState<{ last: Planned[]; heavier: GoHeavier | undefined } | null>(null);
+  // The last Session's Sets and the recommendation (go heavier or Stall), loaded together so the
+  // rows are pre-filled once. Accepting is leaving the pre-filled weight; dismissing restores the last Sets.
+  const [loaded, setLoaded] = useState<{ last: Planned[]; advice: Recommendation | undefined } | null>(null);
   const [dismissed, setDismissed] = useState(false);
   useEffect(() => {
-    Promise.all([training.lastSets(exerciseId), target ? training.goHeavier(exerciseId, target) : undefined]).then(([last, heavier]) =>
-      setLoaded({ last, heavier }),
+    Promise.all([training.lastSets(exerciseId), target ? training.recommendation(exerciseId, target) : undefined]).then(([last, advice]) =>
+      setLoaded({ last, advice }),
     );
   }, [training, exerciseId, target, incrementKg]);
-  const heavier = dismissed ? undefined : loaded?.heavier;
-  const last = loaded && (heavier ? loaded.last.map(() => ({ weightKg: heavier.weightKg, reps: heavier.reps })) : loaded.last);
+  const advice = dismissed ? undefined : loaded?.advice;
+  const heavier = advice?.kind === 'goHeavier' ? advice : undefined;
+  const stall = advice?.kind === 'stall' ? advice : undefined;
+  const last = loaded && (advice ? loaded.last.map(() => ({ weightKg: advice.weightKg, reps: advice.reps })) : loaded.last);
 
   // The chips asking for RIR show for a few seconds after ✓.
   const [askRir, setAskRir] = useState<string | null>(null);
@@ -117,6 +119,14 @@ export function ExerciseBlock({
           </span>
           <button type="button" className="btn-link inline" onClick={() => setDismissed(true)}>
             {t.session.dismissGoHeavier}
+          </button>
+        </p>
+      )}
+      {stall && sets.length === 0 && (
+        <p className="go-heavier">
+          <span className="badge">↓ {t.session.stall(formatNumber(kgToUnits(stall.weightKg, units), 2), units)}</span>
+          <button type="button" className="btn-link inline" onClick={() => setDismissed(true)}>
+            {t.session.dismissStall}
           </button>
         </p>
       )}

@@ -75,6 +75,7 @@ export type PersonalRecord = {
   bodyweightKg: number | null;
   rulesVersion: number;
   progressPoints: number;
+  points: ModePoints;
 };
 
 // The Consistency Points a week of meeting the Weekly Target is worth, the same for everyone. 120
@@ -92,9 +93,32 @@ export type ConsistencyWeek = {
   weeklyTarget: number;
   // The local dates of the qualifying Sessions that counted, at most the Weekly Target.
   sessionDates: string[];
+  // The local dates of all the week's qualifying Sessions, beyond the Weekly Target too (Group
+  // news lists who trained today). They earn no points.
+  trainedDates: string[];
   rulesVersion: number;
   consistencyPoints: number;
+  points: ModePoints;
 };
+
+// A Group's Scoring Mode (ADR 0001) re-scores the same events: Standard is Progress Points plus
+// Consistency Points, PR Hunt only Progress Points, Grind only Consistency Points.
+export const SCORING_MODES = ['standard', 'prHunt', 'grind'] as const;
+export type ScoringMode = (typeof SCORING_MODES)[number];
+// What an event is worth under each Scoring Mode, so every board is a plain sum.
+export type ModePoints = Record<ScoringMode, number>;
+
+const progressModePoints = (progressPoints: number): ModePoints => ({ standard: progressPoints, prHunt: progressPoints, grind: 0 });
+const consistencyModePoints = (consistencyPoints: number): ModePoints => ({
+  standard: consistencyPoints,
+  prHunt: 0,
+  grind: consistencyPoints,
+});
+
+// A Period's score: the sum of its events' points under a Scoring Mode (spec: Score a Period).
+export function scorePeriod(events: readonly { points: ModePoints }[], mode: ScoringMode): number {
+  return events.reduce((sum, event) => sum + event.points[mode], 0);
+}
 
 // Each kind of Scoring Event joins this union as its rules land.
 export type ScoringEvent = PersonalRecord | ConsistencyWeek;
@@ -178,6 +202,7 @@ function derivePersonalRecords(history: TrainingHistory): PersonalRecord[] {
         percentile = own ?? (levels.length === 0 ? DEFAULT_PERCENTILE : levels.reduce((a, b) => a + b, 0) / levels.length);
       }
       const weight = STRENGTH_WEIGHT_RANGE ** ((percentile - 50) / WEIGHT_SPAN_PERCENTILES);
+      const progressPoints = Math.min(MAX_POINTS_PER_RECORD, Math.round(gain * POINTS_PER_PERCENT_GAIN * weight));
       events.push({
         kind: 'personal-record',
         id: `${history.userId}:personal-record:${set.id}`,
@@ -190,7 +215,8 @@ function derivePersonalRecords(history: TrainingHistory): PersonalRecord[] {
         strengthLevelPercentile: Math.round(percentile * 100) / 100,
         bodyweightKg,
         rulesVersion: RULES_VERSION,
-        progressPoints: Math.min(MAX_POINTS_PER_RECORD, Math.round(gain * POINTS_PER_PERCENT_GAIN * weight)),
+        progressPoints,
+        points: progressModePoints(progressPoints),
       });
     }
   }
@@ -204,18 +230,19 @@ function deriveConsistency(history: TrainingHistory): ConsistencyWeek[] {
   for (const week of [...new Set(qualifying.map((session) => weekStart(session.localDate)))].sort()) {
     const weeklyTarget = weeklyTargetOf(history.weeklyTargets, week);
     if (weeklyTarget === undefined) continue;
-    const sessionDates = qualifying
-      .filter((session) => weekStart(session.localDate) === week)
-      .map((session) => session.localDate)
-      .slice(0, weeklyTarget);
+    const trainedDates = qualifying.filter((session) => weekStart(session.localDate) === week).map((session) => session.localDate);
+    const sessionDates = trainedDates.slice(0, weeklyTarget);
+    const consistencyPoints = (CONSISTENCY_WEEKLY_AMOUNT * sessionDates.length) / weeklyTarget;
     events.push({
       kind: 'consistency',
       id: `${history.userId}:consistency:${week}`,
       week,
       weeklyTarget,
       sessionDates,
+      trainedDates,
       rulesVersion: RULES_VERSION,
-      consistencyPoints: (CONSISTENCY_WEEKLY_AMOUNT * sessionDates.length) / weeklyTarget,
+      consistencyPoints,
+      points: consistencyModePoints(consistencyPoints),
     });
   }
   return events;
@@ -405,4 +432,57 @@ export function recommendGoHeavier(history: TrainingHistory, exercise: string, r
   if (working.some((set) => set.rir === 0) && !reachedTop(sessions.at(-2))) return undefined;
   const weightKg = Math.max(...working.map((set) => set.weightKg));
   return { weightKg: weightKg + rule.incrementKg, reps: rule.repMin, incrementKg: rule.incrementKg };
+}
+
+export type Stall = { weightKg: number; reps: number };
+
+// How many of the Exercise's Sessions before a Session its "recent best" e1RM looks back over.
+const RECENT_BEST_SESSIONS = 6;
+const STALL_RESET = 0.9;
+
+// Stall (spec: Stall), judged on the Exercise's Working Sets only. It is Stalled after either:
+// - three Sessions in a row each failing to beat the recent best e1RM, where a Session's e1RM is
+//   its best Working Set and the recent best is the best of the up to 6 Sessions before it (equal
+//   does not beat it; a Session with none before it cannot fail), or
+// - the bottom of the Rep Range missed on some Working Set in each of the last two Sessions.
+// The suggestion is about 10% under the last Session's training weight, rounded to the Increment,
+// back at the bottom of the range.
+export function recommendStall(history: TrainingHistory, exercise: string, rule: GoHeavierRule): Stall | undefined {
+  const done = history.sessions
+    .map((session) => ({ localDate: session.localDate, working: workingSets(session).filter((set) => set.exercise === exercise && !set.custom) }))
+    .filter(({ working }) => working.length > 0);
+  const sessions = done.map(({ working }) => working);
+  // A bodyweight Exercise is lifted at the lifter's average bodyweight plus the added weight, as
+  // for Personal Records. Without a check-in a Session's e1RM can't be judged (undefined).
+  const bodyweight = !!sessions[0]?.[0].bodyweight;
+  const averageKg = done.map(({ localDate }) => (bodyweight ? averageBodyweight(history.profile?.bodyweightKg ?? [], localDate) : 0));
+  const best = sessions.map((working, index) =>
+    averageKg[index] === undefined ? undefined : Math.max(...working.map((set) => e1rm(set.weightKg + averageKg[index]!, set.reps))),
+  );
+  const failedToBeat = (index: number) => {
+    const recent = best.slice(Math.max(0, index - RECENT_BEST_SESSIONS), index).filter((value) => value !== undefined);
+    return best[index] !== undefined && recent.length > 0 && best[index] <= Math.max(...recent);
+  };
+  const last = sessions.length - 1;
+  const stalled =
+    (last >= 3 && [last, last - 1, last - 2].every(failedToBeat)) ||
+    (last >= 1 && sessions.slice(-2).every((working) => working.some((set) => set.reps < rule.repMin)));
+  if (!stalled) return undefined;
+  const trainingKg = Math.max(...sessions[last].map((set) => set.weightKg));
+  // A bodyweight Exercise drops its added weight by 10% of the total load, never below zero; with
+  // none added there is nothing to drop.
+  if (bodyweight && (trainingKg === 0 || averageKg[last] === undefined)) return undefined;
+  const resetKg = bodyweight ? Math.max(0, trainingKg - (trainingKg + averageKg[last]!) * (1 - STALL_RESET)) : trainingKg * STALL_RESET;
+  return { weightKg: Math.round(resetKg / rule.incrementKg) * rule.incrementKg, reps: rule.repMin };
+}
+
+export type Recommendation = ({ kind: 'goHeavier' } & GoHeavier) | ({ kind: 'stall' } & Stall);
+
+// The one piece of advice for an Exercise. A Stall wins over going heavier: heavier is no use to
+// a lifter who has stopped improving, and the two never show together.
+export function recommend(history: TrainingHistory, exercise: string, rule: GoHeavierRule): Recommendation | undefined {
+  const stall = recommendStall(history, exercise, rule);
+  if (stall) return { kind: 'stall', ...stall };
+  const heavier = recommendGoHeavier(history, exercise, rule);
+  return heavier && { kind: 'goHeavier', ...heavier };
 }
