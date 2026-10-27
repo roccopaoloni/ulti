@@ -177,6 +177,12 @@ type Messages = {
     startUnplanned: string;
     // A Routine Day's plan for an Exercise, under its name: Sets × Rep Range.
     target: (sets: number, repMin: number, repMax: number) => string;
+    // The Go heavier recommendation on the pre-filled rows, and the way to dismiss it.
+    dismissGoHeavier: string;
+    // The chips after ✓ asking for RIR (0 to 4+), and the Exercise's Increment that ± step by.
+    rir: string;
+    increment: (amount: string, units: string) => string;
+    incrementLabel: string;
   };
   // The Train tab's Routine.
   routine: {
@@ -213,6 +219,15 @@ type Messages = {
     streak: (weeks: number) => string;
     stamps: string;
     noStamps: string;
+  };
+  // Rank and the Season.
+  rank: {
+    title: string;
+    tier: Record<'bronze' | 'silver' | 'gold' | 'diamond' | 'elite', string>;
+    topPercent: (percent: number) => string;
+    position: (position: number) => string;
+    toNext: (points: number, next: string) => string;
+    maxed: string;
   };
   // The Train tab's history of past Sessions.
   history: {
@@ -432,6 +447,10 @@ const en: Messages = {
     startNext: (day) => `Next: ${day}`,
     startUnplanned: 'Log an unplanned session',
     target: (sets, repMin, repMax) => `${sets} × ${repMin}–${repMax} reps`,
+    dismissGoHeavier: 'Keep the same weight',
+    rir: 'Reps in reserve (RIR)',
+    increment: (amount, units) => `Step ${amount} ${units}`,
+    incrementLabel: 'Increment',
   },
   routine: {
     title: 'Routine',
@@ -463,6 +482,14 @@ const en: Messages = {
     streak: (weeks) => (weeks === 1 ? 'Streak: 1 week' : `Streak: ${weeks} weeks`),
     stamps: 'Week Stamps',
     noStamps: 'Meet your Weekly Target in a week to earn your first stamp.',
+  },
+  rank: {
+    title: 'Rank',
+    tier: { bronze: 'Bronze', silver: 'Silver', gold: 'Gold', diamond: 'Diamond', elite: 'Elite' },
+    topPercent: (percent) => `top ${percent}% this Season`,
+    position: (position) => `#${position} this Season`,
+    toNext: (points, next) => `${points} pts to ${next}`,
+    maxed: 'Top Tier reached',
   },
   history: {
     title: 'Past sessions',
@@ -677,6 +704,10 @@ const es: Messages = {
     startNext: (day) => `Sigue: ${day}`,
     startUnplanned: 'Registrar una sesión sin rutina',
     target: (sets, repMin, repMax) => `${sets} × ${repMin}–${repMax} repeticiones`,
+    dismissGoHeavier: 'Mantener el mismo peso',
+    rir: 'Repeticiones en reserva (RIR)',
+    increment: (amount, units) => `Salto de ${amount} ${units}`,
+    incrementLabel: 'Incremento',
   },
   routine: {
     title: 'Rutina',
@@ -708,6 +739,14 @@ const es: Messages = {
     streak: (weeks) => (weeks === 1 ? 'Racha: 1 semana' : `Racha: ${weeks} semanas`),
     stamps: 'Sellos de semana',
     noStamps: 'Cumplí tu objetivo semanal en una semana para ganar tu primer sello.',
+  },
+  rank: {
+    title: 'Rango',
+    tier: { bronze: 'Bronce', silver: 'Plata', gold: 'Oro', diamond: 'Diamante', elite: 'Élite' },
+    topPercent: (percent) => `top ${percent}% esta temporada`,
+    position: (position) => `#${position} esta temporada`,
+    toNext: (points, next) => `${points} pts para ${next}`,
+    maxed: 'Llegaste a la liga más alta',
   },
   history: {
     title: 'Sesiones anteriores',

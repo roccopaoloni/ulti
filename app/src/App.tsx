@@ -11,6 +11,7 @@ import { tabIcons } from './icons.tsx';
 import { Info } from './Info.tsx';
 import { navigate, paths, tabs, useCurrentTab, usePathname, type Tab } from './navigation.ts';
 import { hasEverything, useBodyProfile, useUnits } from './profile.ts';
+import { RankCard } from './RankCard.tsx';
 import { BodyweightPrompt, Onboarding, ProfileSettings, VisibilityCard } from './ProfileScreens.tsx';
 import { RoutineEditor } from './RoutineScreen.tsx';
 import { SessionInProgressBar, SessionScreen, StartSession, useLogging } from './SessionScreen.tsx';
@@ -100,6 +101,7 @@ function Tabs({ userId }: { userId: string }) {
         {current === 'home' && <RaceCards userId={userId} />}
         {current === 'train' && training && <RoutineEditor training={training} profile={profile} onProfileSaved={reload} />}
         {current === 'train' && training && <History training={training} units={units} />}
+        {current === 'profile' && training && <RankCard training={training} />}
         {current === 'profile' && training && <StampsCard training={training} />}
         {current === 'profile' && training && profile && (
           <ProfileSettings userId={userId} training={training} profile={profile} units={units} onSaved={reload} />

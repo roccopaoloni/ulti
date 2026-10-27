@@ -53,7 +53,7 @@ const kindsAndValues = (batch: Mutation[]) =>
       ? { kind: m.kind, finished: m.session.finishedAt !== null }
       : m.kind === 'saveSet'
         ? { kind: m.kind, exerciseId: m.set.exerciseId, weightKg: m.set.weightKg, reps: m.set.reps }
-        : m.kind === 'saveProfileEntry' || m.kind === 'saveRoutine'
+        : m.kind === 'saveProfileEntry' || m.kind === 'saveRoutine' || m.kind === 'saveIncrement'
           ? { kind: m.kind }
           : { kind: m.kind, exerciseId: m.exercise.id },
   );
@@ -555,5 +555,119 @@ test('a pull-up Set with added weight logs offline, queues as the added weight, 
   // 80 kg × 1.2 = 96, then (80 + 4) kg × 1.2 = 100.8: a 5% gain.
   const { events } = await training.scoring();
   expect(events.map((e) => [e.setId, e.bodyweightKg, e.percentGain, e.progressPoints])).toEqual([[record.id, 80, 5, 50]]);
+  training.close();
+});
+
+const benchCatalog = [{ id: 'bench-press', nameEn: 'Bench press', nameEs: 'Press banca', equipment: 'barbell', custom: false, incrementKg: 2.5, bodyweight: false }];
+const benchRange = { repMin: 8, repMax: 12 };
+
+// Ana finishes a Bench Press Session of the given Sets, as [weightKg, reps, rir?].
+async function benchSession(training: Awaited<ReturnType<typeof openTraining>>, sets: [number, number, number?][]) {
+  const session = await training.startSession();
+  for (const [weightKg, reps, rir] of sets) {
+    const set = await training.logSet(session.id, 'bench-press', weightKg, reps);
+    if (rir !== undefined) await training.setRir(set.id, rir);
+  }
+  await training.finishSession(session.id);
+}
+
+test("a Set's RIR logged offline shows at once and goes out as a later write of the same Set", async () => {
+  const network = server();
+  network.offline = true;
+  const phone = anasPhone(network);
+  const training = await phone.open();
+  const session = await training.startSession();
+  const set = await training.logSet(session.id, 'bench-press', 60, 12);
+
+  await training.setRir(set.id, 2);
+
+  expect((await training.sessionInProgress())?.sets.map(({ id, rir }) => ({ id, rir }))).toEqual([{ id: set.id, rir: 2 }]);
+  network.offline = false;
+  phone.connectivity.dispatchEvent(new Event('online'));
+  await vi.waitFor(() => expect(network.batches).toHaveLength(1));
+  const writes = network.batches[0].flatMap((m) => (m.kind === 'saveSet' ? [m.set] : []));
+  expect(writes.map(({ id, rir }) => ({ id, rir }))).toEqual([
+    { id: set.id, rir: undefined },
+    { id: set.id, rir: 2 },
+  ]);
+  training.close();
+});
+
+test('after a Session with every Working Set at the top of the Rep Range, the next Session is recommended the Increment heavier', async () => {
+  const network = server();
+  network.offline = true;
+  const training = await anasPhone(network).open();
+  await training.saveExercises(benchCatalog);
+  expect(await training.goHeavier('bench-press', benchRange)).toBeUndefined();
+
+  await benchSession(training, [[60, 12], [60, 12], [60, 12]]);
+  // The next Session has started and Ana has logged a weaker Set: it doesn't change the advice.
+  const next = await training.startSession();
+  await training.logSet(next.id, 'bench-press', 60, 9);
+
+  expect(await training.goHeavier('bench-press', benchRange)).toEqual({ weightKg: 62.5, reps: 8, incrementKg: 2.5 });
+  training.close();
+});
+
+test('RIR 0 logged on those Sets makes the recommendation wait for one more Session at the top', async () => {
+  const network = server();
+  network.offline = true;
+  const training = await anasPhone(network).open();
+  await training.saveExercises(benchCatalog);
+
+  await benchSession(training, [[60, 12, 1], [60, 12, 0], [60, 12, 1]]);
+  expect(await training.goHeavier('bench-press', benchRange)).toBeUndefined();
+
+  await benchSession(training, [[60, 12], [60, 12], [60, 12]]);
+  expect(await training.goHeavier('bench-press', benchRange)).toEqual({ weightKg: 62.5, reps: 8, incrementKg: 2.5 });
+  training.close();
+});
+
+test("Ana's Increment override changes the recommendation and the keypad step, survives a catalog refresh, and syncs", async () => {
+  const network = server();
+  network.offline = true;
+  const phone = anasPhone(network);
+  const training = await phone.open();
+  await training.saveExercises(benchCatalog);
+  await benchSession(training, [[60, 12], [60, 12], [60, 12]]);
+
+  await training.setIncrement('bench-press', 1.25);
+  await training.saveExercises(benchCatalog);
+
+  expect(await training.goHeavier('bench-press', benchRange)).toEqual({ weightKg: 61.25, reps: 8, incrementKg: 1.25 });
+  expect((await training.exercises()).find(({ id }) => id === 'bench-press')?.incrementKg).toBe(1.25);
+  network.offline = false;
+  phone.connectivity.dispatchEvent(new Event('online'));
+  await vi.waitFor(() => expect(network.batches).toHaveLength(1));
+  const overrides = network.batches[0].flatMap((m) => (m.kind === 'saveIncrement' ? [m.increment] : []));
+  expect(overrides).toMatchObject([{ exerciseId: 'bench-press', incrementKg: 1.25 }]);
+  training.close();
+});
+
+test('an override fetched from the server fills a new phone, but never replaces a later one the phone made', async () => {
+  const network = server();
+  network.offline = true;
+  const training = await anasPhone(network).open();
+  await training.saveExercises(benchCatalog);
+
+  await training.saveIncrementsFromServer([{ exerciseId: 'bench-press', incrementKg: 5, updatedAt: '2026-10-01T00:00:00.000Z' }]);
+  expect((await training.exercises())[0].incrementKg).toBe(5);
+
+  await training.setIncrement('bench-press', 1.25);
+  await training.saveIncrementsFromServer([{ exerciseId: 'bench-press', incrementKg: 5, updatedAt: '2026-10-01T00:00:00.000Z' }]);
+  expect((await training.exercises())[0].incrementKg).toBe(1.25);
+  training.close();
+});
+
+test('a Custom Exercise at the top of the Rep Range gets no recommendation', async () => {
+  const network = server();
+  network.offline = true;
+  const training = await anasPhone(network).open();
+  const dip = await training.createExercise('Assisted dip');
+  const session = await training.startSession();
+  for (let i = 0; i < 3; i++) await training.logSet(session.id, dip.id, 20, 12);
+  await training.finishSession(session.id);
+
+  expect(await training.goHeavier(dip.id, benchRange)).toBeUndefined();
   training.close();
 });

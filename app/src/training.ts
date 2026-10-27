@@ -3,6 +3,7 @@ import {
   deriveScoringEvents,
   nextMonday,
   nextRoutineDay,
+  recommendGoHeavier,
   type Dated,
   type ProfileField,
   type RoutineDay,
@@ -39,6 +40,8 @@ export type SetRecord = {
   reps: number;
   // Set when the lifter overrides the detected label; otherwise the rules detect it.
   label?: SetLabel;
+  // Reps in reserve when the lifter logged it: 0 to 4, where 4 means 4 or more.
+  rir?: number;
   // A deleted Set is sent once more marked deleted, so the server forgets it too.
   deleted?: boolean;
   loggedAt: string;
@@ -70,6 +73,10 @@ export type Profile = {
 };
 
 
+// The lifter's own Increment for an Exercise, replacing its default (spec: Increment defaults).
+// The latest write wins.
+export type IncrementOverride = { exerciseId: string; incrementKg: number; updatedAt: string };
+
 // The user's Routine: its Sessions in the order they are done. The user has one; if two phones each
 // made one, the latest write is the Routine.
 export type RoutineRecord = { id: string; days: RoutineDay[]; updatedAt: string };
@@ -79,7 +86,8 @@ export type Mutation =
   | { id: string; kind: 'saveSet'; set: SetRecord }
   | { id: string; kind: 'saveExercise'; exercise: { id: string; name: string } }
   | { id: string; kind: 'saveProfileEntry'; entry: ProfileEntry }
-  | { id: string; kind: 'saveRoutine'; routine: RoutineRecord };
+  | { id: string; kind: 'saveRoutine'; routine: RoutineRecord }
+  | { id: string; kind: 'saveIncrement'; increment: IncrementOverride };
 
 // The sync endpoint: it resolves once the server has the batch, and throws otherwise.
 export type Send = (mutations: Mutation[]) => Promise<{ rejected: string[] }>;
@@ -107,16 +115,20 @@ interface Store extends DBSchema {
   exercises: { key: string; value: Exercise };
   profile: { key: [string, string]; value: ProfileEntry };
   routines: { key: string; value: RoutineRecord };
+  increments: { key: string; value: IncrementOverride };
 }
 
 // The Session being logged and the Exercises added to it, in order, including any with no Sets yet,
 // and what the Routine Day it came from planned for them.
 type InProgress = { sessionId: string; exerciseIds: string[]; plan?: RoutineExercise[] };
 
+// The Increment of an Exercise missing from the phone's catalog copy.
+const DEFAULT_INCREMENT_KG = 2.5;
+
 export type Training = Awaited<ReturnType<typeof openTraining>>;
 
 export async function openTraining(userId: string, options: Options) {
-  const db = await openDB<Store>(`ulti-${userId}`, 3, {
+  const db = await openDB<Store>(`ulti-${userId}`, 4, {
     upgrade(db, oldVersion) {
       if (oldVersion < 1) {
         db.createObjectStore('sessions', { keyPath: 'id' });
@@ -132,16 +144,20 @@ export async function openTraining(userId: string, options: Options) {
       if (oldVersion < 3) {
         db.createObjectStore('routines', { keyPath: 'id' });
       }
+      if (oldVersion < 4) {
+        db.createObjectStore('increments', { keyPath: 'exerciseId' });
+      }
     },
   });
 
   // Saves a record and queues its mutation in one transaction, with the Session in progress when
   // it changes: none of them exists without the others.
   async function write(mutation: Mutation, inProgress?: InProgress | null) {
-    const tx = db.transaction(['sessions', 'sets', 'exercises', 'outbox', 'state', 'profile', 'routines'], 'readwrite');
+    const tx = db.transaction(['sessions', 'sets', 'exercises', 'outbox', 'state', 'profile', 'routines', 'increments'], 'readwrite');
     if (mutation.kind === 'saveSession') await tx.objectStore('sessions').put(mutation.session);
     else if (mutation.kind === 'saveProfileEntry') await tx.objectStore('profile').put(mutation.entry);
     else if (mutation.kind === 'saveRoutine') await tx.objectStore('routines').put(mutation.routine);
+    else if (mutation.kind === 'saveIncrement') await tx.objectStore('increments').put(mutation.increment);
     else if (mutation.kind === 'saveSet') {
       if (mutation.set.deleted) await tx.objectStore('sets').delete(mutation.set.id);
       else await tx.objectStore('sets').put(mutation.set);
@@ -245,6 +261,12 @@ export async function openTraining(userId: string, options: Options) {
     async setLabel(setId: string, label: SetLabel) {
       const set = (await db.get('sets', setId))!;
       await write({ id: crypto.randomUUID(), kind: 'saveSet', set: { ...set, label, updatedAt: stamp() } });
+    },
+
+    // The Set's RIR, optional: written like an edit.
+    async setRir(setId: string, rir: number) {
+      const set = (await db.get('sets', setId))!;
+      await write({ id: crypto.randomUUID(), kind: 'saveSet', set: { ...set, rir, updatedAt: stamp() } });
     },
 
     async deleteSet(setId: string) {
@@ -366,6 +388,7 @@ export async function openTraining(userId: string, options: Options) {
                 weightKg: set.weightKg,
                 reps: set.reps,
                 label: set.label,
+                rir: set.rir,
               })),
             };
           }),
@@ -409,7 +432,36 @@ export async function openTraining(userId: string, options: Options) {
       if (!kept || kept.updatedAt < routine.updatedAt) await db.put('routines', routine);
     },
 
-    exercises: () => db.getAll('exercises'),
+    // The catalog and the user's Custom Exercises, each with the Increment in force: the lifter's
+    // own if they set one, else the default.
+    async exercises() {
+      const overrides = new Map((await db.getAll('increments')).map((override) => [override.exerciseId, override.incrementKg]));
+      return (await db.getAll('exercises')).map((exercise) => ({ ...exercise, incrementKg: overrides.get(exercise.id) ?? exercise.incrementKg }));
+    },
+
+    async setIncrement(exerciseId: string, incrementKg: number) {
+      await write({ id: crypto.randomUUID(), kind: 'saveIncrement', increment: { exerciseId, incrementKg, updatedAt: stamp() } });
+    },
+
+    // Keeps the overrides the server holds, as on a phone that is new to this user, unless the
+    // phone has a later write of one.
+    async saveIncrementsFromServer(overrides: IncrementOverride[]) {
+      const tx = db.transaction('increments', 'readwrite');
+      for (const override of overrides) {
+        const kept = await tx.store.get(override.exerciseId);
+        if (!kept || kept.updatedAt < override.updatedAt) await tx.store.put(override);
+      }
+      await tx.done;
+    },
+
+    // Whether the next Session of the Exercise should be heavier (spec: Go heavier), judged on
+    // the Sessions before the one in progress. Custom Exercises never get a recommendation.
+    async goHeavier(exerciseId: string, repRange: { repMin: number; repMax: number }) {
+      const exercise = (await this.exercises()).find(({ id }) => id === exerciseId);
+      const inProgress = await db.get('state', 'sessionInProgress');
+      const { history } = await this.scoring(inProgress?.sessionId);
+      return recommendGoHeavier(history, exerciseId, { ...repRange, incrementKg: exercise?.incrementKg ?? DEFAULT_INCREMENT_KG });
+    },
 
     // Exercises are never removed, so the refresh adds to the phone's copy rather than replacing
     // it: a Custom Exercise the server hasn't received yet stays.
