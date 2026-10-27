@@ -1,5 +1,6 @@
 import { supabase } from './auth.ts';
 import { paths } from './navigation.ts';
+import { today } from './profile.ts';
 import { useStored, write } from './stored.ts';
 
 // What my_groups() returns: of each member, only what the server lets members see of each other.
@@ -115,3 +116,28 @@ export async function joinGroup(userId: string, code: string) {
 }
 
 export const inviteLink = (code: string) => `${location.origin}/i/${code}`;
+
+// A Group's race for a Period, as group_board() returns it: each member's position, points, this
+// week's Session dots and latest Personal Records, and nothing more.
+export type Period = 'week' | 'month' | 'year';
+export type BoardRow = {
+  position: number;
+  display_name: string;
+  avatar_color: string;
+  me: boolean;
+  points: number;
+  weekly_target: number | null;
+  session_dates: string[];
+  records: { exercise: string; percent_gain: number; points: number }[];
+};
+export type Board = { members: BoardRow[] };
+
+// Boards are kept as last fetched, so they show offline too.
+const boardKey = (userId: string, groupId: string, period: Period) => `ulti-board:${userId}:${groupId}:${period}`;
+
+export const useBoard = (userId: string, groupId: string, period: Period) => useStored<Board>(boardKey(userId, groupId, period));
+
+export async function refreshBoard(userId: string, groupId: string, period: Period) {
+  const board = await call<Board>(supabase.rpc('group_board', { group_id: groupId, period, on_date: today() }));
+  write(boardKey(userId, groupId, period), board);
+}

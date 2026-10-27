@@ -8,8 +8,13 @@ export type Set = {
   // A Custom Exercise: its Sets count toward a Session, but never earn Progress Points or get
   // recommendations.
   custom: boolean;
+  // For a bodyweight Exercise, the weight added to the lifter's bodyweight (0 for none).
   weightKg: number;
   reps: number;
+  // A bodyweight Exercise such as pull-ups or dips: its e1RM load is the lifter's average bodyweight plus weightKg.
+  bodyweight?: boolean;
+  // Reps in reserve, when the lifter logged it (spec: RIR), 0 to 4 where 4 means 4 or more.
+  rir?: number;
   // The lifter's one-tap override of the detected label (spec: Warm-up detection).
   label?: SetLabel;
 };
@@ -26,8 +31,8 @@ export type TrainingHistory = {
   sessions: Session[];
   // The dated Weekly Target history (ADR 0002).
   weeklyTargets: Dated<number>[];
-  // Sex and bodyweight, dated (ADR 0002). Without them every Personal Record is weighted as the
-  // 50th percentile.
+  // Sex and bodyweight check-ins, dated (ADR 0002). Bodyweight Exercises are scored with the
+  // average bodyweight; without them every other Personal Record is weighted as the 50th percentile.
   profile?: { sex: Dated<Sex>[]; bodyweightKg: Dated<number>[] };
 };
 
@@ -50,8 +55,8 @@ const DEFAULT_PERCENTILE = 50;
 // Placeholders until the tuning ticket (#31).
 export const STRENGTH_WEIGHT_RANGE = 5;
 export const WEIGHT_SPAN_PERCENTILES = 70;
-// The Benchmark Lifts that are bodyweight Exercises: their tables hold the total load, which needs
-// the bodyweight Exercises rules (#14), so until then they are scored like any other Exercise.
+// The Benchmark Lifts that are bodyweight Exercises: their tables hold the total load, but they are
+// scored like any other Exercise (no Strength Level weighting, the 50th percentile).
 const BODYWEIGHT_BENCHMARKS = new Set(['dip', 'chin-up', 'pull-up']);
 
 // A new all-time best e1RM on a catalog Exercise (spec: Personal Record).
@@ -65,8 +70,8 @@ export type PersonalRecord = {
   newE1rm: number;
   percentGain: number;
   strengthLevelPercentile: number;
-  // The bodyweight in force on the day, recorded so an audit can see what weighted the points;
-  // null when the lifter has none.
+  // The average bodyweight used for a bodyweight Exercise, else the bodyweight in force on the day
+  // (what weighted the points, for an audit); null when the lifter has none.
   bodyweightKg: number | null;
   rulesVersion: number;
   progressPoints: number;
@@ -148,15 +153,20 @@ function derivePersonalRecords(history: TrainingHistory): PersonalRecord[] {
       // split across Sets can't dodge the per-record cap.
       const eligible = working.filter((s) => s.exercise === exercise && s.reps <= MAX_RECORD_REPS);
       if (eligible.length === 0) continue;
-      const set = eligible.reduce((top, s) => (e1rm(s.weightKg, s.reps) > e1rm(top.weightKg, top.reps) ? s : top));
-      const value = e1rm(set.weightKg, set.reps);
+      // A bodyweight Exercise is lifted at the lifter's recent average bodyweight plus the added
+      // weight, so a short swing can't create or erase a record. Without a check-in it can't be scored.
+      const averageKg = eligible[0].bodyweight ? averageBodyweight(history.profile?.bodyweightKg ?? [], session.localDate) : null;
+      if (averageKg === undefined) continue;
+      const load = (s: Set) => s.weightKg + (averageKg ?? 0);
+      const set = eligible.reduce((top, s) => (e1rm(load(s), s.reps) > e1rm(load(top), top.reps) ? s : top));
+      const value = e1rm(load(set), set.reps);
       const best = bests.get(exercise) ?? 0;
       if (value <= best) continue;
       bests.set(exercise, value);
       if (calibrating || best === 0) continue;
       const gain = (value / best - 1) * 100;
       const sex = valueInForce(history.profile?.sex ?? [], session.localDate) ?? 'unspecified';
-      const bodyweightKg = valueInForce(history.profile?.bodyweightKg ?? [], session.localDate) ?? null;
+      const bodyweightKg = averageKg ?? valueInForce(history.profile?.bodyweightKg ?? [], session.localDate) ?? null;
       let percentile = DEFAULT_PERCENTILE;
       if (bodyweightKg !== null && !BODYWEIGHT_BENCHMARKS.has(exercise)) {
         // A Benchmark Lift is measured by its own e1RM; any other Exercise by the average of the
@@ -289,6 +299,21 @@ export function valueInForce<T>(history: readonly Dated<T>[], localDate: string)
     .sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom))[0]?.value;
 }
 
+// The days of bodyweight that make up a bodyweight Exercise's load.
+const BODYWEIGHT_AVERAGE_DAYS = 28;
+
+// The lifter's average bodyweight over the four weeks up to and including a local date: the check-in
+// in force on each day of them (ADR 0002). Undefined before their first check-in.
+function averageBodyweight(history: readonly Dated<number>[], localDate: string): number | undefined {
+  const end = Date.parse(`${localDate}T00:00:00Z`);
+  const known: number[] = [];
+  for (let back = 0; back < BODYWEIGHT_AVERAGE_DAYS; back++) {
+    const value = valueInForce(history, new Date(end - back * 86_400_000).toISOString().slice(0, 10));
+    if (value !== undefined) known.push(value);
+  }
+  return known.length === 0 ? undefined : known.reduce((sum, value) => sum + value, 0) / known.length;
+}
+
 // The Monday after a local date: a Weekly Target changed on any day applies from then, so nobody
 // can lower it on a Saturday to look consistent (weeks run Monday to Sunday).
 export function nextMonday(localDate: string): string {
@@ -358,4 +383,24 @@ export function plannedRows<T>(lastSets: readonly T[], plannedSets: number | und
   const rows: (T | undefined)[] = [...lastSets];
   while (rows.length < (plannedSets ?? 0)) rows.push(lastSets.at(-1));
   return rows;
+}
+
+// What an Exercise is trained to in a Routine, and the Increment that applies to it.
+export type GoHeavierRule = { repMin: number; repMax: number; incrementKg: number };
+export type GoHeavier = { weightKg: number; reps: number; incrementKg: number };
+
+// Double progression (spec: Go heavier): once every Working Set of the Exercise's last Session
+// reached the top of its Rep Range, the next Session is the Increment heavier with reps back at the
+// bottom of the range.
+export function recommendGoHeavier(history: TrainingHistory, exercise: string, rule: GoHeavierRule): GoHeavier | undefined {
+  const sessions = history.sessions
+    .map((session) => workingSets(session).filter((set) => set.exercise === exercise && !set.custom))
+    .filter((working) => working.length > 0);
+  const reachedTop = (working: Set[] | undefined) => !!working && working.every((set) => set.reps >= rule.repMax);
+  const working = sessions.at(-1);
+  if (!working || !reachedTop(working)) return undefined;
+  // A Set taken to RIR 0 means the lifter is still grinding: wait for one more qualifying Session.
+  if (working.some((set) => set.rir === 0) && !reachedTop(sessions.at(-2))) return undefined;
+  const weightKg = Math.max(...working.map((set) => set.weightKg));
+  return { weightKg: weightKg + rule.incrementKg, reps: rule.repMin, incrementKg: rule.incrementKg };
 }

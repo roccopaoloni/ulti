@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import { Field } from './AuthScreens.tsx';
+import { GroupBoard } from './Boards.tsx';
 import {
   avatarColors,
   createGroup,
@@ -28,6 +29,7 @@ import { backIcon } from './icons.tsx';
 import { Info } from './Info.tsx';
 import { navigate, paths } from './navigation.ts';
 import { useStored, write } from './stored.ts';
+import type { Training } from './training.ts';
 
 function errorText(error: unknown, t: I18n['t']) {
   if (!(error instanceof GroupsError)) return t.auth.errors.other;
@@ -288,7 +290,7 @@ export function JoinInvite({ userId, code }: { userId: string; code: string }) {
 }
 
 // The Groups tab: the user's Groups as chips, and the chosen one's members.
-export function GroupsTab({ userId }: { userId: string }) {
+export function GroupsTab({ userId, training }: { userId: string; training: Training | null }) {
   const { t } = useI18n();
   const g = t.groups;
   const groups = useGroups(userId);
@@ -350,6 +352,7 @@ export function GroupsTab({ userId }: { userId: string }) {
           {g.invite}
         </button>
       </div>
+      <GroupBoard userId={userId} group={group} training={training} />
       <section className="card">
         <div className="eyebrow">{g.members(group.members.length)}</div>
         <ul className="members">

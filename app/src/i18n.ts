@@ -45,6 +45,15 @@ type Messages = {
     join: string;
     joining: string;
     inviteNotFound: string;
+    periods: { week: string; month: string; year: string };
+    // A member's points and sessions on a board row, and a Personal Record chip ("Bench +3%").
+    boardPoints: (points: number) => string;
+    leader: string;
+    // The Home race card: "2nd of 5, 40 pts behind Ana", or the lead when ahead.
+    race: (position: number, size: number) => string;
+    behind: (points: number, name: string) => string;
+    ahead: (points: number, name: string) => string;
+    leading: string;
     retry: string;
     notNow: string;
     profileTitle: string;
@@ -135,6 +144,9 @@ type Messages = {
     // Creates a Custom Exercise named as typed in the search, logged as weight × reps.
     createCustom: (name: string) => string;
     weight: string;
+    // The keypad's label for the weight added to a bodyweight Exercise, and how a Set shows it: "BW +10 kg", or "BW" with none (added is empty).
+    addedWeight: string;
+    bodyweightLoad: (added: string) => string;
     reps: string;
     logSet: string;
     // The label on a Set row, which one tap flips: a Warm-up Set or a Working Set.
@@ -158,6 +170,12 @@ type Messages = {
     startUnplanned: string;
     // A Routine Day's plan for an Exercise, under its name: Sets × Rep Range.
     target: (sets: number, repMin: number, repMax: number) => string;
+    // The Go heavier recommendation on the pre-filled rows, and the way to dismiss it.
+    dismissGoHeavier: string;
+    // The chips after ✓ asking for RIR (0 to 4+), and the Exercise's Increment that ± step by.
+    rir: string;
+    increment: (amount: string, units: string) => string;
+    incrementLabel: string;
   };
   // The Train tab's Routine.
   routine: {
@@ -299,6 +317,17 @@ const en: Messages = {
     join: 'Join the Group',
     joining: 'Joining the Group…',
     inviteNotFound: "This invite link doesn't work anymore. Ask your friend for a new one.",
+    periods: { week: 'Week', month: 'Month', year: 'Year' },
+    boardPoints: (points) => `${points} pts`,
+    leader: 'Leader',
+    race: (position, size) => {
+      const teens = position % 100 >= 11 && position % 100 <= 13;
+      const suffix = teens ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[position % 10] ?? 'th';
+      return `${position}${suffix} of ${size}`;
+    },
+    behind: (points, name) => `${points} pts behind ${name}`,
+    ahead: (points, name) => `${points} pts ahead of ${name}`,
+    leading: 'Leading the way',
     retry: 'Try again',
     notNow: 'Not now',
     profileTitle: 'How your friends see you',
@@ -382,6 +411,8 @@ const en: Messages = {
     customTag: 'Custom',
     createCustom: (name) => `Create custom exercise "${name}"`,
     weight: 'Weight',
+    addedWeight: 'Added weight',
+    bodyweightLoad: (added) => (added ? `BW +${added}` : 'BW'),
     reps: 'Reps',
     logSet: 'Log set',
     warmUp: 'Warm-up',
@@ -398,6 +429,10 @@ const en: Messages = {
     startNext: (day) => `Next: ${day}`,
     startUnplanned: 'Log an unplanned session',
     target: (sets, repMin, repMax) => `${sets} × ${repMin}–${repMax} reps`,
+    dismissGoHeavier: 'Keep the same weight',
+    rir: 'Reps in reserve (RIR)',
+    increment: (amount, units) => `Step ${amount} ${units}`,
+    incrementLabel: 'Increment',
   },
   routine: {
     title: 'Routine',
@@ -533,6 +568,13 @@ const es: Messages = {
     join: 'Entrar al grupo',
     joining: 'Entrando al grupo…',
     inviteNotFound: 'Este link de invitación ya no funciona. Pedile uno nuevo a tu amigo.',
+    periods: { week: 'Semana', month: 'Mes', year: 'Año' },
+    boardPoints: (points) => `${points} pts`,
+    leader: 'Líder',
+    race: (position, size) => `${position}º de ${size}`,
+    behind: (points, name) => `${points} pts detrás de ${name}`,
+    ahead: (points, name) => `${points} pts delante de ${name}`,
+    leading: 'Vas al frente',
     retry: 'Probar de nuevo',
     notNow: 'Ahora no',
     profileTitle: 'Cómo te ven tus amigos',
@@ -616,6 +658,8 @@ const es: Messages = {
     customTag: 'Personalizado',
     createCustom: (name) => `Crear ejercicio personalizado "${name}"`,
     weight: 'Peso',
+    addedWeight: 'Peso añadido',
+    bodyweightLoad: (added) => (added ? `PC +${added}` : 'PC'),
     reps: 'Repeticiones',
     logSet: 'Registrar serie',
     warmUp: 'Entrada en calor',
@@ -632,6 +676,10 @@ const es: Messages = {
     startNext: (day) => `Sigue: ${day}`,
     startUnplanned: 'Registrar una sesión sin rutina',
     target: (sets, repMin, repMax) => `${sets} × ${repMin}–${repMax} repeticiones`,
+    dismissGoHeavier: 'Mantener el mismo peso',
+    rir: 'Repeticiones en reserva (RIR)',
+    increment: (amount, units) => `Salto de ${amount} ${units}`,
+    incrementLabel: 'Incremento',
   },
   routine: {
     title: 'Rutina',

@@ -159,3 +159,30 @@ test("a signed-in user can't read Scoring Events at all, their own included, so 
   expect(error?.code).toBe('42501');
   expect(data).toBeNull();
 });
+
+test('pull-ups are scored at the lifter\'s four-week average bodyweight plus the added weight', async () => {
+  const ana = await lifter('ana');
+  const checkIn = (effectiveFrom: string, value: number) => ({
+    id: crypto.randomUUID(),
+    kind: 'saveProfileEntry',
+    entry: { field: 'bodyweightKg', effectiveFrom, value, updatedAt: '2026-10-21T15:00:00.000Z' },
+  });
+  // Ana weighs 82 kg until 5 Oct and 78 kg after: 14 days each, an average of 80 kg on 19 Oct.
+  const pullUpSession = (localDate: string, addedKg: number) => {
+    const { setRecord, mutations } = squatSession(localDate, addedKg, 6);
+    return { setRecord: { ...setRecord, exerciseId: 'pull-up' }, mutations: [mutations[0], { ...mutations[1], set: { ...setRecord, exerciseId: 'pull-up' } }] };
+  };
+  const first = pullUpSession('2026-10-05', 0);
+  const second = pullUpSession('2026-10-12', 0);
+  const third = pullUpSession('2026-10-19', 4);
+
+  await sync(ana, [checkIn('2026-09-01', 82), checkIn('2026-10-06', 78), ...first.mutations, ...second.mutations, ...third.mutations]);
+
+  // Her best was 82 kg × (1 + 6/30) = 98.4; the record is (80 + 4) kg × 1.2 = 100.8.
+  expect(await scoringEventsOf(ana)).toEqual([
+    {
+      id: `${ana.id}:personal-record:${third.setRecord.id}`,
+      event: expect.objectContaining({ exercise: 'pull-up', bodyweightKg: 80, previousE1rm: expect.closeTo(98.4), newE1rm: expect.closeTo(100.8) }),
+    },
+  ]);
+});

@@ -201,11 +201,13 @@ export function SessionScreen({ training, units, onLeave }: { training: Training
             training={training}
             exerciseId={exerciseId}
             incrementKg={catalog.find(({ id }) => id === exerciseId)?.incrementKg ?? 2.5}
+            bodyweight={catalog.find(({ id }) => id === exerciseId)?.bodyweight ?? false}
             units={units}
             target={session.plan.find((planned) => planned.exerciseId === exerciseId)}
             sets={session.sets.filter((set) => set.exerciseId === exerciseId)}
             records={new Map(scoring?.events.map((event) => [event.setId, event]))}
             calibrating={scoring ? inCalibration(scoring.history, exerciseId) : false}
+            custom={catalog.find(({ id }) => id === exerciseId)?.custom !== false}
             onLog={async (weightKg, reps) => {
               const set = await training.logSet(sessionId, exerciseId, weightKg, reps);
               const record = (await training.scoring()).events.find((event) => event.setId === set.id);
@@ -213,6 +215,15 @@ export function SessionScreen({ training, units, onLeave }: { training: Training
                 setBanner({ key: set.id, text: s.record(name(exerciseId), record.percentGain, record.progressPoints) });
               }
               await reload();
+              return set.id;
+            }}
+            onRir={async (setId, rir) => {
+              await training.setRir(setId, rir);
+              await reload();
+            }}
+            onIncrement={async (incrementKg) => {
+              await training.setIncrement(exerciseId, incrementKg);
+              setCatalog(await training.exercises());
             }}
             onSetLabel={async (setId, label) => {
               await training.setLabel(setId, label);
