@@ -4,7 +4,6 @@ import {
   nextMonday,
   nextRoutineDay,
   recommend,
-  recommendGoHeavier,
   type Dated,
   type ProfileField,
   type RoutineDay,
@@ -456,17 +455,9 @@ export async function openTraining(userId: string, options: Options) {
       await tx.done;
     },
 
-    // Whether the next Session of the Exercise should be heavier (spec: Go heavier), judged on
-    // the Sessions before the one in progress. Custom Exercises never get a recommendation.
-    async goHeavier(exerciseId: string, repRange: { repMin: number; repMax: number }) {
-      const exercise = (await this.exercises()).find(({ id }) => id === exerciseId);
-      const inProgress = await db.get('state', 'sessionInProgress');
-      const { history } = await this.scoring(inProgress?.sessionId);
-      return recommendGoHeavier(history, exerciseId, { ...repRange, incrementKg: exercise?.incrementKg ?? DEFAULT_INCREMENT_KG });
-    },
-
-    // The advice for the Exercise's next Session: a Stall reset, else going heavier, else none.
-    // Judged like goHeavier, on the Sessions before the one in progress.
+    // The advice for the Exercise's next Session: a Stall reset (spec: Stall), else going heavier
+    // (spec: Go heavier), else none. Judged on the Sessions before the one in progress. Custom
+    // Exercises never get a recommendation.
     async recommendation(exerciseId: string, repRange: { repMin: number; repMax: number }) {
       const exercise = (await this.exercises()).find(({ id }) => id === exerciseId);
       const inProgress = await db.get('state', 'sessionInProgress');

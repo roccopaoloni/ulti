@@ -102,3 +102,42 @@ test('with no Stall, the recommendation is to go heavier; with neither, none', (
   expect(recommend(history(top), 'bench-press', bench)).toEqual({ kind: 'goHeavier', weightKg: 62.5, reps: 8, incrementKg: 2.5 });
   expect(recommend(history(session('2026-10-19', [[60, 10]])), 'bench-press', bench)).toBeUndefined();
 });
+
+// Pull-ups: weightKg is the weight added to Ana's 80 kg bodyweight (0 for a plain pull-up).
+const pullUps = { repMin: 6, repMax: 10, incrementKg: 2.5 };
+const pullUpSession = (localDate: string, sets: [number, number][]): Session => ({
+  localDate,
+  sets: sets.map(([weightKg, reps], index) => ({ id: `${localDate}-${index}`, exercise: 'pull-up', custom: false, bodyweight: true, weightKg, reps })),
+});
+const withBodyweight = (kg: number, ...sessions: Session[]): TrainingHistory => ({
+  ...history(...sessions),
+  profile: { sex: [], bodyweightKg: [{ effectiveFrom: '2026-01-01', value: kg }] },
+});
+
+test('a bodyweight Exercise with no added weight and rising reps is not Stalled', () => {
+  const ana = withBodyweight(80, ...[6, 7, 8, 9].map((reps, i) => pullUpSession(`2026-10-0${i + 1}`, [[0, reps]])));
+  expect(recommendStall(ana, 'pull-up', pullUps)).toBeUndefined();
+});
+
+test('a weighted bodyweight Exercise that stops improving drops its added weight by 10% of the total load', () => {
+  const flatPullUp = (day: string) => pullUpSession(`2026-10-${day}`, [[20, 8]]);
+  const ana = withBodyweight(80, pullUpSession('2026-10-01', [[20, 9]]), flatPullUp('05'), flatPullUp('08'), flatPullUp('11'));
+  // 10% of the 100 kg total load is 10 kg off the 20 kg added.
+  expect(recommendStall(ana, 'pull-up', pullUps)).toEqual({ weightKg: 10, reps: 6 });
+});
+
+test('the added weight never drops below zero', () => {
+  const miss = (day: string) => pullUpSession(`2026-10-${day}`, [[5, 5]]);
+  expect(recommendStall(withBodyweight(80, miss('05'), miss('08')), 'pull-up', pullUps)).toEqual({ weightKg: 0, reps: 6 });
+});
+
+test('a bodyweight Exercise with no added weight has nothing to drop, so no Stall', () => {
+  const miss = (day: string) => pullUpSession(`2026-10-${day}`, [[0, 4]]);
+  expect(recommendStall(withBodyweight(80, miss('05'), miss('08')), 'pull-up', pullUps)).toBeUndefined();
+});
+
+test('without a bodyweight on record a bodyweight Exercise cannot be judged, so no Stall', () => {
+  const flatPullUp = (day: string) => pullUpSession(`2026-10-${day}`, [[20, 8]]);
+  const noBodyweight = history(pullUpSession('2026-10-01', [[20, 9]]), flatPullUp('05'), flatPullUp('08'), flatPullUp('11'));
+  expect(recommendStall(noBodyweight, 'pull-up', pullUps)).toBeUndefined();
+});

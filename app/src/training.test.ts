@@ -619,14 +619,14 @@ test('after a Session with every Working Set at the top of the Rep Range, the ne
   network.offline = true;
   const training = await anasPhone(network).open();
   await training.saveExercises(benchCatalog);
-  expect(await training.goHeavier('bench-press', benchRange)).toBeUndefined();
+  expect(await training.recommendation('bench-press', benchRange)).toBeUndefined();
 
   await benchSession(training, [[60, 12], [60, 12], [60, 12]]);
   // The next Session has started and Ana has logged a weaker Set: it doesn't change the advice.
   const next = await training.startSession();
   await training.logSet(next.id, 'bench-press', 60, 9);
 
-  expect(await training.goHeavier('bench-press', benchRange)).toEqual({ weightKg: 62.5, reps: 8, incrementKg: 2.5 });
+  expect(await training.recommendation('bench-press', benchRange)).toEqual({ kind: 'goHeavier', weightKg: 62.5, reps: 8, incrementKg: 2.5 });
   training.close();
 });
 
@@ -637,10 +637,10 @@ test('RIR 0 logged on those Sets makes the recommendation wait for one more Sess
   await training.saveExercises(benchCatalog);
 
   await benchSession(training, [[60, 12, 1], [60, 12, 0], [60, 12, 1]]);
-  expect(await training.goHeavier('bench-press', benchRange)).toBeUndefined();
+  expect(await training.recommendation('bench-press', benchRange)).toBeUndefined();
 
   await benchSession(training, [[60, 12], [60, 12], [60, 12]]);
-  expect(await training.goHeavier('bench-press', benchRange)).toEqual({ weightKg: 62.5, reps: 8, incrementKg: 2.5 });
+  expect(await training.recommendation('bench-press', benchRange)).toEqual({ kind: 'goHeavier', weightKg: 62.5, reps: 8, incrementKg: 2.5 });
   training.close();
 });
 
@@ -655,7 +655,7 @@ test("Ana's Increment override changes the recommendation and the keypad step, s
   await training.setIncrement('bench-press', 1.25);
   await training.saveExercises(benchCatalog);
 
-  expect(await training.goHeavier('bench-press', benchRange)).toEqual({ weightKg: 61.25, reps: 8, incrementKg: 1.25 });
+  expect(await training.recommendation('bench-press', benchRange)).toEqual({ kind: 'goHeavier', weightKg: 61.25, reps: 8, incrementKg: 1.25 });
   expect((await training.exercises()).find(({ id }) => id === 'bench-press')?.incrementKg).toBe(1.25);
   network.offline = false;
   phone.connectivity.dispatchEvent(new Event('online'));
@@ -689,7 +689,7 @@ test('a Custom Exercise at the top of the Rep Range gets no recommendation', asy
   for (let i = 0; i < 3; i++) await training.logSet(session.id, dip.id, 20, 12);
   await training.finishSession(session.id);
 
-  expect(await training.goHeavier(dip.id, benchRange)).toBeUndefined();
+  expect(await training.recommendation(dip.id, benchRange)).toBeUndefined();
   training.close();
 });
 
