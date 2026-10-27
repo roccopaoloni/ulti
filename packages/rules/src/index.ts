@@ -24,3 +24,9 @@ export type ScoringEvent = never;
 export function deriveScoringEvents(_history: TrainingHistory): ScoringEvent[] {
   return [];
 }
+
+// What the logging keypad's + (direction 1) and − (direction -1) do to a weight or a rep count:
+// step by the Exercise's Increment (reps use 1), never below zero.
+export function stepValue(current: number, increment: number, direction: 1 | -1): number {
+  return Math.max(0, Math.round((current + direction * increment) * 1000) / 1000);
+}

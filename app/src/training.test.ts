@@ -194,6 +194,31 @@ test('past Sessions list newest first, and leave out the one in progress', async
 
   expect((await training.pastSessions()).map(({ session }) => session.id)).toEqual([tuesday.id, monday.id]);
   expect(wednesday.finishedAt).toBeNull();
+
+test("an Exercise's Sets from the last Session that had it come back in the order they were logged, ready to pre-fill the next one", async () => {
+  const phone = anasPhone(server());
+  const training = await phone.open();
+  const monday = await training.startSession();
+  await training.logSet(monday.id, 'back-squat', 100, 5);
+  await training.logSet(monday.id, 'bench-press', 80, 8);
+  await training.finishSession(monday.id);
+  const wednesday = await training.startSession();
+  await training.logSet(wednesday.id, 'back-squat', 100, 5);
+  await training.logSet(wednesday.id, 'back-squat', 102.5, 4);
+  await training.finishSession(wednesday.id);
+  const friday = await training.startSession();
+  await training.logSet(friday.id, 'back-squat', 105, 3);
+
+  const lastSquats = await training.lastSets('back-squat');
+
+  // Wednesday's, not Monday's, and not the Session in progress.
+  expect(lastSquats.map(({ weightKg, reps }) => ({ weightKg, reps }))).toEqual([
+    { weightKg: 100, reps: 5 },
+    { weightKg: 102.5, reps: 4 },
+  ]);
+  // Bench press was last on Monday, two Sessions before this one.
+  expect((await training.lastSets('bench-press')).map(({ weightKg }) => weightKg)).toEqual([80]);
+  expect(await training.lastSets('deadlift')).toEqual([]);
   training.close();
 });
 
@@ -207,11 +232,11 @@ test('a Custom Exercise created offline is pickable at once, survives a catalog 
   const session = await training.startSession();
   await training.logSet(session.id, plank.id, 10, 1);
   // The catalog comes back from the server without it, as it has not arrived there yet.
-  await training.saveExercises([{ id: 'back-squat', nameEn: 'Back squat', nameEs: 'Sentadilla', equipment: 'barbell', custom: false }]);
+  await training.saveExercises([{ id: 'back-squat', nameEn: 'Back squat', nameEs: 'Sentadilla', equipment: 'barbell', custom: false, incrementKg: 5 }]);
 
   expect(await training.exercises()).toEqual(
     expect.arrayContaining([
-      { id: plank.id, nameEn: 'Weighted plank', nameEs: 'Weighted plank', equipment: null, custom: true },
+      { id: plank.id, nameEn: 'Weighted plank', nameEs: 'Weighted plank', equipment: null, custom: true, incrementKg: 2.5 },
       expect.objectContaining({ id: 'back-squat', custom: false }),
     ]),
   );

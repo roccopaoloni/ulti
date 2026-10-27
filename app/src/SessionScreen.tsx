@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useI18n } from './i18n.ts';
-import { backIcon, checkIcon } from './icons.tsx';
+import { ExerciseBlock } from './ExerciseBlock.tsx';
+import { backIcon } from './icons.tsx';
 import { Info } from './Info.tsx';
-import type { Exercise, SetRecord, Training } from './training.ts';
+import type { Exercise, Training } from './training.ts';
 
 type InProgress = NonNullable<Awaited<ReturnType<Training['sessionInProgress']>>>;
 
@@ -34,6 +35,48 @@ export function useLogging(training: Training | null) {
   };
 }
 
+// The "Session in progress" bar shown above the tab bar on every tab while the Session doesn't
+// have the screen: one tap returns to it.
+export function SessionInProgressBar({ logging }: { logging: ReturnType<typeof useLogging> }) {
+  const { t } = useI18n();
+  if (!logging.inProgress || logging.open) return null;
+  return (
+    <button type="button" className="resume-bar" onClick={logging.start}>
+      <span>
+        <strong>{t.session.bar}</strong>
+        <small>{t.session.logged(logging.inProgress.sets.length)}</small>
+      </span>
+      <span className="disp">{t.session.resume}</span>
+    </button>
+  );
+}
+
+// Keeps the screen awake while a Session is on it, where the browser supports it. The browser
+// releases the lock when the page is hidden, so it asks again when the page is back.
+function useWakeLock() {
+  useEffect(() => {
+    let lock: WakeLockSentinel | undefined;
+    let done = false;
+    const acquire = () => {
+      if (document.visibilityState !== 'visible') return;
+      navigator.wakeLock
+        ?.request('screen')
+        .then((sentinel) => {
+          if (done) sentinel.release();
+          else lock = sentinel;
+        })
+        .catch(() => {});
+    };
+    acquire();
+    document.addEventListener('visibilitychange', acquire);
+    return () => {
+      done = true;
+      document.removeEventListener('visibilitychange', acquire);
+      lock?.release().catch(() => {});
+    };
+  }, []);
+}
+
 // The button on Home that starts a Session, or returns to the one in progress.
 export function StartSession({ logging }: { logging: ReturnType<typeof useLogging> }) {
   const { t } = useI18n();
@@ -56,6 +99,7 @@ export function SessionScreen({ training, onLeave }: { training: Training; onLea
   const [catalog, setCatalog] = useState<Exercise[]>([]);
   const picker = useRef<HTMLDialogElement>(null);
   const [query, setQuery] = useState('');
+  useWakeLock();
 
   const reload = useCallback(async () => setSession(await training.sessionInProgress()), [training]);
   useEffect(() => {
@@ -117,6 +161,9 @@ export function SessionScreen({ training, onLeave }: { training: Training; onLea
           <ExerciseBlock
             key={exerciseId}
             name={name(exerciseId)}
+            training={training}
+            exerciseId={exerciseId}
+            incrementKg={catalog.find(({ id }) => id === exerciseId)?.incrementKg ?? 2.5}
             sets={session.sets.filter((set) => set.exerciseId === exerciseId)}
             onLog={async (weightKg, reps) => {
               await training.logSet(sessionId, exerciseId, weightKg, reps);
@@ -186,79 +233,3 @@ export function SessionScreen({ training, onLeave }: { training: Training; onLea
   );
 }
 
-// One Exercise of the Session: its Sets so far, then a row for the next one, filled in with the
-// last Set's numbers.
-function ExerciseBlock({
-  name,
-  sets,
-  onLog,
-}: {
-  name: string;
-  sets: SetRecord[];
-  onLog: (weightKg: number, reps: number) => Promise<void>;
-}) {
-  const { t, language, formatNumber } = useI18n();
-  const s = t.session;
-  const last = sets.at(-1);
-  // The keypad's decimal key matches the language (design: Numbers).
-  const typed = (weightKg: number) => String(weightKg).replace('.', language === 'es' ? ',' : '.');
-  const [weight, setWeight] = useState(last ? typed(last.weightKg) : '');
-  const [reps, setReps] = useState(last ? String(last.reps) : '');
-  const [busy, setBusy] = useState(false);
-
-  const weightKg = Number(weight.replace(',', '.'));
-  const valid = weight.trim() !== '' && Number.isFinite(weightKg) && weightKg >= 0 && /^[1-9]\d*$/.test(reps);
-
-  async function log(event: FormEvent) {
-    event.preventDefault();
-    if (!valid || busy) return;
-    setBusy(true);
-    await onLog(weightKg, Number(reps));
-    setBusy(false);
-  }
-
-  return (
-    <section className="ex">
-      <h2 className="ex-name">{name}</h2>
-      {sets.map((set, index) => (
-        <div key={set.id} className="set done">
-          <span className="tag">{index + 1}</span>
-          <span className="cell">
-            {formatNumber(set.weightKg, 2)}
-            <small>kg</small>
-          </span>
-          <span className="xmark">×</span>
-          <span className="cell">{set.reps}</span>
-          <span className="check" aria-hidden="true">
-            {checkIcon}
-          </span>
-        </div>
-      ))}
-      <form className="set" onSubmit={log}>
-        <span className="tag">{sets.length + 1}</span>
-        <label className="cell">
-          <input
-            inputMode="decimal"
-            autoComplete="off"
-            aria-label={s.weight}
-            value={weight}
-            onChange={(event) => setWeight(event.target.value.replace(/[^\d.,]/g, ''))}
-          />
-          <small>kg</small>
-        </label>
-        <span className="xmark">×</span>
-        <input
-          className="cell"
-          inputMode="numeric"
-          autoComplete="off"
-          aria-label={s.reps}
-          value={reps}
-          onChange={(event) => setReps(event.target.value.replace(/\D/g, ''))}
-        />
-        <button className="check" aria-label={s.logSet} disabled={!valid || busy}>
-          {checkIcon}
-        </button>
-      </form>
-    </section>
-  );
-}

@@ -709,6 +709,75 @@ input.cell:focus {
   font-size: 16px;
   text-align: left;
 }
+button.cell {
+  color: var(--fg);
+}
+.set.upcoming {
+  opacity: 0.5;
+  border-style: dashed;
+}
+.set.upcoming .cell {
+  background: transparent;
+}
+
+/* The keypad: big keys at the bottom of the screen, in thumb reach. */
+.pad-label {
+  color: var(--muted);
+  font-weight: 600;
+  text-align: center;
+}
+.pad-value {
+  font: 800 56px/1.1 var(--body);
+  text-align: center;
+  min-height: 62px;
+}
+.pad-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.pad-key {
+  min-height: 60px;
+  border-radius: 14px;
+  background: var(--surface-2);
+  font: 700 26px var(--body);
+  color: var(--fg);
+}
+.pad-steps {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.pad-key.step {
+  color: var(--accent-text);
+}
+
+/* The "Session in progress" bar above the tab bar. */
+.resume-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 8px 16px;
+  border-radius: 16px;
+  margin-bottom: 6px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  text-align: left;
+}
+.resume-bar span:first-child {
+  display: flex;
+  flex-direction: column;
+}
+.resume-bar small {
+  font-weight: 600;
+}
+.resume-bar .disp {
+  font-size: calc(22px * var(--ds));
+  text-transform: uppercase;
+}
 
 @keyframes up {
   from {
