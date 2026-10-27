@@ -1,4 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react';
+import { Badge } from './Badge.tsx';
 import { Dots } from './Consistency.tsx';
 import { initials, refreshBoard, refreshGroups, useBoard, useGroups, type BoardRow, type Group, type Period } from './groups.ts';
 import { useI18n } from './i18n.ts';
@@ -41,6 +42,8 @@ function BoardRowView({ row, nameOf }: { row: BoardRow; nameOf: (exercise: strin
         <span className="member-name">
           {row.display_name}
           {row.me && <span className="muted"> · {g.you}</span>}
+          {/* Boards stored before Ranks came with the board have none. */}
+          {row.tier && <Badge rank={{ tier: row.tier, division: row.division }} tierName={t.rank.tier[row.tier]} mode="sm" />}
           {row.position === 1 && row.points > 0 && <Crown />}
         </span>
         {row.weekly_target ? <Dots done={row.session_dates.length} target={row.weekly_target} /> : null}

@@ -159,7 +159,7 @@ test("the board shows a member's points, Session dots and Personal Records, and 
   }
 });
 
-test("each member's Rank is on the board whatever the Period, from their Season Points, with no Points beyond the Period's", async () => {
+test("each member's Rank on the board comes from their Season Points, not the Period's", async () => {
   // Three full weeks of a Weekly Target of 3 are 360 Consistency Points in the Season: Silver V.
   const ana = await trained('Ana', '2026-10-05', '2026-10-06', '2026-10-07', '2026-10-12', '2026-10-13', '2026-10-14', '2026-10-19', '2026-10-20', '2026-10-21');
   const bea = await lifter('Bea');
