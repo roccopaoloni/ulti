@@ -46,6 +46,14 @@ async function refreshIncrements(training: Training) {
   );
 }
 
+// The Deload Weeks the server holds, for a phone that is new to this user.
+async function refreshDeloads(training: Training) {
+  const { data } = await supabase.from('deload_weeks').select('week, origin, reason, status, updated_at');
+  await training.saveDeloadsFromServer(
+    (data ?? []).map((row) => ({ week: row.week, origin: row.origin, reason: row.reason ?? undefined, status: row.status, updatedAt: row.updated_at })),
+  );
+}
+
 // The signed-in user's training on this phone, once its store is open.
 export function useTraining(userId: string): Training | null {
   const [training, setTraining] = useState<Training | null>(null);
@@ -70,6 +78,7 @@ export function useTraining(userId: string): Training | null {
       refreshCatalog(store);
       refreshRoutine(store).catch(() => {});
       refreshIncrements(store).catch(() => {});
+      refreshDeloads(store).catch(() => {});
       addEventListener('online', onOnline);
     });
     return () => {

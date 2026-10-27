@@ -2,7 +2,7 @@
 // batch of mutations; the endpoint saves them, then recomputes the user's whole history.
 import { Client } from '@db/postgres';
 import { withSupabase } from '@supabase/server';
-import { isProfileValue } from '@ulti/rules';
+import { isProfileValue, weekStart } from '@ulti/rules';
 import { lockUser, recompute } from '../_shared/recompute.ts';
 
 // What the phone saves. updatedAt is when the phone made the write: the latest one wins.
@@ -33,7 +33,10 @@ type ExerciseRecord = { id: string; name: string };
 // The Routine is saved whole: its Sessions are never looked into here.
 type RoutineRecord = { id: string; days: unknown[]; updatedAt: string };
 type IncrementRecord = { exerciseId: string; incrementKg: number; updatedAt: string };
+// A Deload Week, by the Monday that starts it: suggested or self-started, accepted or dismissed.
+type DeloadRecord = { week: string; origin: 'suggested' | 'self'; reason?: string; status: 'accepted' | 'dismissed'; updatedAt: string };
 type Mutation =
+  | { id: string; kind: 'saveDeload'; deload: DeloadRecord }
   | { id: string; kind: 'saveSession'; session: SessionRecord }
   | { id: string; kind: 'saveSet'; set: SetRecord }
   | { id: string; kind: 'saveExercise'; exercise: ExerciseRecord }
@@ -91,6 +94,7 @@ async function save(client: Client, userId: string, mutations: Mutation[], recei
   };
   const routines = new Map<string, RoutineRecord>();
   const increments = new Map<string, IncrementRecord & { id: string }>();
+  const deloads = new Map<string, DeloadRecord & { id: string }>();
   const exercises = new Map<string, ExerciseRecord>();
   const entries = new Map<string, ProfileEntry & { id: string }>();
   const rejected: string[] = [];
@@ -98,6 +102,12 @@ async function save(client: Client, userId: string, mutations: Mutation[], recei
     if (!unseen.delete(mutation.id)) continue;
     if (mutation.kind === 'saveSession') keepLatest(sessions, mutation.session);
     else if (mutation.kind === 'saveRoutine') keepLatest(routines, mutation.routine);
+    else if (mutation.kind === 'saveDeload') {
+      const { deload } = mutation;
+      // A Deload Week starts on a Monday, and only a suggestion has a reason to be dismissed.
+      if (weekStart(deload.week) !== deload.week || (deload.origin === 'self' && deload.status !== 'accepted')) rejected.push(mutation.id);
+      else keepLatest(deloads, { ...deload, id: deload.week });
+    }
     else if (mutation.kind === 'saveIncrement') {
       const { increment } = mutation;
       keepLatest(increments, { ...increment, id: increment.exerciseId });
@@ -170,6 +180,18 @@ async function save(client: Client, userId: string, mutations: Mutation[], recei
       increment_kg = excluded.increment_kg,
       updated_at = excluded.updated_at
     where increment_overrides.updated_at < excluded.updated_at`;
+  await transaction.queryArray`
+    insert into public.deload_weeks (user_id, week, origin, reason, status, updated_at)
+    select ${userId}, d.week, d.origin, d.reason, d.status, d."updatedAt"
+    from jsonb_to_recordset(${JSON.stringify([...deloads.values()])}::jsonb) as d(
+      week date, origin text, reason text, status text, "updatedAt" timestamptz
+    )
+    on conflict (user_id, week) do update set
+      origin = excluded.origin,
+      reason = excluded.reason,
+      status = excluded.status,
+      updated_at = excluded.updated_at
+    where deload_weeks.updated_at < excluded.updated_at`;
   await transaction.queryArray`
     insert into public.profile_history (user_id, field, effective_from, value, updated_at)
     select ${userId}, e.field, e."effectiveFrom", e.value, e."updatedAt"
