@@ -39,7 +39,7 @@ export function RankCard({ training }: { training: Training }) {
   const plaque = hasStanding
     ? showsPosition(rank, standing.position!)
       ? `#${standing.position}`
-      : `top ${standing.top_percent}%`
+      : r.plaqueTopPercent(standing.top_percent!)
     : undefined;
   return (
     <section className="card" style={{ '--t': `var(--${rank.tier})` } as CSSProperties}>
