@@ -393,6 +393,27 @@ test('a history fetched from the server fills a new phone, without overwriting w
   training.close();
 });
 
+test("a Personal Record's provisional points are weighted by the sex and bodyweight on the phone, as the server will", async () => {
+  const network = server();
+  network.offline = true;
+  const training = await anasPhone(network).open();
+  await training.setProfile('sex', 'male');
+  await training.setProfile('bodyweightKg', 83);
+  const logSession = async (weightKg: number) => {
+    const session = await training.startSession();
+    await training.logSet(session.id, 'back-squat', weightKg, 6);
+    await training.finishSession(session.id);
+  };
+
+  await logSession(100);
+  await logSession(100);
+  await logSession(105);
+
+  // The same worked example as the rules: a 5% gain by a male 83 kg lifter at the 53.9th percentile.
+  expect((await training.scoring()).events.map((e) => e.progressPoints)).toEqual([55]);
+  training.close();
+});
+
 test('a Personal Record is derived on the phone as soon as the Set is logged, offline, and drops out when the Set is deleted', async () => {
   const network = server();
   network.offline = true;

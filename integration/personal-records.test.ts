@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { expect, test } from 'vitest';
+import { scoringEventsOf as storedScoringEvents } from './sql.ts';
 import { newUser } from './users.ts';
 
 type Lifter = { id: string; client: SupabaseClient };
@@ -39,11 +40,8 @@ const rewrite = (setRecord: object, change: object) => ({
   set: { ...setRecord, updatedAt: '2026-10-25T12:00:00.000Z', ...change },
 });
 
-async function scoringEventsOf({ client }: Lifter) {
-  const { data, error } = await client.from('scoring_events').select('id, event').order('id');
-  expect(error).toBeNull();
-  return data!;
-}
+// No user can read Scoring Events through the API, so the tests read them straight from the database.
+const scoringEventsOf = async ({ id }: Lifter) => storedScoringEvents(id);
 
 // Ana's first two squat Sessions set her baseline (100 × 6, e1RM 120); her third, 105 × 6 (126), is a Personal Record.
 async function anaWithARecord() {
