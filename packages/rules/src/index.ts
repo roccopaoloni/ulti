@@ -75,6 +75,7 @@ export type PersonalRecord = {
   bodyweightKg: number | null;
   rulesVersion: number;
   progressPoints: number;
+  points: ModePoints;
 };
 
 // The Consistency Points a week of meeting the Weekly Target is worth, the same for everyone. 120
@@ -94,7 +95,27 @@ export type ConsistencyWeek = {
   sessionDates: string[];
   rulesVersion: number;
   consistencyPoints: number;
+  points: ModePoints;
 };
+
+// A Group's Scoring Mode (ADR 0001) re-scores the same events: Standard is Progress Points plus
+// Consistency Points, PR Hunt only Progress Points, Grind only Consistency Points.
+export const SCORING_MODES = ['standard', 'prHunt', 'grind'] as const;
+export type ScoringMode = (typeof SCORING_MODES)[number];
+// What an event is worth under each Scoring Mode, so every board is a plain sum.
+export type ModePoints = Record<ScoringMode, number>;
+
+const progressModePoints = (progressPoints: number): ModePoints => ({ standard: progressPoints, prHunt: progressPoints, grind: 0 });
+const consistencyModePoints = (consistencyPoints: number): ModePoints => ({
+  standard: consistencyPoints,
+  prHunt: 0,
+  grind: consistencyPoints,
+});
+
+// A Period's score: the sum of its events' points under a Scoring Mode (spec: Score a Period).
+export function scorePeriod(events: readonly { points: ModePoints }[], mode: ScoringMode): number {
+  return events.reduce((sum, event) => sum + event.points[mode], 0);
+}
 
 // Each kind of Scoring Event joins this union as its rules land.
 export type ScoringEvent = PersonalRecord | ConsistencyWeek;
@@ -178,6 +199,7 @@ function derivePersonalRecords(history: TrainingHistory): PersonalRecord[] {
         percentile = own ?? (levels.length === 0 ? DEFAULT_PERCENTILE : levels.reduce((a, b) => a + b, 0) / levels.length);
       }
       const weight = STRENGTH_WEIGHT_RANGE ** ((percentile - 50) / WEIGHT_SPAN_PERCENTILES);
+      const progressPoints = Math.min(MAX_POINTS_PER_RECORD, Math.round(gain * POINTS_PER_PERCENT_GAIN * weight));
       events.push({
         kind: 'personal-record',
         id: `${history.userId}:personal-record:${set.id}`,
@@ -190,7 +212,8 @@ function derivePersonalRecords(history: TrainingHistory): PersonalRecord[] {
         strengthLevelPercentile: Math.round(percentile * 100) / 100,
         bodyweightKg,
         rulesVersion: RULES_VERSION,
-        progressPoints: Math.min(MAX_POINTS_PER_RECORD, Math.round(gain * POINTS_PER_PERCENT_GAIN * weight)),
+        progressPoints,
+        points: progressModePoints(progressPoints),
       });
     }
   }
@@ -208,6 +231,7 @@ function deriveConsistency(history: TrainingHistory): ConsistencyWeek[] {
       .filter((session) => weekStart(session.localDate) === week)
       .map((session) => session.localDate)
       .slice(0, weeklyTarget);
+    const consistencyPoints = (CONSISTENCY_WEEKLY_AMOUNT * sessionDates.length) / weeklyTarget;
     events.push({
       kind: 'consistency',
       id: `${history.userId}:consistency:${week}`,
@@ -215,7 +239,8 @@ function deriveConsistency(history: TrainingHistory): ConsistencyWeek[] {
       weeklyTarget,
       sessionDates,
       rulesVersion: RULES_VERSION,
-      consistencyPoints: (CONSISTENCY_WEEKLY_AMOUNT * sessionDates.length) / weeklyTarget,
+      consistencyPoints,
+      points: consistencyModePoints(consistencyPoints),
     });
   }
   return events;
