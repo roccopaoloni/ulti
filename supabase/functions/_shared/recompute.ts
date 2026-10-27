@@ -23,7 +23,11 @@ export async function recompute(client: Client, userId: string) {
   const {
     rows: [{ history }],
   } = await transaction.queryObject<{ history: TrainingHistory }>`
-    select jsonb_build_object('userId', ${userId}::text, 'weeklyTargets', coalesce((
+    select jsonb_build_object('userId', ${userId}::text, 'deloadWeeks', coalesce((
+      select jsonb_agg(d.week order by d.week)
+      from public.deload_weeks d
+      where d.user_id = ${userId} and d.status = 'accepted'
+    ), '[]'::jsonb), 'weeklyTargets', coalesce((
       select jsonb_agg(jsonb_build_object('effectiveFrom', p.effective_from, 'value', p.value))
       from public.profile_history p
       where p.user_id = ${userId} and p.field = 'weeklyTarget'

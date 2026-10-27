@@ -53,7 +53,7 @@ const kindsAndValues = (batch: Mutation[]) =>
       ? { kind: m.kind, finished: m.session.finishedAt !== null }
       : m.kind === 'saveSet'
         ? { kind: m.kind, exerciseId: m.set.exerciseId, weightKg: m.set.weightKg, reps: m.set.reps }
-        : m.kind === 'saveProfileEntry' || m.kind === 'saveRoutine' || m.kind === 'saveIncrement'
+        : m.kind === 'saveProfileEntry' || m.kind === 'saveRoutine' || m.kind === 'saveIncrement' || m.kind === 'saveDeload'
           ? { kind: m.kind }
           : { kind: m.kind, exerciseId: m.exercise.id },
   );
@@ -721,5 +721,105 @@ test('a Custom Exercise never gets a Stall', async () => {
   }
 
   expect(await training.recommendation(dip.id, benchRange)).toBeUndefined();
+  training.close();
+});
+
+test('a Deload Week started offline is stored and synced, and its Sessions then qualify with three Working Sets', async () => {
+  const network = server();
+  network.offline = true;
+  const phone = anasPhone(network);
+  const training = await phone.open();
+  await training.setProfile('weeklyTarget', 2);
+  expect((await training.deload()).active).toBe(false);
+
+  expect(await training.startDeload()).toBe(true);
+  expect((await training.deload()).active).toBe(true);
+  await benchSession(training, [[50, 10], [50, 10], [50, 10]]);
+  expect((await training.scoring()).consistency.map((week) => week.sessionDates)).toEqual([['2026-10-19']]);
+
+  network.offline = false;
+  phone.connectivity.dispatchEvent(new Event('online'));
+  await vi.waitFor(() => expect(network.batches).toHaveLength(1));
+  const deloads = network.batches[0].flatMap((m) => (m.kind === 'saveDeload' ? [m.deload] : []));
+  expect(deloads).toEqual([{ week: '2026-10-19', origin: 'self', status: 'accepted', updatedAt: expect.any(String) }]);
+  training.close();
+});
+
+test('a lifter can start a Deload Week at most once every four weeks', async () => {
+  const network = server();
+  network.offline = true;
+  const phone = anasPhone(network);
+  const training = await phone.open();
+  expect(await training.startDeload()).toBe(true);
+  expect(await training.startDeload()).toBe(false);
+  training.close();
+
+  // Three weeks on is too soon; four weeks on is allowed.
+  const soon = await phone.open(Date.UTC(2026, 10, 9, 21, 5));
+  expect(await soon.startDeload()).toBe(false);
+  soon.close();
+  const later = await phone.open(Date.UTC(2026, 10, 16, 21, 5));
+  expect((await later.deload()).canStart).toBe(true);
+  expect(await later.startDeload()).toBe(true);
+  later.close();
+});
+
+test('a suggested Deload Week can be dismissed or accepted, both are stored, and a dismissal keeps it quiet for four weeks', async () => {
+  const network = server();
+  network.offline = true;
+  const phone = anasPhone(network);
+  const first = await phone.open();
+  await benchSession(first, [[60, 10], [60, 10]]);
+  expect((await first.deload()).suggestion).toBeUndefined();
+  first.close();
+
+  // Eight weeks after the first Session, the app nudges.
+  const nudged = await phone.open(Date.UTC(2026, 11, 14, 21, 5));
+  expect((await nudged.deload()).suggestion).toBe('time');
+  await nudged.answerDeload(false);
+  expect((await nudged.deload()).suggestion).toBeUndefined();
+  nudged.close();
+  const quiet = await phone.open(Date.UTC(2026, 11, 21, 21, 5));
+  expect((await quiet.deload()).suggestion).toBeUndefined();
+  quiet.close();
+
+  const again = await phone.open(Date.UTC(2027, 0, 11, 21, 5));
+  expect((await again.deload()).suggestion).toBe('time');
+  await again.answerDeload(true);
+  expect(await again.deload()).toMatchObject({ active: true, suggestion: undefined });
+
+  network.offline = false;
+  phone.connectivity.dispatchEvent(new Event('online'));
+  await vi.waitFor(() => expect(network.batches.length).toBeGreaterThan(0));
+  const deloads = network.batches.flat().flatMap((m) => (m.kind === 'saveDeload' ? [m.deload] : []));
+  expect(deloads.map(({ week, origin, reason, status }) => ({ week, origin, reason, status }))).toEqual([
+    { week: '2026-12-14', origin: 'suggested', reason: 'time', status: 'dismissed' },
+    { week: '2027-01-11', origin: 'suggested', reason: 'time', status: 'accepted' },
+  ]);
+  again.close();
+});
+
+test('Deload Week Sessions are skipped when the next Session is pre-filled and when it is advised to go heavier', async () => {
+  const network = server();
+  network.offline = true;
+  const phone = anasPhone(network);
+  const regular = await phone.open();
+  await regular.saveExercises(benchCatalog);
+  await benchSession(regular, [[60, 12], [60, 12], [60, 12]]);
+  regular.close();
+
+  // The next week is a Deload Week with lighter Sets.
+  const deload = await phone.open(Date.UTC(2026, 9, 26, 21, 5));
+  expect(await deload.startDeload()).toBe(true);
+  await benchSession(deload, [[54, 12], [54, 12]]);
+  expect((await deload.lastSets('bench-press')).map((set) => set.weightKg)).toEqual([60, 60, 60]);
+  expect(await deload.recommendation('bench-press', benchRange)).toEqual({ kind: 'goHeavier', weightKg: 62.5, reps: 8, incrementKg: 2.5 });
+  deload.close();
+});
+
+test('the Deload Weeks the server holds reach a phone that is new to this user', async () => {
+  const training = await anasPhone(server()).open();
+  await training.saveDeloadsFromServer([{ week: '2026-10-19', origin: 'self', status: 'accepted', updatedAt: '2026-10-19T10:00:00.000Z' }]);
+  expect((await training.deload()).active).toBe(true);
   training.close();
 });

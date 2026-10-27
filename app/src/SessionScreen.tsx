@@ -88,11 +88,38 @@ export function StartSession({ logging, training }: { logging: ReturnType<typeof
   const s = t.session;
   const { inProgress } = logging;
   const [next, setNext] = useState<RoutineDay | null>(null);
+  const [deload, setDeload] = useState<Awaited<ReturnType<Training['deload']>> | null>(null);
   useEffect(() => {
     training.nextRoutineDay().then(setNext);
+    training.deload().then(setDeload);
   }, [training, inProgress]);
+  const d = t.deload;
+  const answer = async (accept: boolean) => {
+    await training.answerDeload(accept);
+    setDeload(await training.deload());
+  };
   return (
     <>
+      {deload?.active && (
+        <p className="go-heavier">
+          <span className="badge">{d.active}</span> <Info term="deload" />
+        </p>
+      )}
+      {deload?.suggestion && (
+        <section className="card">
+          <p>
+            {d[deload.suggestion]} <Info term="deload" />
+          </p>
+          <p className="go-heavier">
+            <button type="button" className="btn-ghost" onClick={() => answer(true)}>
+              {d.accept}
+            </button>
+            <button type="button" className="btn-link inline" onClick={() => answer(false)}>
+              {d.dismiss}
+            </button>
+          </p>
+        </section>
+      )}
       <button type="button" className="btn-start" onClick={() => logging.start(next?.id)}>
         <span className="disp">{inProgress ? s.resume : s.start}</span>
         <small>{inProgress ? s.logged(inProgress.sets.length) : next ? s.startNext(next.name) : s.startHint}</small>
@@ -100,6 +127,18 @@ export function StartSession({ logging, training }: { logging: ReturnType<typeof
       {next && !inProgress && (
         <button type="button" className="btn-link" onClick={() => logging.start()}>
           {s.startUnplanned}
+        </button>
+      )}
+      {deload?.canStart && !deload.suggestion && (
+        <button
+          type="button"
+          className="btn-link"
+          onClick={async () => {
+            await training.startDeload();
+            setDeload(await training.deload());
+          }}
+        >
+          {d.start}
         </button>
       )}
     </>
@@ -121,6 +160,7 @@ export function SessionScreen({ training, units, layout, onLeave }: { training: 
   const [summary, setSummary] = useState<{ progress: WeekProgress; earned: number } | null>(null);
   // The Focus layout shows one Exercise at a time: the one picked, or else the first.
   const [focusedId, setFocusedId] = useState<string | null>(null);
+  const [deload, setDeload] = useState(false);
   useWakeLock();
   useEffect(() => {
     if (!banner) return;
@@ -131,6 +171,7 @@ export function SessionScreen({ training, units, layout, onLeave }: { training: 
   const reload = useCallback(async () => {
     setSession(await training.sessionInProgress());
     setScoring(await training.scoring());
+    setDeload((await training.deload()).active);
   }, [training]);
   useEffect(() => {
     reload();
@@ -217,6 +258,7 @@ export function SessionScreen({ training, units, layout, onLeave }: { training: 
           <ExerciseBlock
             key={exerciseId}
             focus={layout === 'focus'}
+            deload={deload}
             name={name(exerciseId)}
             training={training}
             exerciseId={exerciseId}

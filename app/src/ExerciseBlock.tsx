@@ -1,4 +1,4 @@
-import { incrementInUnits, kgToUnits, labelSets, plannedRows, stepValue, unitsToKg, type Recommendation,type PersonalRecord, type RoutineExercise, type SetLabel, type Units } from '@ulti/rules';
+import { deloadRows, incrementInUnits, kgToUnits, labelSets, plannedRows, stepValue, unitsToKg, type Recommendation,type PersonalRecord, type RoutineExercise, type SetLabel, type Units } from '@ulti/rules';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useI18n } from './i18n.ts';
@@ -26,6 +26,7 @@ export function ExerciseBlock({
   calibrating,
   custom,
   focus,
+  deload,
   onLog,
   onSetLabel,
   onRir,
@@ -48,6 +49,8 @@ export function ExerciseBlock({
   custom: boolean;
   // The Focus layout: one Set at a time, instead of every row (design: Logging a Session).
   focus?: boolean;
+  // This week is a Deload Week: about half the Sets, about 10% lighter, and no go heavier or Stall advice.
+  deload?: boolean;
   // Logs the Set and returns its ID.
   onLog: (weightKg: number, reps: number) => Promise<string>;
   onSetLabel: (setId: string, label: SetLabel) => Promise<void>;
@@ -66,7 +69,8 @@ export function ExerciseBlock({
       setLoaded({ last, advice }),
     );
   }, [training, exerciseId, target, incrementKg]);
-  const advice = dismissed ? undefined : loaded?.advice;
+  // In a Deload Week the advice waits: the rows are the regular Session's, about half and 10% lighter.
+  const advice = dismissed || deload ? undefined : loaded?.advice;
   const heavier = advice?.kind === 'goHeavier' ? advice : undefined;
   const stall = advice?.kind === 'stall' ? advice : undefined;
   const last = loaded && (advice ? loaded.last.map(() => ({ weightKg: advice.weightKg, reps: advice.reps })) : loaded.last);
@@ -81,7 +85,8 @@ export function ExerciseBlock({
   const [editingIncrement, setEditingIncrement] = useState<string | null>(null);
 
   // Past the plan, the next Set repeats the last one logged.
-  const plan = last && plannedRows(last, target?.sets);
+  const regularPlan = last && plannedRows(last, target?.sets);
+  const plan = deload && regularPlan ? deloadRows(regularPlan, incrementKg) : regularPlan;
   const next = plan ? (plan[sets.length] ?? sets.at(-1)) : undefined;
   const weightCell = (weightKg: number) =>
     bodyweight ? (
