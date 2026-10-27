@@ -10,7 +10,7 @@ import { useI18n, type Term } from './i18n.ts';
 import { tabIcons } from './icons.tsx';
 import { Info } from './Info.tsx';
 import { navigate, paths, tabs, useCurrentTab, usePathname, type Tab } from './navigation.ts';
-import { hasEverything, useBodyProfile, useUnits } from './profile.ts';
+import { hasEverything, useBodyProfile, useLayout, useUnits } from './profile.ts';
 import { RankCard } from './RankCard.tsx';
 import { BodyweightPrompt, Onboarding, ProfileSettings, VisibilityCard } from './ProfileScreens.tsx';
 import { RoutineEditor } from './RoutineScreen.tsx';
@@ -52,6 +52,7 @@ function Tabs({ userId }: { userId: string }) {
   const { profile, ready, reload } = useBodyProfile(userId, training);
   const storedUnits = useUnits(userId);
   const units = storedUnits ?? 'kg';
+  const layout = useLayout(userId);
   const [promptDue, setPromptDue] = useState(false);
 
   useEffect(() => {
@@ -62,7 +63,7 @@ function Tabs({ userId }: { userId: string }) {
   if (training && ready && !hasEverything(profile, storedUnits)) {
     return <Onboarding userId={userId} training={training} onDone={reload} />;
   }
-  if (training && logging.open) return <SessionScreen training={training} units={units} onLeave={logging.leave} />;
+  if (training && logging.open) return <SessionScreen training={training} units={units} layout={layout} onLeave={logging.leave} />;
   return (
     <>
       <main className="screen">
