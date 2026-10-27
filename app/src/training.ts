@@ -1,4 +1,13 @@
-import { bodyweightPromptDue, nextMonday, type Dated, type ProfileField, type Sex, type SetLabel } from '@ulti/rules';
+import {
+  bodyweightPromptDue,
+  deriveScoringEvents,
+  nextMonday,
+  type Dated,
+  type ProfileField,
+  type Sex,
+  type SetLabel,
+  type TrainingHistory,
+} from '@ulti/rules';
 import { openDB, type DBSchema } from 'idb';
 
 // The user's own training lives on the phone, in IndexedDB, so logging never needs a signal
@@ -305,6 +314,35 @@ export async function openTraining(userId: string, options: Options) {
 
     async dismissBodyweightPrompt() {
       await db.put('bodyweightPrompt', localDate(options.now(), options.timeZone()), 'dismissedOn');
+    },
+
+    // The Scoring Events derived from everything on this phone, the Session in progress included:
+    // provisional until the server's recompute (spec: instant "PR!" badge), by the same rules.
+    async scoring() {
+      const sessions = await db.getAll('sessions');
+      sessions.sort((a, b) => a.startedAt.localeCompare(b.startedAt));
+      const custom = new Map((await db.getAll('exercises')).map((exercise) => [exercise.id, exercise.custom]));
+      const history: TrainingHistory = {
+        userId,
+        sessions: await Promise.all(
+          sessions.map(async ({ id, localDate }) => {
+            const sets = await db.getAllFromIndex('sets', 'bySession', id);
+            sets.sort((a, b) => a.loggedAt.localeCompare(b.loggedAt));
+            return {
+              localDate,
+              sets: sets.map((set) => ({
+                id: set.id,
+                exercise: set.exerciseId,
+                custom: custom.get(set.exerciseId) ?? false,
+                weightKg: set.weightKg,
+                reps: set.reps,
+                label: set.label,
+              })),
+            };
+          }),
+        ),
+      };
+      return { history, events: deriveScoringEvents(history) };
     },
 
     exercises: () => db.getAll('exercises'),

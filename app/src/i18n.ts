@@ -5,7 +5,7 @@ import type { Tab } from './navigation.ts';
 export type Language = 'en' | 'es';
 
 // Glossary terms that appear in the interface, each explained by an ⓘ.
-export type Term = 'weeklyTarget' | 'strengthLevel' | 'routine' | 'group' | 'rank' | 'owner' | 'session' | 'set' | 'exercise';
+export type Term = 'weeklyTarget' | 'strengthLevel' | 'routine' | 'group' | 'rank' | 'owner' | 'session' | 'set' | 'exercise' | 'calibration';
 
 type Messages = {
   tagline: string;
@@ -147,6 +147,11 @@ type Messages = {
     increase: string;
     decrease: string;
     backspace: string;
+    // The banner for a Personal Record, e.g. "PR! Bench press +3% · +40 pts", and the points on its Set.
+    record: (exercise: string, percentGain: number, points: number) => string;
+    points: (points: number) => string;
+    // Shown on an Exercise during Calibration.
+    calibration: string;
   };
   // The Train tab's history of past Sessions.
   history: {
@@ -156,6 +161,8 @@ type Messages = {
     delete: string;
     save: string;
     cancel: string;
+    // The points a past Session earned, under its date.
+    points: (points: number) => string;
   };
 };
 
@@ -208,6 +215,11 @@ const en: Messages = {
     exercise: {
       term: 'Exercise',
       explanation: "A movement from ULTI's catalog, such as Back squat or Bench press.",
+    },
+    calibration: {
+      term: 'Calibration',
+      explanation:
+        "Your first two sessions with an exercise only set your starting best, so they can't earn Progress Points. After that, beating your all-time best estimated one-rep max is a Personal Record.",
     },
   },
   groups: {
@@ -333,6 +345,9 @@ const en: Messages = {
     increase: 'Increase',
     decrease: 'Decrease',
     backspace: 'Delete',
+    record: (exercise, percentGain, points) => `PR! ${exercise} +${percentGain}% · +${points} pts`,
+    points: (points) => `+${points} pts`,
+    calibration: 'Your first sessions set your baseline',
   },
   history: {
     title: 'Past sessions',
@@ -341,6 +356,7 @@ const en: Messages = {
     delete: 'Delete',
     save: 'Save',
     cancel: 'Cancel',
+    points: (points) => `${points} pts`,
   },
 };
 
@@ -394,6 +410,11 @@ const es: Messages = {
     exercise: {
       term: 'Ejercicio',
       explanation: 'Un movimiento del catálogo de ULTI, como Sentadilla o Press banca.',
+    },
+    calibration: {
+      term: 'Calibración',
+      explanation:
+        'Tus primeras dos sesiones con un ejercicio solo fijan tu mejor marca de partida, así que no dan Puntos de progreso. Después, superar tu mejor 1RM estimado de siempre es un PR.',
     },
   },
   groups: {
@@ -519,6 +540,9 @@ const es: Messages = {
     increase: 'Subir',
     decrease: 'Bajar',
     backspace: 'Borrar',
+    record: (exercise, percentGain, points) => `¡PR! ${exercise} +${percentGain}% · +${points} pts`,
+    points: (points) => `+${points} pts`,
+    calibration: 'Tus primeras sesiones fijan tu base',
   },
   history: {
     title: 'Sesiones anteriores',
@@ -527,6 +551,7 @@ const es: Messages = {
     delete: 'Borrar',
     save: 'Guardar',
     cancel: 'Cancelar',
+    points: (points) => `${points} pts`,
   },
 };
 
