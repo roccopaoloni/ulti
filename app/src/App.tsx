@@ -11,7 +11,7 @@ import { tabIcons } from './icons.tsx';
 import { Info } from './Info.tsx';
 import { navigate, paths, tabs, useCurrentTab, usePathname, type Tab } from './navigation.ts';
 import { hasEverything, useBodyProfile, useUnits } from './profile.ts';
-import { BodyweightPrompt, Onboarding, ProfileSettings } from './ProfileScreens.tsx';
+import { BodyweightPrompt, Onboarding, ProfileSettings, VisibilityCard } from './ProfileScreens.tsx';
 import { RoutineEditor } from './RoutineScreen.tsx';
 import { SessionInProgressBar, SessionScreen, StartSession, useLogging } from './SessionScreen.tsx';
 import { useTraining } from './useTraining.ts';
@@ -104,6 +104,7 @@ function Tabs({ userId }: { userId: string }) {
         {current === 'profile' && training && profile && (
           <ProfileSettings userId={userId} training={training} profile={profile} units={units} onSaved={reload} />
         )}
+        {current === 'profile' && <VisibilityCard userId={userId} />}
         {current === 'profile' && (
           <>
             <button

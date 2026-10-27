@@ -121,6 +121,7 @@ export const inviteLink = (code: string) => `${location.origin}/i/${code}`;
 // week's Session dots and latest Personal Records, and nothing more.
 export type Period = 'week' | 'month' | 'year';
 export type BoardRow = {
+  user_id: string;
   position: number;
   display_name: string;
   avatar_color: string;
@@ -140,4 +141,37 @@ export const useBoard = (userId: string, groupId: string, period: Period) => use
 export async function refreshBoard(userId: string, groupId: string, period: Period) {
   const board = await call<Board>(supabase.rpc('group_board', { group_id: groupId, period, on_date: today() }));
   write(boardKey(userId, groupId, period), board);
+}
+
+// What member_profile() returns of a member: always their points, position, Session count and
+// Personal Records as %; the weights and reps and the Sessions only if they allow it.
+export type MemberProfile = {
+  display_name: string;
+  avatar_color: string;
+  me: boolean;
+  position: number;
+  points: number;
+  session_count: number;
+  shares_weights: boolean;
+  shares_sessions: boolean;
+  records: { exercise: string; percent_gain: number; points: number; local_date: string; weight_kg?: number; reps?: number }[];
+  sessions: { local_date: string; sets: { exercise: string; weight_kg?: number; reps?: number }[] }[] | null;
+};
+
+export const fetchMemberProfile = (groupId: string, memberId: string, period: Period) =>
+  call<MemberProfile>(supabase.rpc('member_profile', { group_id: groupId, member_id: memberId, period, on_date: today() }));
+
+// What the user lets Group members see (Visibility): one choice for every Group, off by default.
+export type Visibility = { share_weights: boolean; share_sessions: boolean };
+const visibilityKey = (userId: string) => `ulti-visibility:${userId}`;
+export const useVisibility = (userId: string) => useStored<Visibility>(visibilityKey(userId));
+
+export async function refreshVisibility(userId: string) {
+  const row = await call<Visibility | null>(supabase.from('profiles').select('share_weights, share_sessions').maybeSingle());
+  write(visibilityKey(userId), row ?? { share_weights: false, share_sessions: false });
+}
+
+export async function saveVisibility(userId: string, visibility: Visibility) {
+  await call(supabase.from('profiles').upsert({ user_id: userId, ...visibility }));
+  write(visibilityKey(userId), visibility);
 }
