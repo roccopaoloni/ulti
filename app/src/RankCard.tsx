@@ -1,12 +1,9 @@
-import { rankOf, rankProgress, seasonOf, seasonRankPoints, showsPosition, type Rank, type Tier } from '@ulti/rules';
-import { useEffect, useState, type CSSProperties } from 'react';
+import { rankOf, rankProgress, showsPosition, type Rank, type Tier } from '@ulti/rules';
+import type { CSSProperties } from 'react';
 import { Badge } from './Badge.tsx';
-import { supabase } from './auth.ts';
 import { useI18n } from './i18n.ts';
-import { today } from './profile.ts';
+import { useSeasonStanding } from './season.ts';
 import type { Training } from './training.ts';
-
-type Standing = { points: number; position: number | null; top_percent: number | null };
 
 const roman = ['', 'I', 'II', 'III', 'IV', 'V'];
 const tiers: Tier[] = ['bronze', 'silver', 'gold', 'diamond', 'elite'];
@@ -19,18 +16,8 @@ const tiers: Tier[] = ['bronze', 'silver', 'gold', 'diamond', 'elite'];
 export function RankCard({ training }: { training: Training }) {
   const { t } = useI18n();
   const r = t.rank;
-  const [points, setPoints] = useState<number | null>(null);
-  const [standing, setStanding] = useState<Standing | null>(null);
-  useEffect(() => {
-    const season = seasonOf(today());
-    training.scoring().then(({ events, consistency }) => setPoints(seasonRankPoints(0, [...events, ...consistency], season)));
-    supabase.rpc('season_standing', { on_date: today() }).then(
-      ({ data }) => data && setStanding(data as Standing),
-      () => {},
-    );
-  }, [training]);
-  if (points === null) return null;
-  const seasonPoints = Math.max(points, standing?.points ?? 0);
+  const { seasonPoints, standing } = useSeasonStanding(training);
+  if (seasonPoints === null) return null;
   const name = (rank: Rank) => (rank.division === null ? r.tier[rank.tier] : `${r.tier[rank.tier]} ${roman[rank.division]}`);
   const rank = rankOf(seasonPoints);
   const progress = rankProgress(seasonPoints);

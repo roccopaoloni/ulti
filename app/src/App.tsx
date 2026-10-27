@@ -12,6 +12,7 @@ import { Info } from './Info.tsx';
 import { navigate, paths, tabs, useCurrentTab, usePathname, type Tab } from './navigation.ts';
 import { hasEverything, useBodyProfile, useLayout, useUnits } from './profile.ts';
 import { RankCard } from './RankCard.tsx';
+import { RankUpGate } from './RankUpGate.tsx';
 import { BodyweightPrompt, Onboarding, ProfileSettings, VisibilityCard } from './ProfileScreens.tsx';
 import { RoutineEditor } from './RoutineScreen.tsx';
 import { SessionInProgressBar, SessionScreen, StartSession, useLogging } from './SessionScreen.tsx';
@@ -66,6 +67,7 @@ function Tabs({ userId }: { userId: string }) {
   if (training && logging.open) return <SessionScreen training={training} units={units} layout={layout} onLeave={logging.leave} />;
   return (
     <>
+      {training && <RankUpGate userId={userId} training={training} />}
       <main className="screen">
         {current === 'home' ? (
           <header className="home-head">

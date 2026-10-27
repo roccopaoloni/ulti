@@ -1,6 +1,7 @@
 import { createContext, useContext } from 'react';
 import type { AvatarColor } from './groups.ts';
 import type { Tab } from './navigation.ts';
+import type { Chip, Headline, Kicker, Tier } from '@ulti/rules';
 
 export type Language = 'en' | 'es';
 
@@ -264,6 +265,15 @@ type Messages = {
     position: (position: number) => string;
     toNext: (points: number, next: string) => string;
     maxed: string;
+  };
+  // The Rank-up moment (design: The Rank-up moment).
+  rankUp: {
+    news: string;
+    tapHint: string;
+    continue: string;
+    kicker: Record<Kicker, string>;
+    headline: (headline: Headline, tierName: (tier: Tier) => string) => string;
+    chip: (chip: Chip) => string;
   };
   // The Train tab's history of past Sessions.
   history: {
@@ -569,6 +579,39 @@ const en: Messages = {
     toNext: (points, next) => `${points} pts to ${next}`,
     maxed: 'Top Tier reached',
   },
+  rankUp: {
+    news: 'You have news',
+    tapHint: 'Tap to open',
+    continue: 'Continue',
+    kicker: { charged: 'Ulti charged', newRank: 'New Rank', somethingElse: 'This is something else', tierUp: 'Tier up' },
+    headline: (h, tierName) => {
+      switch (h.id) {
+        case 'elite': return `You're one of ${h.count} in Elite this Season.`;
+        case 'top': return `You're #1 in ${h.group}. Guard the throne.`;
+        case 'streak': return `${h.weeks} weeks in a row hitting your target. That isn't handed out.`;
+        case 'best': return `Your ${h.exercise.toLowerCase()} is up ${h.percent}%. Nobody gave you that.`;
+        case 'passed': return h.more > 0 ? `You passed ${h.name} and ${h.more} more.` : `You passed ${h.name}.`;
+        case 'prs': return `${h.count} PRs in ${h.weeks} weeks. You're in another tier.`;
+        case 'climb': return `You started the Season in ${tierName(h.from)}. Now you're ${tierName(h.to)}.`;
+        case 'speed': return `From ${tierName(h.from)} to ${tierName(h.to)} in ${h.weeks} weeks.`;
+        case 'showup': return `You showed up ${h.sessions} times when it was due. That's the secret.`;
+        case 'sessions': return `${h.sessions} sessions to get here. Every one counted.`;
+        case 'points': return `${h.points.toLocaleString('en')} points. You earned every one.`;
+        case 'balanced': return `${h.consistency} points of consistency, ${h.progress} of progress. Evenly matched.`;
+      }
+    },
+    chip: (c) => {
+      switch (c.id) {
+        case 'top': return `#1 in ${c.group}`;
+        case 'streak': return `${c.weeks} weeks in a row`;
+        case 'best': return `+${c.percent}% ${c.exercise}`;
+        case 'prs': return `${c.count} PRs`;
+        case 'weeks': return `${c.weeks} weeks`;
+        case 'sessions': return `${c.sessions} sessions`;
+        case 'points': return `${c.points.toLocaleString('en')} pts`;
+      }
+    },
+  },
   history: {
     title: 'Past sessions',
     empty: 'Your finished sessions will show up here.',
@@ -867,6 +910,39 @@ const es: Messages = {
     position: (position) => `#${position} esta temporada`,
     toNext: (points, next) => `${points} pts para ${next}`,
     maxed: 'Llegaste a la liga más alta',
+  },
+  rankUp: {
+    news: 'Tenés novedades',
+    tapHint: 'Tocá para abrir',
+    continue: 'Seguir',
+    kicker: { charged: 'Ulti cargada', newRank: 'Rango nuevo', somethingElse: 'Esto es otra cosa', tierUp: 'Subiste de liga' },
+    headline: (h, tierName) => {
+      switch (h.id) {
+        case 'elite': return `Sos uno de los ${h.count} de Élite de esta Temporada.`;
+        case 'top': return `Sos el número 1 de ${h.group}. Cuidá el trono.`;
+        case 'streak': return `${h.weeks} semanas seguidas cumpliendo. Eso no se regala.`;
+        case 'best': return `Tu ${h.exercise.toLowerCase()} subió ${h.percent} %. Nadie te regaló nada.`;
+        case 'passed': return h.more > 0 ? `Pasaste a ${h.name} y a ${h.more} más.` : `Pasaste a ${h.name}.`;
+        case 'prs': return `${h.count} PR en ${h.weeks} semanas. Estás en otra liga.`;
+        case 'climb': return `Arrancaste la Temporada en ${tierName(h.from)}. Hoy sos ${tierName(h.to)}.`;
+        case 'speed': return `De ${tierName(h.from)} a ${tierName(h.to)} en ${h.weeks} semanas.`;
+        case 'showup': return `Fuiste ${h.sessions} veces cuando tocaba. Ahí está el secreto.`;
+        case 'sessions': return `${h.sessions} sesiones para llegar hasta acá. Cada una sumó.`;
+        case 'points': return `${h.points.toLocaleString('es')} puntos. Los hiciste vos.`;
+        case 'balanced': return `${h.consistency} pts de constancia, ${h.progress} de progreso. Parejito.`;
+      }
+    },
+    chip: (c) => {
+      switch (c.id) {
+        case 'top': return `#1 en ${c.group}`;
+        case 'streak': return `${c.weeks} semanas seguidas`;
+        case 'best': return `+${c.percent} % en ${c.exercise}`;
+        case 'prs': return `${c.count} PR`;
+        case 'weeks': return `${c.weeks} semanas`;
+        case 'sessions': return `${c.sessions} sesiones`;
+        case 'points': return `${c.points.toLocaleString('es')} pts`;
+      }
+    },
   },
   history: {
     title: 'Sesiones anteriores',
