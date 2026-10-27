@@ -16,7 +16,7 @@ import {
   type SetLabel,
   type TrainingHistory,
 } from '@ulti/rules';
-import { openDB, type DBSchema } from 'idb';
+import { deleteDB, openDB, type DBSchema } from 'idb';
 
 // The user's own training lives on the phone, in IndexedDB, so logging never needs a signal
 // (ADR 0003). Every write is also a mutation, with an ID made on the phone, kept in an outbox
@@ -579,6 +579,13 @@ export async function openTraining(userId: string, options: Options) {
       options.connectivity.removeEventListener('online', onOnline);
       clearTimeout(retry);
       db.close();
+    },
+
+    // Account deletion: stops syncing and removes this user's database from the phone, outbox
+    // included, so nothing queued is ever sent.
+    async erase() {
+      this.close();
+      await deleteDB(`ulti-${userId}`);
     },
   };
 }
