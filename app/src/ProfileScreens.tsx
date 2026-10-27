@@ -1,6 +1,7 @@
 import { isProfileValue, kgToUnits, unitsToKg, valueInForce, type Sex, type Units } from '@ulti/rules';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Field } from './AuthScreens.tsx';
+import { refreshVisibility, saveVisibility, useVisibility, type Visibility } from './groups.ts';
 import { useI18n, type Language } from './i18n.ts';
 import { Info } from './Info.tsx';
 import { setLanguage, setUnits, today } from './profile.ts';
@@ -218,6 +219,37 @@ export function ProfileSettings({
         {b.save}
       </button>
     </form>
+  );
+}
+
+// What Group members may see of the user, one choice for every Group. Saved online and at once.
+export function VisibilityCard({ userId }: { userId: string }) {
+  const { t } = useI18n();
+  const g = t.groups;
+  const saved = useVisibility(userId);
+  const [error, setError] = useState(false);
+  useEffect(() => {
+    refreshVisibility(userId).catch(() => {});
+  }, [userId]);
+  const visibility = saved ?? { share_weights: false, share_sessions: false };
+  const toggle = (field: keyof Visibility) => {
+    setError(false);
+    saveVisibility(userId, { ...visibility, [field]: !visibility[field] }).catch(() => setError(true));
+  };
+  return (
+    <section className="card">
+      <div className="eyebrow">{g.visibilityTitle}</div>
+      <p className="muted">{g.visibilityText}</p>
+      <div className="choices">
+        <button type="button" className="chip" aria-pressed={visibility.share_weights} onClick={() => toggle('share_weights')}>
+          {g.shareWeights}
+        </button>
+        <button type="button" className="chip" aria-pressed={visibility.share_sessions} onClick={() => toggle('share_sessions')}>
+          {g.shareSessions}
+        </button>
+      </div>
+      {error && <p className="error">{g.retry}</p>}
+    </section>
   );
 }
 
