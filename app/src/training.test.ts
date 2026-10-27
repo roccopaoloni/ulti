@@ -194,6 +194,8 @@ test('past Sessions list newest first, and leave out the one in progress', async
 
   expect((await training.pastSessions()).map(({ session }) => session.id)).toEqual([tuesday.id, monday.id]);
   expect(wednesday.finishedAt).toBeNull();
+  training.close();
+});
 
 test("an Exercise's Sets from the last Session that had it come back in the order they were logged, ready to pre-fill the next one", async () => {
   const phone = anasPhone(server());
