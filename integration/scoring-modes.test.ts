@@ -37,8 +37,8 @@ function session(localDate: string, weightKg: number, count: number) {
 }
 
 // Ana's baseline squat is 100 × 6; her Personal Record on Monday the 19th is 50 Progress Points.
-// She also earns 40 Consistency Points (Weekly Target of 3) in each of the weeks of the 19th, the
-// 26th and 2 November. So the week of the 19th is worth 90 Standard, 50 PR Hunt and 40 Grind.
+// She also earns 40 Consistency Points (Weekly Target of 3) in each of the weeks of the 19th and the
+// 26th (both in the past, since the server rejects future Sets). So the week of the 19th is worth 90 Standard, 50 PR Hunt and 40 Grind.
 async function ana() {
   const user = await lifter('Ana');
   await sync(user, [
@@ -47,8 +47,7 @@ async function ana() {
     ...session('2026-10-12', 100, 1),
     ...session('2026-10-19', 105, 1),
     ...session('2026-10-20', 100, 6),
-    ...session('2026-10-27', 100, 6),
-    ...session('2026-11-02', 100, 6),
+    ...session('2026-10-26', 100, 6),
   ]);
   const { data: id } = await user.client.rpc('create_group', { name: 'Gym crew' });
   return { user, groupId: id as string };
@@ -85,8 +84,8 @@ test("a change made on a Period's first day still waits for the next Period, and
 
   expect(await board(user, groupId, 'week', '2026-10-21')).toEqual(['standard', 90]);
   expect(await board(user, groupId, 'week', '2026-10-28')).toEqual(['standard', 40]);
-  // The week of 2 November is Grind, as chosen on the 26th; the week of the 9th is PR Hunt.
-  expect(await board(user, groupId, 'week', '2026-11-03')).toEqual(['grind', 40]);
+  // The week of 2 November is Grind (Ana has no Session in it yet), as chosen on the 26th; the week of the 9th is PR Hunt.
+  expect(await board(user, groupId, 'week', '2026-11-03')).toEqual(['grind', 0]);
   expect(await board(user, groupId, 'week', '2026-11-10')).toEqual(['prHunt', 0]);
 });
 
@@ -104,7 +103,7 @@ test('the yearly board is always Standard, whatever the Group chose', async () =
   await setMode(user, groupId, 'grind', '2026-09-01');
 
   expect(await board(user, groupId, 'week', '2026-10-21')).toEqual(['grind', 40]);
-  expect(await board(user, groupId, 'year', '2026-10-21')).toEqual(['standard', 170]);
+  expect(await board(user, groupId, 'year', '2026-10-21')).toEqual(['standard', 130]);
 });
 
 test('only the Owner changes the Mode, and only to a Mode that exists', async () => {
@@ -125,5 +124,5 @@ test("a member's profile scores its Period with the same Mode as the board", asy
     user.client.rpc('member_profile', { group_id: groupId, member_id: user.id, period, on_date: '2026-10-21' }).then(({ data }) => data.points);
 
   expect(await profile('week')).toBe(50);
-  expect(await profile('year')).toBe(170);
+  expect(await profile('year')).toBe(130);
 });
