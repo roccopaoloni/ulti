@@ -569,3 +569,4 @@ export function deloadRows<T extends { weightKg: number }>(rows: readonly (T | u
     row && { ...row, weightKg: row.weightKg === 0 ? 0 : Math.round((row.weightKg * DELOAD_WEIGHT) / incrementKg) * incrementKg },
   );
 }
+export * from './rank-up.ts';
