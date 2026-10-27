@@ -283,3 +283,20 @@ export const unitsToKg = (weight: number, units: Units) => (units === 'kg' ? wei
 // The Increment shown in the user's units: the nearest half, since a plate pair in lb is never finer.
 export const incrementInUnits = (incrementKg: number, units: Units) =>
   units === 'kg' ? incrementKg : Math.round(kgToUnits(incrementKg, units) * 2) / 2;
+
+// A Routine: its Sessions (Routine Days), each listing Exercises with a number of Sets and a Rep Range.
+export type RoutineExercise = { exerciseId: string; sets: number; repMin: number; repMax: number };
+export type RoutineDay = { id: string; name: string; exercises: RoutineExercise[] };
+
+// The Weekly Target a Routine suggests: one Session a week per Routine Day, within the 2–6 a
+// Weekly Target can be.
+export function suggestedWeeklyTarget(routineDays: number): number {
+  return Math.min(6, Math.max(2, routineDays));
+}
+
+// The Routine Day to do next: the one after the last Session done from the Routine, wrapping
+// around; the first when there is none or it was removed from the Routine.
+export function nextRoutineDay(dayIds: readonly string[], lastDoneId: string | undefined): string {
+  const last = lastDoneId === undefined ? -1 : dayIds.indexOf(lastDoneId);
+  return dayIds[(last + 1) % dayIds.length];
+}

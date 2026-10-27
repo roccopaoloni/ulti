@@ -53,7 +53,7 @@ const kindsAndValues = (batch: Mutation[]) =>
       ? { kind: m.kind, finished: m.session.finishedAt !== null }
       : m.kind === 'saveSet'
         ? { kind: m.kind, exerciseId: m.set.exerciseId, weightKg: m.set.weightKg, reps: m.set.reps }
-        : m.kind === 'saveProfileEntry'
+        : m.kind === 'saveProfileEntry' || m.kind === 'saveRoutine'
           ? { kind: m.kind }
           : { kind: m.kind, exerciseId: m.exercise.id },
   );
@@ -144,7 +144,7 @@ test('queued mutations, and the Session in progress, survive the app closing bef
     { kind: 'saveSession', finished: false },
     { kind: 'saveSet', exerciseId: 'deadlift', weightKg: 140, reps: 3 },
   ]);
-  expect(await after.sessionInProgress()).toEqual({ session, exerciseIds: ['deadlift', 'pendlay-row'], sets: [set] });
+  expect(await after.sessionInProgress()).toEqual({ session, exerciseIds: ['deadlift', 'pendlay-row'], plan: [], sets: [set] });
   after.close();
 });
 
@@ -415,6 +415,95 @@ test('a Personal Record is derived on the phone as soon as the Set is logged, of
 
   await training.deleteSet(record.id);
   expect((await training.scoring()).events).toEqual([]);
+
+const pushDay = { id: 'push', name: 'Push', exercises: [{ exerciseId: 'bench-press', sets: 3, repMin: 8, repMax: 12 }] };
+const pullDay = { id: 'pull', name: 'Pull', exercises: [{ exerciseId: 'barbell-row', sets: 4, repMin: 6, repMax: 10 }] };
+
+const routines = (batch: Mutation[]) => batch.flatMap((m) => (m.kind === 'saveRoutine' ? [m.routine] : []));
+
+test('a Routine saved offline shows at once, and editing it later sends the same Routine again as the latest write', async () => {
+  const network = server();
+  network.offline = true;
+  const phone = anasPhone(network);
+  const training = await phone.open();
+  expect(await training.routine()).toBeNull();
+
+  await training.saveRoutine([pushDay]);
+  expect((await training.routine())?.days).toEqual([pushDay]);
+
+  await training.saveRoutine([pushDay, pullDay]);
+  expect((await training.routine())?.days).toEqual([pushDay, pullDay]);
+
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  network.offline = false;
+  phone.connectivity.dispatchEvent(new Event('online'));
+  await vi.waitFor(() => expect(network.batches).toHaveLength(1));
+  const [created, edited] = routines(network.batches[0]);
+  expect(edited.id).toBe(created.id);
+  expect(edited.days).toEqual([pushDay, pullDay]);
+  expect(edited.updatedAt > created.updatedAt).toBe(true);
+  training.close();
+});
+
+test('a Session started from a Routine Day sets up its Exercises with their Sets and Rep Range, and an unplanned one starts empty', async () => {
+  const network = server();
+  network.offline = true;
+  const phone = anasPhone(network);
+  const training = await phone.open();
+  await training.saveRoutine([pushDay, pullDay]);
+
+  const planned = await training.startSession('pull');
+  expect(await training.sessionInProgress()).toMatchObject({
+    session: { id: planned.id, routineDayId: 'pull' },
+    exerciseIds: ['barbell-row'],
+    plan: [{ exerciseId: 'barbell-row', sets: 4, repMin: 6, repMax: 10 }],
+  });
+  await training.finishSession(planned.id);
+
+  const unplanned = await training.startSession();
+  expect(await training.sessionInProgress()).toMatchObject({ session: { id: unplanned.id }, exerciseIds: [], plan: [] });
+  expect((await training.sessionInProgress())!.session.routineDayId).toBeUndefined();
+  training.close();
+});
+
+test('the next Session suggested is the Routine Day after the last one started from the Routine', async () => {
+  const network = server();
+  network.offline = true;
+  const phone = anasPhone(network);
+  const training = await phone.open();
+  expect(await training.nextRoutineDay()).toBeNull();
+
+  await training.saveRoutine([pushDay, pullDay]);
+  expect((await training.nextRoutineDay())?.id).toBe('push');
+
+  const push = await training.startSession('push');
+  await training.finishSession(push.id);
+  expect((await training.nextRoutineDay())?.id).toBe('pull');
+
+  // An unplanned Session in between changes nothing.
+  const unplanned = await training.startSession();
+  await training.finishSession(unplanned.id);
+  expect((await training.nextRoutineDay())?.id).toBe('pull');
+
+  const pull = await training.startSession('pull');
+  await training.finishSession(pull.id);
+  expect((await training.nextRoutineDay())?.id).toBe('push');
+  training.close();
+});
+
+test("a Routine fetched from the server fills a new phone, but never replaces a later edit the phone made", async () => {
+  const network = server();
+  network.offline = true;
+  const phone = anasPhone(network);
+  const training = await phone.open();
+  const fetched = { id: 'r1', days: [pushDay], updatedAt: '2026-10-01T00:00:00.000Z' };
+
+  await training.saveRoutineFromServer(fetched);
+  expect(await training.routine()).toEqual(fetched);
+
+  await training.saveRoutine([pushDay, pullDay]);
+  await training.saveRoutineFromServer(fetched);
+  expect((await training.routine())?.days).toEqual([pushDay, pullDay]);
   training.close();
 });
 
