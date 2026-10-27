@@ -258,14 +258,16 @@ export async function openTraining(userId: string, options: Options) {
       return sets.filter((set) => set.sessionId === last.id).sort((a, b) => a.loggedAt.localeCompare(b.loggedAt));
     },
 
-    // Sets a field of the profile. A Weekly Target starts next Monday in the user's time zone, so
-    // it can't be lowered on a Saturday to look consistent; the rest start today.
+    // Sets a field of the profile. A change to the Weekly Target starts next Monday in the user's
+    // time zone, so it can't be lowered on a Saturday to look consistent. The first one, set in
+    // onboarding, is not a change, and the rest start today.
     async setProfile(field: ProfileField, value: Sex | number) {
       const now = options.now();
       const today = localDate(now, options.timeZone());
+      const isChange = field === 'weeklyTarget' && (await db.getAll('profile')).some((entry) => entry.field === field);
       const entry: ProfileEntry = {
         field,
-        effectiveFrom: field === 'weeklyTarget' ? nextMonday(today) : today,
+        effectiveFrom: isChange ? nextMonday(today) : today,
         value,
         updatedAt: now.toISOString(),
       };

@@ -291,7 +291,7 @@ test("a Set's label flipped offline shows at once and goes out as a later write 
   training.close();
 });
 
-test("Ana's onboarding is written through the outbox, with a Weekly Target that starts next Monday", async () => {
+test("Ana's onboarding is written through the outbox, and her first Weekly Target applies from today", async () => {
   const network = server();
   // Saturday 24 October in Buenos Aires.
   const phone = anasPhone(network, { startsAt: Date.UTC(2026, 9, 24, 21, 5) });
@@ -305,14 +305,32 @@ test("Ana's onboarding is written through the outbox, with a Weekly Target that 
   expect(network.batches.flatMap(profileEntries)).toEqual([
     { field: 'sex', effectiveFrom: '2026-10-24', value: 'female' },
     { field: 'bodyweightKg', effectiveFrom: '2026-10-24', value: 62.5 },
-    { field: 'weeklyTarget', effectiveFrom: '2026-10-26', value: 4 },
+    { field: 'weeklyTarget', effectiveFrom: '2026-10-24', value: 4 },
   ]);
   expect(await training.profile()).toEqual({
     sex: [{ effectiveFrom: '2026-10-24', value: 'female' }],
     bodyweightKg: [{ effectiveFrom: '2026-10-24', value: 62.5 }],
-    weeklyTarget: [{ effectiveFrom: '2026-10-26', value: 4 }],
+    weeklyTarget: [{ effectiveFrom: '2026-10-24', value: 4 }],
   });
   training.close();
+});
+
+test('a later change to the Weekly Target starts next Monday', async () => {
+  const network = server();
+  const phone = anasPhone(network, { startsAt: Date.UTC(2026, 9, 21, 21, 5) });
+  const training = await phone.open();
+  await training.setProfile('weeklyTarget', 4);
+  training.close();
+
+  // Saturday: lowering it now would let her look consistent for the week already running.
+  const saturday = await phone.open(Date.UTC(2026, 9, 24, 21, 5));
+  await saturday.setProfile('weeklyTarget', 2);
+
+  expect((await saturday.profile()).weeklyTarget).toEqual([
+    { effectiveFrom: '2026-10-21', value: 4 },
+    { effectiveFrom: '2026-10-26', value: 2 },
+  ]);
+  saturday.close();
 });
 
 test('a profile entry made offline waits in the outbox and survives the app closing', async () => {
