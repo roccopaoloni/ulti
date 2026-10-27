@@ -54,7 +54,7 @@ begin
   end if;
   insert into public.group_scoring_modes (group_id, changed_on, mode)
   values (set_scoring_mode.group_id, set_scoring_mode.on_date, set_scoring_mode.mode)
-  on conflict (group_id, changed_on) do update set mode = excluded.mode;
+  on conflict on constraint group_scoring_modes_pkey do update set mode = excluded.mode;
 end;
 $$;
 
