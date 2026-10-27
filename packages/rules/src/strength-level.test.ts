@@ -1,5 +1,9 @@
 import { expect, test } from 'vitest';
-import { deriveScoringEvents, strengthLevelPercentile, type Session, type Sex } from './index.ts';
+import { deriveScoringEvents as deriveAll, strengthLevelPercentile, type Session, type Sex, type TrainingHistory } from './index.ts';
+
+// Only the Personal Records among the Scoring Events.
+const deriveScoringEvents = (h: Omit<TrainingHistory, 'weeklyTargets'>) =>
+  deriveAll({ ...h, weeklyTargets: [] }).filter((e) => e.kind === 'personal-record');
 
 // The expected numbers come from FitnessVolt's gym tables (kg): male back squat, 83 kg class,
 // e1RM at the 10th/25th/50th/75th/90th/95th percentile = 82.51 / 102.01 / 122.52 / 144.65 / 164.65 / 177.72.
