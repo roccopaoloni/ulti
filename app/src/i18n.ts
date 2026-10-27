@@ -104,6 +104,12 @@ type Messages = {
     empty: string;
     addExercise: string;
     chooseExercise: string;
+    searchExercise: string;
+    // The equipment shown beside each Exercise so its variants can be told apart, by equipment ID.
+    equipment: Record<string, string>;
+    customTag: string;
+    // Creates a Custom Exercise named as typed in the search, logged as weight × reps.
+    createCustom: (name: string) => string;
     weight: string;
     reps: string;
     logSet: string;
@@ -252,6 +258,10 @@ const en: Messages = {
     empty: 'Add an exercise to start logging sets.',
     addExercise: 'Add exercise',
     chooseExercise: 'Choose an exercise',
+    searchExercise: 'Search exercises',
+    equipment: { barbell: 'Barbell', dumbbell: 'Dumbbell', machine: 'Machine', cable: 'Cable', smith: 'Smith machine', bodyweight: 'Bodyweight' },
+    customTag: 'Custom',
+    createCustom: (name) => `Create custom exercise "${name}"`,
     weight: 'Weight in kg',
     reps: 'Reps',
     logSet: 'Log set',
@@ -400,6 +410,10 @@ const es: Messages = {
     empty: 'Agregá un ejercicio para empezar a registrar series.',
     addExercise: 'Agregar ejercicio',
     chooseExercise: 'Elegí un ejercicio',
+    searchExercise: 'Buscar ejercicios',
+    equipment: { barbell: 'Barra', dumbbell: 'Mancuernas', machine: 'Máquina', cable: 'Polea', smith: 'Multipower', bodyweight: 'Peso corporal' },
+    customTag: 'Personalizado',
+    createCustom: (name) => `Crear ejercicio personalizado "${name}"`,
     weight: 'Peso en kg',
     reps: 'Repeticiones',
     logSet: 'Registrar serie',

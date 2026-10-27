@@ -55,6 +55,7 @@ export function SessionScreen({ training, onLeave }: { training: Training; onLea
   const [session, setSession] = useState<InProgress | null>(null);
   const [catalog, setCatalog] = useState<Exercise[]>([]);
   const picker = useRef<HTMLDialogElement>(null);
+  const [query, setQuery] = useState('');
 
   const reload = useCallback(async () => setSession(await training.sessionInProgress()), [training]);
   useEffect(() => {
@@ -69,9 +70,22 @@ export function SessionScreen({ training, onLeave }: { training: Training; onLea
     const exercise = catalog.find((candidate) => candidate.id === id);
     return exercise ? nameOf(exercise) : id;
   };
+  const equipmentOf = (exercise: Exercise) => (exercise.equipment ? (s.equipment[exercise.equipment] ?? '') : s.customTag);
+  // Search ignores case and accents, and looks at the equipment too: "mancuernas" finds every dumbbell variant.
+  const plain = (text: string) => text.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
+  const words = plain(query).split(/\s+/).filter(Boolean);
   const choices = catalog
     .filter(({ id }) => !session.exerciseIds.includes(id))
+    .filter((exercise) => words.every((word) => plain(`${nameOf(exercise)} ${equipmentOf(exercise)}`).includes(word)))
     .sort((a, b) => nameOf(a).localeCompare(nameOf(b), language));
+
+  async function add(exerciseId: string) {
+    picker.current?.close();
+    setQuery('');
+    await training.addExercise(sessionId, exerciseId);
+    setCatalog(await training.exercises());
+    await reload();
+  }
 
   async function finish() {
     await training.finishSession(sessionId);
@@ -135,21 +149,31 @@ export function SessionScreen({ training, onLeave }: { training: Training; onLea
             <h2 className="disp sheet-title">
               {s.chooseExercise} <Info term="exercise" />
             </h2>
+            <div className="field">
+              <input
+                type="search"
+                autoComplete="off"
+                aria-label={s.searchExercise}
+                placeholder={s.searchExercise}
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+              />
+            </div>
             <div className="picks">
               {choices.map((exercise) => (
-                <button
-                  key={exercise.id}
-                  type="button"
-                  className="pick"
-                  onClick={async () => {
-                    picker.current?.close();
-                    await training.addExercise(sessionId, exercise.id);
-                    await reload();
-                  }}
-                >
-                  {nameOf(exercise)}
+                <button key={exercise.id} type="button" className="pick" onClick={() => add(exercise.id)}>
+                  {nameOf(exercise)} <small className="muted">{equipmentOf(exercise)}</small>
                 </button>
               ))}
+              {query.trim() !== '' && (
+                <button
+                  type="button"
+                  className="pick"
+                  onClick={async () => add((await training.createExercise(query)).id)}
+                >
+                  {s.createCustom(query.trim())}
+                </button>
+              )}
             </div>
             <form method="dialog">
               <button className="btn-ghost">{t.close}</button>

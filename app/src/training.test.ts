@@ -40,7 +40,9 @@ const kindsAndValues = (batch: Mutation[]) =>
   batch.map((m) =>
     m.kind === 'saveSession'
       ? { kind: m.kind, finished: m.session.finishedAt !== null }
-      : { kind: m.kind, exerciseId: m.set.exerciseId, weightKg: m.set.weightKg, reps: m.set.reps },
+      : m.kind === 'saveSet'
+        ? { kind: m.kind, exerciseId: m.set.exerciseId, weightKg: m.set.weightKg, reps: m.set.reps }
+        : { kind: m.kind, exerciseId: m.exercise.id },
   );
 
 test('Sets logged offline are queued and sent when the phone is back online', async () => {
@@ -192,5 +194,34 @@ test('past Sessions list newest first, and leave out the one in progress', async
 
   expect((await training.pastSessions()).map(({ session }) => session.id)).toEqual([tuesday.id, monday.id]);
   expect(wednesday.finishedAt).toBeNull();
+  training.close();
+});
+
+test('a Custom Exercise created offline is pickable at once, survives a catalog refresh, and syncs before the Sets that use it', async () => {
+  const network = server();
+  network.offline = true;
+  const phone = anasPhone(network);
+  const training = await phone.open();
+
+  const plank = await training.createExercise('Weighted plank');
+  const session = await training.startSession();
+  await training.logSet(session.id, plank.id, 10, 1);
+  // The catalog comes back from the server without it, as it has not arrived there yet.
+  await training.saveExercises([{ id: 'back-squat', nameEn: 'Back squat', nameEs: 'Sentadilla', equipment: 'barbell', custom: false }]);
+
+  expect(await training.exercises()).toEqual(
+    expect.arrayContaining([
+      { id: plank.id, nameEn: 'Weighted plank', nameEs: 'Weighted plank', equipment: null, custom: true },
+      expect.objectContaining({ id: 'back-squat', custom: false }),
+    ]),
+  );
+  network.offline = false;
+  phone.connectivity.dispatchEvent(new Event('online'));
+
+  await vi.waitFor(() => expect(network.batches).toHaveLength(1));
+  const [saved, , set] = network.batches[0];
+  expect(saved).toMatchObject({ kind: 'saveExercise', exercise: { id: plank.id, name: 'Weighted plank' } });
+  expect(plank.id).toMatch(/^custom-[0-9a-f-]{36}$/);
+  expect(set).toMatchObject({ kind: 'saveSet', set: { exerciseId: plank.id, weightKg: 10, reps: 1 } });
   training.close();
 });
