@@ -37,7 +37,7 @@ test('the lifter can flip a label with one tap, in either direction', () => {
 });
 
 test('only Working Sets are passed on, Exercise by Exercise', () => {
-  const set = (exercise: string, weightKg: number, label?: 'warm-up' | 'working') => ({ exercise, custom: false, weightKg, reps: 5, label });
+  const set = (exercise: string, weightKg: number, label?: 'warm-up' | 'working') => ({ id: `${exercise}-${weightKg}`, exercise, custom: false, weightKg, reps: 5, label });
   const session = {
     localDate: '2026-10-19',
     sets: [set('back-squat', 60), set('bench-press', 40), set('back-squat', 100), set('bench-press', 60), set('back-squat', 100, 'warm-up')],
