@@ -1,10 +1,12 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import { Dots } from './Consistency.tsx';
-import { initials, refreshBoard, refreshGroups, useBoard, useGroups, type BoardRow, type Group, type Period } from './groups.ts';
+import { initials, refreshBoard, refreshGroups, setScoringMode, useBoard, useGroups, type BoardRow, type Group, type Period, type ScoringMode } from './groups.ts';
 import { useI18n } from './i18n.ts';
+import { Info } from './Info.tsx';
 import type { Exercise, Training } from './training.ts';
 
 const periods: Period[] = ['week', 'month', 'year'];
+const modes: ScoringMode[] = ['standard', 'prHunt', 'grind'];
 
 // Fetches a Group's board for a Period now and whenever the phone comes back online. Offline, the
 // board shows as last fetched.
@@ -72,6 +74,9 @@ export function GroupBoard({ userId, group, training }: { userId: string; group:
     const exercise = catalog.find((candidate) => candidate.id === id);
     return exercise ? (language === 'es' ? exercise.nameEs : exercise.nameEn) : id;
   };
+  const owner = group.members.some(({ me, owner }) => me && owner);
+  const g = t.groups;
+  const next = board?.next_scoring_mode;
   return (
     <section className="card">
       <div className="chips">
@@ -81,6 +86,31 @@ export function GroupBoard({ userId, group, training }: { userId: string; group:
           </button>
         ))}
       </div>
+      {board?.scoring_mode && (
+        <p className="muted">
+          {g.scoringMode(g.modes[board.scoring_mode])} <Info term="scoringMode" />
+          {period !== 'year' && next && next !== board.scoring_mode && <> · {g.modeNext(g.modes[next], g.periods[period].toLowerCase())}</>}
+        </p>
+      )}
+      {owner && period !== 'year' && (
+        <div className="chips" role="group" aria-label={g.modeChoose}>
+          {modes.map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              className="chip"
+              aria-pressed={mode === (next ?? board?.scoring_mode)}
+              onClick={() =>
+                setScoringMode(group.id, mode)
+                  .then(() => refreshBoard(userId, group.id, period))
+                  .catch(() => {})
+              }
+            >
+              {g.modes[mode]}
+            </button>
+          ))}
+        </div>
+      )}
       {board && (
         <ul className="members">
           {board.members.map((row, index) => (

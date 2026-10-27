@@ -5,7 +5,7 @@ import type { Tab } from './navigation.ts';
 export type Language = 'en' | 'es';
 
 // Glossary terms that appear in the interface, each explained by an ⓘ.
-export type Term = 'weeklyTarget' | 'strengthLevel' | 'routine' | 'group' | 'rank' | 'owner' | 'session' | 'set' | 'exercise' | 'calibration';
+export type Term = 'weeklyTarget' | 'strengthLevel' | 'routine' | 'group' | 'rank' | 'owner' | 'scoringMode' | 'session' | 'set' | 'exercise' | 'calibration';
 
 type Messages = {
   tagline: string;
@@ -46,6 +46,11 @@ type Messages = {
     joining: string;
     inviteNotFound: string;
     periods: { week: string; month: string; year: string };
+    // A board's Scoring Mode: the label at its top, the Owner's choice and when a change applies.
+    modes: { standard: string; prHunt: string; grind: string };
+    scoringMode: (mode: string) => string;
+    modeNext: (mode: string, period: string) => string;
+    modeChoose: string;
     // A member's points and sessions on a board row, and a Personal Record chip ("Bench +3%").
     boardPoints: (points: number) => string;
     leader: string;
@@ -278,6 +283,11 @@ const en: Messages = {
       explanation:
         "The member who runs a Group: whoever created it, or the member who's been in it longest once the creator leaves. Only the Owner can reset the invite link.",
     },
+    scoringMode: {
+      term: 'Scoring Mode',
+      explanation:
+        "How a Group's weekly and monthly boards count points. Standard counts everything. PR Hunt counts only Progress Points from Personal Records. Grind counts only Consistency Points from showing up. The Owner picks it, and a change starts with the next week or month. The yearly board is always Standard.",
+    },
     session: {
       term: 'Session',
       explanation: 'One visit to the gym, logged as a sequence of sets.',
@@ -327,6 +337,10 @@ const en: Messages = {
     joining: 'Joining the Group…',
     inviteNotFound: "This invite link doesn't work anymore. Ask your friend for a new one.",
     periods: { week: 'Week', month: 'Month', year: 'Year' },
+    modes: { standard: 'Standard', prHunt: 'PR Hunt', grind: 'Grind' },
+    scoringMode: (mode) => `Scoring: ${mode}`,
+    modeNext: (mode, period) => `${mode} from next ${period}`,
+    modeChoose: 'Scoring Mode (from the next week or month)',
     boardPoints: (points) => `${points} pts`,
     leader: 'Leader',
     race: (position, size) => {
@@ -537,6 +551,11 @@ const es: Messages = {
       explanation:
         'Quien maneja el grupo: el que lo creó o, si se va, el miembro que está hace más tiempo. Solo el creador puede cambiar el link de invitación.',
     },
+    scoringMode: {
+      term: 'Modo de puntaje',
+      explanation:
+        'Cómo cuentan los puntos las tablas semanal y mensual de un grupo. Estándar cuenta todo. Caza de récords cuenta solo los puntos de progreso de los récords personales. Constancia cuenta solo los puntos de constancia por venir a entrenar. Lo elige el creador y un cambio rige desde la semana o el mes siguiente. La tabla anual siempre es Estándar.',
+    },
     session: {
       term: 'Sesión',
       explanation: 'Una visita al gimnasio, registrada como una secuencia de series.',
@@ -586,6 +605,10 @@ const es: Messages = {
     joining: 'Entrando al grupo…',
     inviteNotFound: 'Este link de invitación ya no funciona. Pedile uno nuevo a tu amigo.',
     periods: { week: 'Semana', month: 'Mes', year: 'Año' },
+    modes: { standard: 'Estándar', prHunt: 'Caza de récords', grind: 'Constancia' },
+    scoringMode: (mode) => `Puntaje: ${mode}`,
+    modeNext: (mode, period) => `${mode} desde la ${period} que viene`,
+    modeChoose: 'Modo de puntaje (desde la semana o el mes que viene)',
     boardPoints: (points) => `${points} pts`,
     leader: 'Líder',
     race: (position, size) => `${position}º de ${size}`,
