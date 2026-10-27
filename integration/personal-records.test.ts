@@ -149,7 +149,15 @@ test("Ana's sex and bodyweight weight her Personal Record, the event records wha
   expect(event.bodyweightKg).toBe(83);
   expect(event.progressPoints).toBe(55);
 
-  expect(await scoringEventsOf(bea)).toEqual([]);
   const { data } = await bea.client.from('profile_history').select('*');
   expect(data).toEqual([]);
+});
+
+test("a signed-in user can't read Scoring Events at all, their own included, so their Strength Level never reaches them", async () => {
+  const { ana } = await anaWithARecord();
+
+  const { data, error } = await ana.client.from('scoring_events').select('id, event');
+
+  expect(error?.code).toBe('42501');
+  expect(data).toBeNull();
 });
