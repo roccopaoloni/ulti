@@ -1,3 +1,4 @@
+import type { Division, Tier } from '@ulti/rules';
 import { supabase } from './auth.ts';
 import { paths } from './navigation.ts';
 import { today } from './profile.ts';
@@ -131,6 +132,8 @@ export type BoardRow = {
   avatar_color: string;
   me: boolean;
   points: number;
+  tier: Tier;
+  division: Division | null;
   weekly_target: number | null;
   session_dates: string[];
   records: { exercise: string; percent_gain: number; points: number }[];
@@ -193,6 +196,8 @@ export type MemberProfile = {
   me: boolean;
   position: number;
   points: number;
+  tier: Tier;
+  division: Division | null;
   session_count: number;
   shares_weights: boolean;
   shares_sessions: boolean;

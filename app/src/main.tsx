@@ -2,6 +2,7 @@ import { StrictMode, useEffect, useMemo } from 'react';
 import { createRoot } from 'react-dom/client';
 import { registerSW } from 'virtual:pwa-register';
 import { App } from './App.tsx';
+import { BadgeDefs } from './Badge.tsx';
 import { captureInvite } from './groups.ts';
 import { createI18n, detectLanguage, I18nContext, type Language } from './i18n.ts';
 import { languageKey } from './profile.ts';
@@ -19,6 +20,7 @@ function Root() {
   }, [i18n]);
   return (
     <I18nContext value={i18n}>
+      <BadgeDefs />
       <App />
     </I18nContext>
   );

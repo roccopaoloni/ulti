@@ -1030,6 +1030,102 @@ button.cell {
   font-weight: 600;
 }
 
+/* Rank badges (from the prototype). The shine rests off the badge and sweeps across now and then;
+prefers-reduced-motion switches every animation off, so it stays off the badge. */
+.badge-sm {
+  width: auto;
+  height: 16px;
+  flex: none;
+}
+.badge-lg {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.badge-lg .disp {
+  font-size: calc(38px * var(--ds));
+}
+.badge-lg .rank-badge {
+  width: 132px;
+  height: auto;
+  flex: none;
+  margin: -8px -6px -8px -10px;
+  filter: drop-shadow(0 8px 18px color-mix(in srgb, var(--t) 35%, transparent));
+}
+.rank-badge .shine {
+  transform: translateX(-60px);
+}
+.b-anim .shine {
+  animation: bshine 5.5s ease-in-out infinite;
+}
+.b-anim .aura {
+  animation: baura 3.2s ease-in-out infinite;
+}
+.b-anim .flare {
+  animation: baura 2.4s ease-in-out infinite;
+}
+.b-anim .spin {
+  transform-box: view-box;
+  transform-origin: 100px 100px;
+  animation: bspin 60s linear infinite;
+}
+.rank-badge .plaque {
+  font-family: var(--display);
+  font-weight: 800;
+  fill: #fff;
+}
+@keyframes bshine {
+  0%, 68% { transform: translateX(-60px); }
+  100% { transform: translateX(260px); }
+}
+@keyframes baura {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+@keyframes bspin {
+  to { transform: rotate(360deg); }
+}
+.bar {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.bar i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--t);
+}
+.shelf {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  padding-top: 4px;
+}
+.shelf > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  font-size: 11px;
+  color: var(--muted);
+}
+.shelf svg {
+  height: 60px;
+  width: auto;
+  max-width: 100%;
+}
+.shelf .locked svg {
+  filter: grayscale(1) brightness(0.75);
+  opacity: 0.45;
+}
+.member-heading .badge-sm {
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
 /* The Focus layout: one Set at a time (from the prototype's Focus layout). The children of the
    Exercise are ordered here so the Done button ends up at the bottom, in thumb reach. */
 .ex.focus {

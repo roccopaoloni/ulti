@@ -76,6 +76,9 @@ const alwaysVisible = {
   me: false,
   position: 1,
   points: 150,
+  // The Rank is always visible; her 150 Points in the Season put her in Bronze V.
+  tier: 'bronze',
+  division: 5,
   session_count: 2,
 };
 const record = { exercise: 'back-squat', percent_gain: 5, points: 110, local_date: '2026-10-19' };

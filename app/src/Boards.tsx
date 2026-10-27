@@ -1,5 +1,6 @@
 import { kgToUnits } from '@ulti/rules';
 import { useEffect, useState, type CSSProperties } from 'react';
+import { Badge } from './Badge.tsx';
 import { Dots } from './Consistency.tsx';
 import {
   fetchMemberProfile,
@@ -62,6 +63,8 @@ function BoardRowView({ row, nameOf, onOpen }: { row: BoardRow; nameOf: (exercis
         <button type="button" className="member-name btn-link" style={{ textAlign: 'start' }}>
           {row.display_name}
           {row.me && <span className="muted"> · {g.you}</span>}
+          {/* Boards stored before Ranks came with the board have none. */}
+          {row.tier && <Badge rank={{ tier: row.tier, division: row.division }} tierName={t.rank.tier[row.tier]} mode="sm" />}
           {row.position === 1 && row.points > 0 && <Crown />}
         </button>
         {row.weekly_target ? <Dots done={row.session_dates.length} target={row.weekly_target} /> : null}
@@ -114,8 +117,9 @@ function MemberProfileView({
       {failed && <p className="error">{g.retry}</p>}
       {profile && (
         <>
-          <p className="disp">
+          <p className="disp member-heading">
             {profile.position}. {profile.display_name} · {g.boardPoints(profile.points)}
+            {profile.tier && <Badge rank={{ tier: profile.tier, division: profile.division }} tierName={t.rank.tier[profile.tier]} mode="sm" />}
           </p>
           <p className="muted">{g.memberSessions(profile.session_count)}</p>
           {profile.records.length > 0 && (

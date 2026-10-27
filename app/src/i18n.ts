@@ -259,6 +259,8 @@ type Messages = {
     title: string;
     tier: Record<'bronze' | 'silver' | 'gold' | 'diamond' | 'elite', string>;
     topPercent: (percent: number) => string;
+    // The short form on the Elite plaque.
+    plaqueTopPercent: (percent: number) => string;
     position: (position: number) => string;
     toNext: (points: number, next: string) => string;
     maxed: string;
@@ -562,6 +564,7 @@ const en: Messages = {
     title: 'Rank',
     tier: { bronze: 'Bronze', silver: 'Silver', gold: 'Gold', diamond: 'Diamond', elite: 'Elite' },
     topPercent: (percent) => `top ${percent}% this Season`,
+    plaqueTopPercent: (percent) => `top ${percent}%`,
     position: (position) => `#${position} this Season`,
     toNext: (points, next) => `${points} pts to ${next}`,
     maxed: 'Top Tier reached',
@@ -860,6 +863,7 @@ const es: Messages = {
     title: 'Rango',
     tier: { bronze: 'Bronce', silver: 'Plata', gold: 'Oro', diamond: 'Diamante', elite: 'Élite' },
     topPercent: (percent) => `top ${percent}% esta temporada`,
+    plaqueTopPercent: (percent) => `top ${percent}%`,
     position: (position) => `#${position} esta temporada`,
     toNext: (points, next) => `${points} pts para ${next}`,
     maxed: 'Llegaste a la liga más alta',

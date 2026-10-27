@@ -146,6 +146,8 @@ test("the board shows a member's points, Session dots and Personal Records, and 
     avatar_color: '#6fb6f7',
     me: false,
     points: 150,
+    tier: 'bronze',
+    division: 5,
     weekly_target: 3,
     session_dates: ['2026-10-20'],
     records: [{ exercise: 'back-squat', percent_gain: 5, points: 110 }],
@@ -156,6 +158,28 @@ test("the board shows a member's points, Session dots and Personal Records, and 
     // Either no rows come back, or the read is refused outright (once no one reads events directly).
     expect(read.data ?? []).toEqual([]);
   }
+});
+
+test("each member's Rank on the board comes from their Season Points, not the Period's", async () => {
+  // Seven full weeks of a Weekly Target of 3 in the first quarter (no other test trains then) are 840 Consistency Points in that
+  // Season: Silver V. The week the board shows (the last of the Season) has none of them.
+  const ana = await lifter('Ana');
+  const mondays = ['2026-01-05', '2026-01-12', '2026-01-19', '2026-01-26', '2026-02-02', '2026-02-09', '2026-02-16'];
+  const days = mondays.flatMap((monday) => [0, 1, 2].map((offset) => new Date(Date.parse(monday) + offset * 86_400_000).toISOString().slice(0, 10)));
+  await sync(ana, [
+    { ...weeklyTarget(3), entry: { ...weeklyTarget(3).entry, effectiveFrom: '2026-01-01' } },
+    ...days.flatMap(utcSession),
+  ]);
+  const bea = await lifter('Bea');
+  const gymCrew = await groupOf(ana, bea);
+
+  const { members } = await board(bea, gymCrew, 'week', '2026-03-30');
+
+  const rows = members.map(({ display_name, points, tier, division }) => [display_name, points, tier, division]);
+  expect(rows).toEqual([
+    ['Ana', 0, 'silver', 5],
+    ['Bea', 0, 'bronze', 5],
+  ]);
 });
 
 test("a user who isn't in the Group can't read its board", async () => {
