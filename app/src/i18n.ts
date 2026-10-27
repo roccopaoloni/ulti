@@ -12,6 +12,7 @@ type Messages = {
   tabs: Record<Tab, string>;
   screens: Record<Tab, { label: string; text: string }>;
   close: string;
+  about: { title: string; fitnessVoltLink: string; symmetricStrength: string };
   glossary: Record<Term, { term: string; explanation: string }>;
   // Groups: creating, inviting, joining and leaving, and the display name and avatar members see.
   groups: {
@@ -248,6 +249,11 @@ const en: Messages = {
     profile: { label: 'Your Rank', text: "How far you've climbed will show up here." },
   },
   close: 'Close',
+  about: {
+    title: 'About',
+    fitnessVoltLink: 'Powered by FitnessVolt',
+    symmetricStrength: 'Built on the Symmetric Strength gym dataset.',
+  },
   glossary: {
     weeklyTarget: {
       term: 'Weekly Target',
@@ -505,6 +511,11 @@ const es: Messages = {
     profile: { label: 'Tu rango', text: 'Acá vas a ver hasta dónde llegaste.' },
   },
   close: 'Cerrar',
+  about: {
+    title: 'Acerca de',
+    fitnessVoltLink: 'Powered by FitnessVolt',
+    symmetricStrength: 'Basados en el conjunto de datos de gimnasio de Symmetric Strength.',
+  },
   glossary: {
     weeklyTarget: {
       term: 'Objetivo semanal',
