@@ -241,7 +241,7 @@ export function Badge({ rank, tierName, mode, plaque }: { rank: Rank; tierName: 
   } else {
     footer = [0, 1, 2, 3, 4].map((i) => {
       const x = 76 + i * 12;
-      return <path key={i} d={poly([[x, 152.5], [x + 4, 158], [x, 163.5], [x - 4, 158]])} style={{ fill: i <= step ? 'var(--t)' : 'var(--line)' }} />;
+      return <path key={i} className="pip" data-on={i <= step ? '1' : undefined} d={poly([[x, 152.5], [x + 4, 158], [x, 163.5], [x - 4, 158]])} style={{ fill: i <= step ? 'var(--t)' : 'var(--line)' }} />;
     });
   }
   return (
