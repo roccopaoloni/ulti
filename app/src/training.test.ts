@@ -26,15 +26,26 @@ function anasPhone(
   const connectivity = new EventTarget();
   const userId = crypto.randomUUID();
   let minutes = 0;
+  // Opening the phone `at` a later moment keeps its data and moves its clock there.
+  let clockAt = startsAt;
   const options = {
     send: network.send,
     connectivity,
-    now: () => new Date(startsAt + 60_000 * minutes++),
+    now: () => new Date(clockAt + 60_000 * minutes++),
     timeZone: () => 'America/Argentina/Buenos_Aires',
     retryAfterMs,
   };
-  return { connectivity, open: () => openTraining(userId, options) };
+  return {
+    connectivity,
+    open: (at = startsAt) => {
+      clockAt = at;
+      return openTraining(userId, options);
+    },
+  };
 }
+
+const profileEntries = (batch: Mutation[]) =>
+  batch.flatMap((m) => (m.kind === 'saveProfileEntry' ? [{ field: m.entry.field, effectiveFrom: m.entry.effectiveFrom, value: m.entry.value }] : []));
 
 const kindsAndValues = (batch: Mutation[]) =>
   batch.map((m) =>
@@ -42,7 +53,9 @@ const kindsAndValues = (batch: Mutation[]) =>
       ? { kind: m.kind, finished: m.session.finishedAt !== null }
       : m.kind === 'saveSet'
         ? { kind: m.kind, exerciseId: m.set.exerciseId, weightKg: m.set.weightKg, reps: m.set.reps }
-        : { kind: m.kind, exerciseId: m.exercise.id },
+        : m.kind === 'saveProfileEntry'
+          ? { kind: m.kind }
+          : { kind: m.kind, exerciseId: m.exercise.id },
   );
 
 test('Sets logged offline are queued and sent when the phone is back online', async () => {
@@ -275,5 +288,107 @@ test("a Set's label flipped offline shows at once and goes out as a later write 
   ]);
   expect(Date.parse(writes[1].updatedAt)).toBeGreaterThan(Date.parse(writes[0].updatedAt));
   expect(writes[0].mutation).not.toBe(writes[1].mutation);
+  training.close();
+});
+
+test("Ana's onboarding is written through the outbox, and her first Weekly Target applies from today", async () => {
+  const network = server();
+  // Saturday 24 October in Buenos Aires.
+  const phone = anasPhone(network, { startsAt: Date.UTC(2026, 9, 24, 21, 5) });
+  const training = await phone.open();
+
+  await training.setProfile('sex', 'female');
+  await training.setProfile('bodyweightKg', 62.5);
+  await training.setProfile('weeklyTarget', 4);
+
+  await vi.waitFor(() => expect(network.batches.flatMap(profileEntries)).toHaveLength(3));
+  expect(network.batches.flatMap(profileEntries)).toEqual([
+    { field: 'sex', effectiveFrom: '2026-10-24', value: 'female' },
+    { field: 'bodyweightKg', effectiveFrom: '2026-10-24', value: 62.5 },
+    { field: 'weeklyTarget', effectiveFrom: '2026-10-24', value: 4 },
+  ]);
+  expect(await training.profile()).toEqual({
+    sex: [{ effectiveFrom: '2026-10-24', value: 'female' }],
+    bodyweightKg: [{ effectiveFrom: '2026-10-24', value: 62.5 }],
+    weeklyTarget: [{ effectiveFrom: '2026-10-24', value: 4 }],
+  });
+  training.close();
+});
+
+test('a later change to the Weekly Target starts next Monday', async () => {
+  const network = server();
+  const phone = anasPhone(network, { startsAt: Date.UTC(2026, 9, 21, 21, 5) });
+  const training = await phone.open();
+  await training.setProfile('weeklyTarget', 4);
+  training.close();
+
+  // Saturday: lowering it now would let her look consistent for the week already running.
+  const saturday = await phone.open(Date.UTC(2026, 9, 24, 21, 5));
+  await saturday.setProfile('weeklyTarget', 2);
+
+  expect((await saturday.profile()).weeklyTarget).toEqual([
+    { effectiveFrom: '2026-10-21', value: 4 },
+    { effectiveFrom: '2026-10-26', value: 2 },
+  ]);
+  saturday.close();
+});
+
+test('a profile entry made offline waits in the outbox and survives the app closing', async () => {
+  const network = server();
+  network.offline = true;
+  const phone = anasPhone(network);
+  const before = await phone.open();
+  await before.setProfile('bodyweightKg', 62.5);
+  // Let the failed attempt to send finish before the phone comes back online.
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  before.close();
+
+  network.offline = false;
+  const after = await phone.open();
+
+  await vi.waitFor(() => expect(network.batches).toHaveLength(1));
+  expect(profileEntries(network.batches[0])).toEqual([{ field: 'bodyweightKg', effectiveFrom: '2026-10-19', value: 62.5 }]);
+  expect((await after.profile()).bodyweightKg).toEqual([{ effectiveFrom: '2026-10-19', value: 62.5 }]);
+  after.close();
+});
+
+test('the phone asks for bodyweight two weeks after the last time, a dismissed prompt counts, and the last value carries forward', async () => {
+  const network = server();
+  const phone = anasPhone(network);
+  const first = await phone.open();
+  expect(await first.bodyweightPromptDue()).toBe(false); // onboarding asks first, not the prompt
+  await first.setProfile('bodyweightKg', 62.5);
+  expect(await first.bodyweightPromptDue()).toBe(false);
+  first.close();
+
+  const twoWeeksLater = await phone.open(Date.UTC(2026, 10, 2, 21, 5));
+  expect(await twoWeeksLater.bodyweightPromptDue()).toBe(true);
+  await twoWeeksLater.dismissBodyweightPrompt();
+  expect(await twoWeeksLater.bodyweightPromptDue()).toBe(false);
+  expect((await twoWeeksLater.profile()).bodyweightKg).toEqual([{ effectiveFrom: '2026-10-19', value: 62.5 }]);
+  twoWeeksLater.close();
+
+  const fourWeeksLater = await phone.open(Date.UTC(2026, 10, 16, 21, 5));
+  expect(await fourWeeksLater.bodyweightPromptDue()).toBe(true);
+  fourWeeksLater.close();
+});
+
+test('a history fetched from the server fills a new phone, without overwriting what it already holds', async () => {
+  const network = server();
+  network.offline = true;
+  const phone = anasPhone(network);
+  const training = await phone.open();
+  await training.setProfile('bodyweightKg', 63);
+
+  await training.saveProfileHistory([
+    { field: 'bodyweightKg', effectiveFrom: '2026-10-19', value: 62 },
+    { field: 'sex', effectiveFrom: '2026-10-05', value: 'female' },
+  ]);
+
+  expect(await training.profile()).toEqual({
+    sex: [{ effectiveFrom: '2026-10-05', value: 'female' }],
+    bodyweightKg: [{ effectiveFrom: '2026-10-19', value: 63 }],
+    weeklyTarget: [],
+  });
   training.close();
 });

@@ -5,7 +5,7 @@ import type { Tab } from './navigation.ts';
 export type Language = 'en' | 'es';
 
 // Glossary terms that appear in the interface, each explained by an ⓘ.
-export type Term = 'weeklyTarget' | 'routine' | 'group' | 'rank' | 'owner' | 'session' | 'set' | 'exercise';
+export type Term = 'weeklyTarget' | 'strengthLevel' | 'routine' | 'group' | 'rank' | 'owner' | 'session' | 'set' | 'exercise';
 
 type Messages = {
   tagline: string;
@@ -89,6 +89,29 @@ type Messages = {
       other: string;
     };
   };
+  // Onboarding, the Profile tab's settings and the bodyweight prompt.
+  body: {
+    onboardingTitle: string;
+    onboardingText: string;
+    privacy: string;
+    units: string;
+    language: string;
+    sex: string;
+    male: string;
+    female: string;
+    unspecified: string;
+    bodyweight: (units: string) => string;
+    weeklyTarget: string;
+    sessionsPerWeek: (count: number) => string;
+    // A Weekly Target change waiting for its Monday.
+    startsOn: (count: number, date: string) => string;
+    invalid: string;
+    continue: string;
+    save: string;
+    promptTitle: string;
+    promptText: (last: string) => string;
+    dismiss: string;
+  };
   // Logging a Session.
   session: {
     start: string;
@@ -151,6 +174,11 @@ const en: Messages = {
       term: 'Weekly Target',
       explanation:
         'How many sessions you commit to each week. Hitting it is worth the most points: a full week is worth the same whether you train 3 or 5 days.',
+    },
+    strengthLevel: {
+      term: 'Strength Level',
+      explanation:
+        "How advanced you are compared with lifters of your sex and bodyweight. It's what lets a small gain by an experienced lifter count as much as a big one by a beginner. Nobody sees it, not even your Group.",
     },
     routine: {
       term: 'Routine',
@@ -256,6 +284,27 @@ const en: Messages = {
       other: 'Something went wrong. Try again.',
     },
   },
+  body: {
+    onboardingTitle: 'About you',
+    onboardingText: 'A few things so your progress is scored fairly. You can change any of them later in Profile.',
+    privacy: 'Your sex, bodyweight and Strength Level are never shown to anyone, not even your Group.',
+    units: 'Units',
+    language: 'Language',
+    sex: 'Sex',
+    male: 'Male',
+    female: 'Female',
+    unspecified: 'Prefer not to say',
+    bodyweight: (units) => `Bodyweight in ${units}`,
+    weeklyTarget: 'Weekly Target',
+    sessionsPerWeek: (count) => `${count} a week`,
+    startsOn: (count, date) => `Changes to ${count} a week on ${date}.`,
+    invalid: 'Enter a bodyweight between 20 and 500 kg.',
+    continue: 'Continue',
+    save: 'Save',
+    promptTitle: 'Still the same weight?',
+    promptText: (last) => `Your last bodyweight was ${last}. Update it, or keep it.`,
+    dismiss: 'Keep it',
+  },
   session: {
     start: 'Start session',
     startHint: 'It saves on your phone, even with no signal.',
@@ -273,7 +322,7 @@ const en: Messages = {
     equipment: { barbell: 'Barbell', dumbbell: 'Dumbbell', machine: 'Machine', cable: 'Cable', smith: 'Smith machine', bodyweight: 'Bodyweight' },
     customTag: 'Custom',
     createCustom: (name) => `Create custom exercise "${name}"`,
-    weight: 'Weight in kg',
+    weight: 'Weight',
     reps: 'Reps',
     logSet: 'Log set',
     warmUp: 'Warm-up',
@@ -311,6 +360,11 @@ const es: Messages = {
       term: 'Objetivo semanal',
       explanation:
         'Cuántas sesiones te comprometés a hacer por semana. Cumplirlo es lo que más puntos da: una semana completa vale lo mismo entrenes 3 o 5 días.',
+    },
+    strengthLevel: {
+      term: 'Nivel de fuerza',
+      explanation:
+        'Qué tan avanzado estás comparado con gente de tu sexo y tu peso. Hace que una mejora chica de alguien con experiencia valga lo mismo que una grande de un principiante. Nadie lo ve, ni siquiera tu grupo.',
     },
     routine: {
       term: 'Rutina',
@@ -416,6 +470,27 @@ const es: Messages = {
       other: 'Algo salió mal. Probá de nuevo.',
     },
   },
+  body: {
+    onboardingTitle: 'Sobre vos',
+    onboardingText: 'Unos datos para puntuar tu progreso con justicia. Podés cambiarlos después en Perfil.',
+    privacy: 'Tu sexo, tu peso corporal y tu nivel de fuerza no los ve nadie, ni siquiera tu grupo.',
+    units: 'Unidades',
+    language: 'Idioma',
+    sex: 'Sexo',
+    male: 'Masculino',
+    female: 'Femenino',
+    unspecified: 'Prefiero no decirlo',
+    bodyweight: (units) => `Peso corporal en ${units}`,
+    weeklyTarget: 'Objetivo semanal',
+    sessionsPerWeek: (count) => `${count} por semana`,
+    startsOn: (count, date) => `Pasa a ${count} por semana el ${date}.`,
+    invalid: 'Ingresá un peso corporal entre 20 y 500 kg.',
+    continue: 'Continuar',
+    save: 'Guardar',
+    promptTitle: '¿Seguís pesando lo mismo?',
+    promptText: (last) => `Tu último peso corporal fue ${last}. Actualizalo o dejalo así.`,
+    dismiss: 'Dejarlo así',
+  },
   session: {
     start: 'Empezar sesión',
     startHint: 'Se guarda en tu teléfono, aunque no haya señal.',
@@ -433,7 +508,7 @@ const es: Messages = {
     equipment: { barbell: 'Barra', dumbbell: 'Mancuernas', machine: 'Máquina', cable: 'Polea', smith: 'Multipower', bodyweight: 'Peso corporal' },
     customTag: 'Personalizado',
     createCustom: (name) => `Crear ejercicio personalizado "${name}"`,
-    weight: 'Peso en kg',
+    weight: 'Peso',
     reps: 'Repeticiones',
     logSet: 'Registrar serie',
     warmUp: 'Entrada en calor',

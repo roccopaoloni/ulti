@@ -1,3 +1,4 @@
+import { kgToUnits, unitsToKg, type Units } from '@ulti/rules';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useI18n } from './i18n.ts';
 import type { Exercise, SetRecord, Training } from './training.ts';
@@ -6,7 +7,7 @@ type Past = Awaited<ReturnType<Training['pastSessions']>>[number];
 
 // The Train tab's history: past Sessions, newest first. Opening one shows its Exercises and Sets,
 // each of which can be fixed or deleted, offline too.
-export function History({ training }: { training: Training }) {
+export function History({ training, units }: { training: Training; units: Units }) {
   const { t, language } = useI18n();
   const h = t.history;
   const [sessions, setSessions] = useState<Past[]>([]);
@@ -54,6 +55,7 @@ export function History({ training }: { training: Training }) {
                       <PastSet
                         key={set.id}
                         set={set}
+                        units={units}
                         onEdit={async (weightKg, reps) => {
                           await training.editSet(set.id, weightKg, reps);
                           await reload();
@@ -75,22 +77,25 @@ export function History({ training }: { training: Training }) {
 
 function PastSet({
   set,
+  units,
   onEdit,
   onDelete,
 }: {
   set: SetRecord;
+  units: Units;
   onEdit: (weightKg: number, reps: number) => Promise<void>;
   onDelete: () => Promise<void>;
 }) {
   const { t, language, formatNumber } = useI18n();
   const h = t.history;
   const [editing, setEditing] = useState(false);
-  const typed = String(set.weightKg).replace('.', language === 'es' ? ',' : '.');
+  const typed = String(Math.round(kgToUnits(set.weightKg, units) * 100) / 100).replace('.', language === 'es' ? ',' : '.');
   const [weight, setWeight] = useState(typed);
   const [reps, setReps] = useState(String(set.reps));
 
-  const weightKg = Number(weight.replace(',', '.'));
-  const valid = weight.trim() !== '' && Number.isFinite(weightKg) && weightKg >= 0 && /^[1-9]\d*$/.test(reps);
+  const typedWeight = Number(weight.replace(',', '.'));
+  const weightKg = unitsToKg(typedWeight, units);
+  const valid = weight.trim() !== '' && Number.isFinite(typedWeight) && typedWeight >= 0 && /^[1-9]\d*$/.test(reps);
 
   async function save(event: FormEvent) {
     event.preventDefault();
@@ -103,7 +108,7 @@ function PastSet({
     return (
       <div className="past-set">
         <span>
-          {formatNumber(set.weightKg, 2)} kg × {set.reps}
+          {formatNumber(kgToUnits(set.weightKg, units), 2)} {units} × {set.reps}
         </span>
         <button type="button" className="btn-link" onClick={() => setEditing(true)}>
           {h.edit}
