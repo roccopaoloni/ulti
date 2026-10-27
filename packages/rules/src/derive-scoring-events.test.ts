@@ -7,9 +7,9 @@ test("Ana's first Session derives no Scoring Events, because no Scoring Event ki
       {
         localDate: '2026-10-19',
         sets: [
-          { exercise: 'back-squat', weightKg: 100, reps: 5 },
-          { exercise: 'back-squat', weightKg: 100, reps: 5 },
-          { exercise: 'back-squat', weightKg: 100, reps: 4 },
+          { exercise: 'back-squat', custom: false, weightKg: 100, reps: 5 },
+          { exercise: 'back-squat', custom: false, weightKg: 100, reps: 5 },
+          { exercise: 'back-squat', custom: false, weightKg: 100, reps: 4 },
         ],
       },
     ],

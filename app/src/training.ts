@@ -28,12 +28,14 @@ export type SetRecord = {
   updatedAt: string;
 };
 
-// A catalog Exercise, as the phone keeps it for picking one offline.
-export type Exercise = { id: string; nameEn: string; nameEs: string };
+// An Exercise, as the phone keeps it for picking one offline: from the catalog, or a Custom Exercise
+// of this user's (spec: Catalog seed). A Custom Exercise has one name and no equipment.
+export type Exercise = { id: string; nameEn: string; nameEs: string; equipment: string | null; custom: boolean };
 
 export type Mutation =
   | { id: string; kind: 'saveSession'; session: SessionRecord }
-  | { id: string; kind: 'saveSet'; set: SetRecord };
+  | { id: string; kind: 'saveSet'; set: SetRecord }
+  | { id: string; kind: 'saveExercise'; exercise: { id: string; name: string } };
 
 // The sync endpoint: it resolves once the server has the batch, and throws otherwise.
 export type Send = (mutations: Mutation[]) => Promise<{ rejected: string[] }>;
@@ -78,10 +80,15 @@ export async function openTraining(userId: string, options: Options) {
   // Saves a record and queues its mutation in one transaction, with the Session in progress when
   // it changes: none of them exists without the others.
   async function write(mutation: Mutation, inProgress?: InProgress | null) {
-    const tx = db.transaction(['sessions', 'sets', 'outbox', 'state'], 'readwrite');
+    const tx = db.transaction(['sessions', 'sets', 'exercises', 'outbox', 'state'], 'readwrite');
     if (mutation.kind === 'saveSession') await tx.objectStore('sessions').put(mutation.session);
-    else if (mutation.set.deleted) await tx.objectStore('sets').delete(mutation.set.id);
-    else await tx.objectStore('sets').put(mutation.set);
+    else if (mutation.kind === 'saveSet') {
+      if (mutation.set.deleted) await tx.objectStore('sets').delete(mutation.set.id);
+      else await tx.objectStore('sets').put(mutation.set);
+    } else {
+      const { id, name } = mutation.exercise;
+      await tx.objectStore('exercises').put({ id, nameEn: name, nameEs: name, equipment: null, custom: true });
+    }
     await tx.objectStore('outbox').add(mutation);
     if (inProgress) await tx.objectStore('state').put(inProgress, 'sessionInProgress');
     if (inProgress === null) await tx.objectStore('state').delete('sessionInProgress');
@@ -203,9 +210,18 @@ export async function openTraining(userId: string, options: Options) {
 
     exercises: () => db.getAll('exercises'),
 
+    // Exercises are never removed, so the refresh adds to the phone's copy rather than replacing
+    // it: a Custom Exercise the server hasn't received yet stays.
     async saveExercises(exercises: Exercise[]) {
       const tx = db.transaction('exercises', 'readwrite');
-      await Promise.all([tx.store.clear(), ...exercises.map((exercise) => tx.store.put(exercise)), tx.done]);
+      await Promise.all([...exercises.map((exercise) => tx.store.put(exercise)), tx.done]);
+    },
+
+    // The lifter's own Exercise, for what the catalog doesn't have. Logged as weight × reps.
+    async createExercise(name: string) {
+      const id = `custom-${crypto.randomUUID()}`;
+      await write({ id: crypto.randomUUID(), kind: 'saveExercise', exercise: { id, name: name.trim() } });
+      return { id };
     },
 
     close() {

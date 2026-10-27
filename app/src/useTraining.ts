@@ -14,9 +14,18 @@ const send: Send = async (mutations) => {
 
 // The catalog changes rarely, so the phone keeps the copy it fetched last.
 async function refreshCatalog(training: Training) {
-  const { data, error } = await supabase.from('exercises').select('id, name_en, name_es');
+  // Row-level security returns the shared catalog and this user's own Custom Exercises.
+  const { data, error } = await supabase.from('exercises').select('id, name_en, name_es, equipment, owner_id');
   if (error) return;
-  await training.saveExercises(data.map(({ id, name_en, name_es }) => ({ id, nameEn: name_en, nameEs: name_es })));
+  await training.saveExercises(
+    data.map(({ id, name_en, name_es, equipment, owner_id }) => ({
+      id,
+      nameEn: name_en,
+      nameEs: name_es,
+      equipment,
+      custom: owner_id !== null,
+    })),
+  );
 }
 
 // The signed-in user's training on this phone, once its store is open.

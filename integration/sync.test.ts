@@ -105,6 +105,7 @@ test('the catalog holds the 14 Benchmark Lifts, each with its type, the Benchmar
   const { data, error } = await ana.client
     .from('exercises')
     .select('id, name_en, name_es, type, is_benchmark_lift, default_increment_kg')
+    .eq('is_benchmark_lift', true)
     .order('id');
 
   expect(error).toBeNull();
@@ -135,6 +136,89 @@ test('the catalog holds the 14 Benchmark Lifts, each with its type, the Benchmar
     lift('snatch-press', 'Snatch press', 'Press con agarre de arranque', 'weighted', 2.5),
     lift('sumo-deadlift', 'Sumo deadlift', 'Peso muerto sumo', 'weighted', 5),
   ]);
+});
+
+test('the catalog lists each equipment variant as its own Exercise, with a default Increment that fits the equipment', async () => {
+  const ana = await lifter('ana');
+
+  const { data, error } = await ana.client
+    .from('exercises')
+    .select('id, name_en, name_es, type, equipment, default_increment_kg, owner_id');
+
+  expect(error).toBeNull();
+  const catalog = new Map(data!.map((exercise) => [exercise.id, exercise]));
+  // The 14 Benchmark Lifts plus about 50 common exercises.
+  expect(catalog.size).toBeGreaterThanOrEqual(60);
+  expect(catalog.size).toBeLessThanOrEqual(75);
+  // Every Exercise is named in both languages, has an equipment and belongs to nobody.
+  for (const exercise of catalog.values()) {
+    expect(exercise).toMatchObject({ name_en: expect.stringMatching(/\S/), name_es: expect.stringMatching(/\S/), owner_id: null });
+    expect(['barbell', 'dumbbell', 'machine', 'cable', 'smith', 'bodyweight']).toContain(exercise.equipment);
+  }
+  // Switching equipment is a different Exercise, never a fake record.
+  const bench = ['bench-press', 'dumbbell-bench-press', 'smith-machine-bench-press', 'machine-chest-press'];
+  expect(bench.map((id) => catalog.get(id)?.equipment)).toEqual(['barbell', 'dumbbell', 'smith', 'machine']);
+  // Increments by equipment (spec): +5 kg barbell lower body, +2.5 kg barbell upper body, the next
+  // dumbbell, one plate on a machine stack.
+  const increments = ['romanian-deadlift', 'barbell-row', 'dumbbell-bench-press', 'leg-press'].map(
+    (id) => catalog.get(id)?.default_increment_kg,
+  );
+  expect(increments).toEqual([5, 2.5, 2.5, 5]);
+  expect(catalog.get('dumbbell-bench-press')).toMatchObject({ name_en: 'Dumbbell bench press', name_es: 'Press banca con mancuernas' });
+});
+
+// A Custom Exercise as the phone's outbox sends it. Its ID is made on the phone.
+function customExercise(name: string) {
+  const exerciseId = `custom-${crypto.randomUUID()}`;
+  return {
+    id: crypto.randomUUID(),
+    kind: 'saveExercise',
+    exercise: { id: exerciseId, name },
+    exerciseId,
+  };
+}
+
+test("Ana's Custom Exercise syncs with her Sets, and only she can see it", async () => {
+  const ana = await lifter('ana');
+  const bea = await lifter('bea');
+  const monday = anasMonday();
+  const plank = customExercise('Plank with a weight');
+  const plankSet = {
+    id: crypto.randomUUID(),
+    kind: 'saveSet',
+    set: { ...monday.firstSet.set, id: crypto.randomUUID(), exerciseId: plank.exerciseId, weightKg: 10, reps: 1 },
+  };
+
+  const response = await sync(ana, [monday.start, plank, plankSet, monday.finish]);
+
+  expect(response).toEqual({ rejected: [] });
+  const mine = await ana.client.from('exercises').select('id, name_en, name_es, type, owner_id').eq('id', plank.exerciseId);
+  expect(mine.data).toEqual([
+    { id: plank.exerciseId, name_en: 'Plank with a weight', name_es: 'Plank with a weight', type: 'weighted', owner_id: ana.id },
+  ]);
+  expect((await trainingOf(ana)).sets?.map(({ exercise_id }) => exercise_id)).toEqual([plank.exerciseId]);
+  // Bea's catalog is the shared one, without it.
+  const theirs = await bea.client.from('exercises').select('id').eq('id', plank.exerciseId);
+  expect(theirs.data).toEqual([]);
+  expect((await bea.client.from('exercises').select('id').not('owner_id', 'is', null)).data).toEqual([]);
+});
+
+test("a Custom Exercise can't replace a catalog Exercise or someone else's Custom Exercise", async () => {
+  const ana = await lifter('ana');
+  const bea = await lifter('bea');
+  const plank = customExercise('Plank');
+  await sync(ana, [plank]);
+
+  const overCatalog = { ...plank, id: crypto.randomUUID(), exercise: { ...plank.exercise, id: 'back-squat', name: 'Fake' } };
+  const attempt = await bea.client.functions.invoke('sync', { body: { mutations: [overCatalog] } });
+  expect(attempt.error).not.toBeNull();
+  const overAna = { ...plank, id: crypto.randomUUID(), exercise: { ...plank.exercise, name: 'Bea was here' } };
+  await sync(bea, [overAna]);
+
+  const squat = await ana.client.from('exercises').select('name_en').eq('id', 'back-squat');
+  expect(squat.data).toEqual([{ name_en: 'Back squat' }]);
+  const plankNow = await ana.client.from('exercises').select('name_en, owner_id').eq('id', plank.exerciseId);
+  expect(plankNow.data).toEqual([{ name_en: 'Plank', owner_id: ana.id }]);
 });
 
 test("Ana's Session reaches the server with its Sets, its UTC timestamp, her time zone and its local date", async () => {
