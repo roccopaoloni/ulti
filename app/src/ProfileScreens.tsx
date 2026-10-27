@@ -4,7 +4,7 @@ import { Field } from './AuthScreens.tsx';
 import { refreshVisibility, saveVisibility, useVisibility, type Visibility } from './groups.ts';
 import { useI18n, type Language } from './i18n.ts';
 import { Info } from './Info.tsx';
-import { setLanguage, setUnits, today } from './profile.ts';
+import { setLanguage, setLayout, setUnits, today, useLayout, type Layout } from './profile.ts';
 import type { Profile, Training } from './training.ts';
 
 const sexes: Sex[] = ['male', 'female', 'unspecified'];
@@ -160,6 +160,7 @@ export function ProfileSettings({
 }) {
   const { t, language } = useI18n();
   const b = t.body;
+  const layout = useLayout(userId);
   const day = today();
   const inForce = {
     sex: valueInForce(profile.sex, day) ?? null,
@@ -196,6 +197,15 @@ export function ProfileSettings({
         ]}
         value={language}
         onChange={setLanguage}
+      />
+      <Choice<Layout>
+        label={b.layout}
+        options={[
+          { value: 'list', text: b.layoutList },
+          { value: 'focus', text: b.layoutFocus },
+        ]}
+        value={layout}
+        onChange={(next) => setLayout(userId, next)}
       />
       <BodyFields units={units} draft={shown} onChange={setDraft} />
       {upcoming && (

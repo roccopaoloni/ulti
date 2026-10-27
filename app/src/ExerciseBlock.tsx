@@ -25,6 +25,7 @@ export function ExerciseBlock({
   records,
   calibrating,
   custom,
+  focus,
   onLog,
   onSetLabel,
   onRir,
@@ -45,6 +46,8 @@ export function ExerciseBlock({
   calibrating: boolean;
   // A Custom Exercise has no Increment to set and gets no recommendations.
   custom: boolean;
+  // The Focus layout: one Set at a time, instead of every row (design: Logging a Session).
+  focus?: boolean;
   // Logs the Set and returns its ID.
   onLog: (weightKg: number, reps: number) => Promise<string>;
   onSetLabel: (setId: string, label: SetLabel) => Promise<void>;
@@ -90,7 +93,7 @@ export function ExerciseBlock({
       </span>
     );
   return (
-    <section className="ex">
+    <section className={focus ? 'ex focus' : 'ex'}>
       <h2 className="ex-name">{name}</h2>
       {calibrating && (
         <p className="calibration">
@@ -117,7 +120,7 @@ export function ExerciseBlock({
           </button>
         </p>
       )}
-      {sets.map((set, index) => (
+      {!focus && sets.map((set, index) => (
         <div key={set.id} className="set done">
           <button
             type="button"
@@ -154,7 +157,32 @@ export function ExerciseBlock({
           ))}
         </div>
       )}
-      {plan && (
+      {focus && plan && (
+        <FocusSets
+          count={Math.max(plan.length, sets.length + 1)}
+          sets={sets}
+          labels={labels}
+          records={records}
+          plan={plan}
+          next={next}
+          bodyweight={bodyweight}
+          units={units}
+          nextSet={
+            <NextSet
+              key={`${sets.length}-${heavier ? 'heavier' : ''}`}
+              focus
+              number={sets.length + 1}
+              planned={next}
+              incrementKg={incrementKg}
+              bodyweight={bodyweight}
+              units={units}
+              onLog={async (weightKg, reps) => setAskRir(await onLog(weightKg, reps))}
+            />
+          }
+          onSetLabel={onSetLabel}
+        />
+      )}
+      {!focus && plan && (
         <NextSet
           key={`${sets.length}-${heavier ? 'heavier' : ''}`}
           number={sets.length + 1}
@@ -179,7 +207,7 @@ export function ExerciseBlock({
           }}
         />
       )}
-      {plan?.slice(sets.length + 1).map((set, index) => (
+      {!focus && plan?.slice(sets.length + 1).map((set, index) => (
         <div key={index} className="set upcoming" aria-hidden="true">
           <span className="tag">{sets.length + index + 2}</span>
           {set ? (
@@ -205,9 +233,11 @@ function NextSet({
   incrementKg,
   bodyweight,
   units,
+  focus,
   onLog,
 }: {
   number: number;
+  focus?: boolean;
   planned: Planned | undefined;
   incrementKg: number;
   bodyweight: boolean;
@@ -234,6 +264,42 @@ function NextSet({
     setBusy(false);
   }
 
+  const keypad = editing && (
+    <Keypad
+      label={editing === 'weight' ? (bodyweight ? s.addedWeight : s.weight) : s.reps}
+      value={editing === 'weight' ? weight : reps}
+      decimal={editing === 'weight' ? decimal : null}
+      step={editing === 'weight' ? incrementInUnits(incrementKg, units) : 1}
+      onChange={editing === 'weight' ? setWeight : setReps}
+      onClose={() => setEditing(null)}
+    />
+  );
+
+  if (focus) {
+    return (
+      <>
+        <div className="f-nums">
+          <button type="button" className="f-num" aria-label={bodyweight ? s.addedWeight : s.weight} onClick={() => setEditing('weight')}>
+            <span className="num">
+              {bodyweight && 'BW +'}
+              {weight || '–'}
+            </span>
+            <span className="unit">{units}</span>
+          </button>
+          <span className="f-x">×</span>
+          <button type="button" className="f-num" aria-label={s.reps} onClick={() => setEditing('reps')}>
+            <span className="num">{reps || '–'}</span>
+            <span className="unit">{s.reps}</span>
+          </button>
+        </div>
+        <button type="button" className="btn-primary f-done" disabled={!valid || busy} onClick={log}>
+          {checkIcon} {s.done}
+        </button>
+        {keypad}
+      </>
+    );
+  }
+
   return (
     <div className="set">
       <span className="tag">{number}</span>
@@ -249,17 +315,111 @@ function NextSet({
       <button type="button" className="check" aria-label={s.logSet} disabled={!valid || busy} onClick={log}>
         {checkIcon}
       </button>
-      {editing && (
-        <Keypad
-          label={editing === 'weight' ? (bodyweight ? s.addedWeight : s.weight) : s.reps}
-          value={editing === 'weight' ? weight : reps}
-          decimal={editing === 'weight' ? decimal : null}
-          step={editing === 'weight' ? incrementInUnits(incrementKg, units) : 1}
-          onChange={editing === 'weight' ? setWeight : setReps}
-          onClose={() => setEditing(null)}
-        />
-      )}
+      {keypad}
     </div>
+  );
+}
+
+// The Focus layout of an Exercise: the Sets as chips, one Set in very large numbers, and previous /
+// next to move between them. The Set still to do is the live NextSet; any other is shown as it is.
+function FocusSets({
+  count,
+  sets,
+  labels,
+  records,
+  plan,
+  next,
+  bodyweight,
+  units,
+  nextSet,
+  onSetLabel,
+}: {
+  count: number;
+  sets: SetRecord[];
+  labels: SetLabel[];
+  records: Map<string, PersonalRecord>;
+  plan: (Planned | undefined)[];
+  next: Planned | undefined;
+  bodyweight: boolean;
+  units: Units;
+  nextSet: React.ReactNode;
+  onSetLabel: (setId: string, label: SetLabel) => Promise<void>;
+}) {
+  const { t, formatNumber } = useI18n();
+  const s = t.session;
+  // Which Set is on show; until the lifter moves, the one still to do. Logging a Set returns to it.
+  const [viewing, setViewing] = useState<{ at: number; loggedSets: number } | null>(null);
+  const current = sets.length;
+  const at = Math.min(viewing && viewing.loggedSets === current ? viewing.at : current, count - 1);
+  const go = (index: number) => setViewing({ at: Math.max(0, Math.min(count - 1, index)), loggedSets: current });
+  const weightText = (weightKg: number) => `${bodyweight ? 'BW +' : ''}${formatNumber(kgToUnits(weightKg, units), 2)}`;
+  const planned = (index: number) => (index === current ? next : plan[index]);
+  const shown = at < current ? sets[at] : planned(at);
+
+  return (
+    <>
+      <div className="f-chips" role="group" aria-label={s.focusSets}>
+        {Array.from({ length: count }, (_, index) => {
+          const set = index < current ? sets[index] : planned(index);
+          return (
+            <button
+              key={index}
+              type="button"
+              className={`f-chip${index < current ? ' done' : ''}${index === at ? ' cur' : ''}`}
+              aria-label={s.focusSet(index + 1)}
+              aria-current={index === at}
+              onClick={() => go(index)}
+            >
+              {index < current && checkIcon}
+              {set ? `${weightText(set.weightKg)} × ${set.reps}` : '–'}
+            </button>
+          );
+        })}
+      </div>
+      {at === current ? (
+        nextSet
+      ) : (
+        <>
+          <div className="f-nums">
+            <div className="f-num">
+              <span className="num">{shown ? weightText(shown.weightKg) : '–'}</span>
+              <span className="unit">{units}</span>
+            </div>
+            <span className="f-x">×</span>
+            <div className="f-num">
+              <span className="num">{shown?.reps ?? '–'}</span>
+              <span className="unit">{s.reps}</span>
+            </div>
+          </div>
+          <button type="button" className="btn-primary f-done" disabled>
+            {checkIcon} {s.done}
+          </button>
+        </>
+      )}
+      <div className="f-label">
+        {at < current ? (
+          <button
+            type="button"
+            className={`tag label-${labels[at]}`}
+            aria-label={s.flipLabel(labels[at] === 'warm-up' ? s.warmUp : s.working)}
+            onClick={() => onSetLabel(sets[at]!.id, labels[at] === 'warm-up' ? 'working' : 'warm-up')}
+          >
+            {at + 1} <small>{labels[at] === 'warm-up' ? s.warmUp : s.working}</small>
+          </button>
+        ) : (
+          <span>{s.focusSet(at + 1)}</span>
+        )}
+        {at < current && records.has(sets[at]!.id) && <small className="pr-points">{s.points(records.get(sets[at]!.id)!.progressPoints)}</small>}
+      </div>
+      <div className="f-nav">
+        <button type="button" disabled={at === 0} onClick={() => go(at - 1)}>
+          ‹ {s.previous}
+        </button>
+        <button type="button" disabled={at === count - 1} onClick={() => go(at + 1)}>
+          {s.next} ›
+        </button>
+      </div>
+    </>
   );
 }
 
