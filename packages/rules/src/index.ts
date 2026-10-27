@@ -406,3 +406,43 @@ export function recommendGoHeavier(history: TrainingHistory, exercise: string, r
   const weightKg = Math.max(...working.map((set) => set.weightKg));
   return { weightKg: weightKg + rule.incrementKg, reps: rule.repMin, incrementKg: rule.incrementKg };
 }
+
+export type Stall = { weightKg: number; reps: number };
+
+// How many of the Exercise's Sessions before a Session its "recent best" e1RM looks back over.
+const RECENT_BEST_SESSIONS = 6;
+const STALL_RESET = 0.9;
+
+// Stall (spec: Stall), judged on the Exercise's Working Sets only. It is Stalled after either:
+// - three Sessions in a row each failing to beat the recent best e1RM, where a Session's e1RM is
+//   its best Working Set and the recent best is the best of the up to 6 Sessions before it (equal
+//   does not beat it; a Session with none before it cannot fail), or
+// - the bottom of the Rep Range missed on some Working Set in each of the last two Sessions.
+// The suggestion is about 10% under the last Session's training weight, rounded to the Increment,
+// back at the bottom of the range.
+export function recommendStall(history: TrainingHistory, exercise: string, rule: GoHeavierRule): Stall | undefined {
+  const sessions = history.sessions
+    .map((session) => workingSets(session).filter((set) => set.exercise === exercise && !set.custom))
+    .filter((working) => working.length > 0);
+  const best = sessions.map((working) => Math.max(...working.map((set) => e1rm(set.weightKg, set.reps))));
+  const failedToBeat = (index: number) =>
+    index > 0 && best[index] <= Math.max(...best.slice(Math.max(0, index - RECENT_BEST_SESSIONS), index));
+  const last = sessions.length - 1;
+  const stalled =
+    (last >= 3 && [last, last - 1, last - 2].every(failedToBeat)) ||
+    (last >= 1 && sessions.slice(-2).every((working) => working.some((set) => set.reps < rule.repMin)));
+  if (!stalled) return undefined;
+  const weightKg = Math.max(...sessions[last].map((set) => set.weightKg)) * STALL_RESET;
+  return { weightKg: Math.round(weightKg / rule.incrementKg) * rule.incrementKg, reps: rule.repMin };
+}
+
+export type Recommendation = ({ kind: 'goHeavier' } & GoHeavier) | ({ kind: 'stall' } & Stall);
+
+// The one piece of advice for an Exercise. A Stall wins over going heavier: heavier is no use to
+// a lifter who has stopped improving, and the two never show together.
+export function recommend(history: TrainingHistory, exercise: string, rule: GoHeavierRule): Recommendation | undefined {
+  const stall = recommendStall(history, exercise, rule);
+  if (stall) return { kind: 'stall', ...stall };
+  const heavier = recommendGoHeavier(history, exercise, rule);
+  return heavier && { kind: 'goHeavier', ...heavier };
+}

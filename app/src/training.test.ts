@@ -692,3 +692,34 @@ test('a Custom Exercise at the top of the Rep Range gets no recommendation', asy
   expect(await training.goHeavier(dip.id, benchRange)).toBeUndefined();
   training.close();
 });
+
+test('two Sessions under the bottom of the Rep Range recommend a Stall reset, judged without the Session in progress', async () => {
+  const network = server();
+  network.offline = true;
+  const training = await anasPhone(network).open();
+  await training.saveExercises(benchCatalog);
+  await benchSession(training, [[60, 7], [60, 6]]);
+  expect(await training.recommendation('bench-press', benchRange)).toBeUndefined();
+
+  await benchSession(training, [[60, 7], [60, 7]]);
+  const next = await training.startSession();
+  await training.logSet(next.id, 'bench-press', 60, 12);
+
+  expect(await training.recommendation('bench-press', benchRange)).toEqual({ kind: 'stall', weightKg: 55, reps: 8 });
+  training.close();
+});
+
+test('a Custom Exercise never gets a Stall', async () => {
+  const network = server();
+  network.offline = true;
+  const training = await anasPhone(network).open();
+  const dip = await training.createExercise('Assisted dip');
+  for (let i = 0; i < 2; i++) {
+    const session = await training.startSession();
+    await training.logSet(session.id, dip.id, 20, 3);
+    await training.finishSession(session.id);
+  }
+
+  expect(await training.recommendation(dip.id, benchRange)).toBeUndefined();
+  training.close();
+});

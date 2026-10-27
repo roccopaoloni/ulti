@@ -3,6 +3,7 @@ import {
   deriveScoringEvents,
   nextMonday,
   nextRoutineDay,
+  recommend,
   recommendGoHeavier,
   type Dated,
   type ProfileField,
@@ -462,6 +463,15 @@ export async function openTraining(userId: string, options: Options) {
       const inProgress = await db.get('state', 'sessionInProgress');
       const { history } = await this.scoring(inProgress?.sessionId);
       return recommendGoHeavier(history, exerciseId, { ...repRange, incrementKg: exercise?.incrementKg ?? DEFAULT_INCREMENT_KG });
+    },
+
+    // The advice for the Exercise's next Session: a Stall reset, else going heavier, else none.
+    // Judged like goHeavier, on the Sessions before the one in progress.
+    async recommendation(exerciseId: string, repRange: { repMin: number; repMax: number }) {
+      const exercise = (await this.exercises()).find(({ id }) => id === exerciseId);
+      const inProgress = await db.get('state', 'sessionInProgress');
+      const { history } = await this.scoring(inProgress?.sessionId);
+      return recommend(history, exerciseId, { ...repRange, incrementKg: exercise?.incrementKg ?? DEFAULT_INCREMENT_KG });
     },
 
     // Exercises are never removed, so the refresh adds to the phone's copy rather than replacing
