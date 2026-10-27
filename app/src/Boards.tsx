@@ -1,6 +1,8 @@
+import { kgToUnits } from '@ulti/rules';
 import { useEffect, useState, type CSSProperties } from 'react';
 import { Dots } from './Consistency.tsx';
 import {
+  fetchMemberProfile,
   initials,
   markVisit,
   refreshBoard,
@@ -11,10 +13,12 @@ import {
   useNews,
   type BoardRow,
   type Group,
+  type MemberProfile,
   type News,
   type Period,
 } from './groups.ts';
 import { useI18n, type I18n } from './i18n.ts';
+import { useUnits } from './profile.ts';
 import type { Exercise, Training } from './training.ts';
 
 const periods: Period[] = ['week', 'month', 'year'];
@@ -41,21 +45,21 @@ function Crown() {
   );
 }
 
-function BoardRowView({ row, nameOf }: { row: BoardRow; nameOf: (exercise: string) => string }) {
+function BoardRowView({ row, nameOf, onOpen }: { row: BoardRow; nameOf: (exercise: string) => string; onOpen: () => void }) {
   const { t } = useI18n();
   const g = t.groups;
   return (
-    <li className="board-row">
+    <li className="board-row" onClick={onOpen} style={{ cursor: 'pointer' }}>
       <span className="board-pos">{row.position}</span>
       <span className="avatar" style={{ '--c': row.avatar_color } as CSSProperties} aria-hidden="true">
         {initials(row.display_name)}
       </span>
       <span className="board-main">
-        <span className="member-name">
+        <button type="button" className="member-name btn-link" style={{ textAlign: 'start' }}>
           {row.display_name}
           {row.me && <span className="muted"> · {g.you}</span>}
           {row.position === 1 && row.points > 0 && <Crown />}
-        </span>
+        </button>
         {row.weekly_target ? <Dots done={row.session_dates.length} target={row.weekly_target} /> : null}
         {row.records.length > 0 && (
           <span className="stamps">
@@ -72,11 +76,90 @@ function BoardRowView({ row, nameOf }: { row: BoardRow; nameOf: (exercise: strin
   );
 }
 
-// The Group's Week / Month / Year boards, ranked by Standard Points.
+// What a member's Visibility lets the viewer see of them. Weights are shown in the viewer's units.
+function MemberProfileView({
+  userId,
+  groupId,
+  memberId,
+  period,
+  nameOf,
+  onClose,
+}: {
+  userId: string;
+  groupId: string;
+  memberId: string;
+  period: Period;
+  nameOf: (exercise: string) => string;
+  onClose: () => void;
+}) {
+  const { t, formatNumber } = useI18n();
+  const g = t.groups;
+  const units = useUnits(userId) ?? 'kg';
+  const [profile, setProfile] = useState<MemberProfile | null>(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    fetchMemberProfile(groupId, memberId, period).then(setProfile, () => setFailed(true));
+  }, [groupId, memberId, period]);
+  const load = (weight_kg?: number, reps?: number) =>
+    weight_kg === undefined ? '' : ` ${formatNumber(kgToUnits(weight_kg, units), 2)} ${units} × ${reps}`;
+  return (
+    <section className="card">
+      <button type="button" className="btn-link" onClick={onClose}>
+        {t.close}
+      </button>
+      {failed && <p className="error">{g.retry}</p>}
+      {profile && (
+        <>
+          <p className="disp">
+            {profile.position}. {profile.display_name} · {g.boardPoints(profile.points)}
+          </p>
+          <p className="muted">{g.memberSessions(profile.session_count)}</p>
+          {profile.records.length > 0 && (
+            <>
+              <div className="eyebrow">{g.memberRecords}</div>
+              <ul className="members">
+                {profile.records.map((record, index) => (
+                  <li key={index}>
+                    {nameOf(record.exercise)} +{Math.round(record.percent_gain)}% · {g.boardPoints(record.points)}
+                    {load(record.weight_kg, record.reps)}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+          {profile.sessions && (
+            <>
+              <div className="eyebrow">{g.memberSessionList}</div>
+              <ul className="members">
+                {profile.sessions.map((session, index) => (
+                  <li key={index}>
+                    {session.local_date}
+                    <ul>
+                      {session.sets.map((set, setIndex) => (
+                        <li key={setIndex}>
+                          {nameOf(set.exercise)}
+                          {load(set.weight_kg, set.reps)}
+                        </li>
+                      ))}
+                    </ul>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
+// The Group's Week / Month / Year boards, ranked by Standard Points. Tapping a member opens their
+// profile.
 export function GroupBoard({ userId, group, training }: { userId: string; group: Group; training: Training | null }) {
   const { t, language } = useI18n();
   const [period, setPeriod] = useState<Period>('week');
   const board = useFreshBoard(userId, group.id, period);
+  const [open, setOpen] = useState<string | null>(null);
   const [catalog, setCatalog] = useState<Exercise[]>([]);
   useEffect(() => {
     training?.exercises().then(setCatalog);
@@ -85,6 +168,9 @@ export function GroupBoard({ userId, group, training }: { userId: string; group:
     const exercise = catalog.find((candidate) => candidate.id === id);
     return exercise ? (language === 'es' ? exercise.nameEs : exercise.nameEn) : id;
   };
+  if (open) {
+    return <MemberProfileView userId={userId} groupId={group.id} memberId={open} period={period} nameOf={nameOf} onClose={() => setOpen(null)} />;
+  }
   return (
     <section className="card">
       <div className="chips">
@@ -97,7 +183,7 @@ export function GroupBoard({ userId, group, training }: { userId: string; group:
       {board && (
         <ul className="members">
           {board.members.map((row, index) => (
-            <BoardRowView key={index} row={row} nameOf={nameOf} />
+            <BoardRowView key={index} row={row} nameOf={nameOf} onOpen={() => setOpen(row.user_id)} />
           ))}
         </ul>
       )}
