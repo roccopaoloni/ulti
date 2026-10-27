@@ -201,6 +201,7 @@ export function SessionScreen({ training, units, onLeave }: { training: Training
             training={training}
             exerciseId={exerciseId}
             incrementKg={catalog.find(({ id }) => id === exerciseId)?.incrementKg ?? 2.5}
+            bodyweight={catalog.find(({ id }) => id === exerciseId)?.bodyweight ?? false}
             units={units}
             target={session.plan.find((planned) => planned.exerciseId === exerciseId)}
             sets={session.sets.filter((set) => set.exerciseId === exerciseId)}

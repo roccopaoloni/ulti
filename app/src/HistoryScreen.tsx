@@ -64,6 +64,7 @@ export function History({ training, units }: { training: Training; units: Units 
                         key={set.id}
                         set={set}
                         units={units}
+                        bodyweight={catalog.find(({ id }) => id === exerciseId)?.bodyweight ?? false}
                         record={records.get(set.id)}
                         onEdit={async (weightKg, reps) => {
                           await training.editSet(set.id, weightKg, reps);
@@ -87,12 +88,14 @@ export function History({ training, units }: { training: Training; units: Units 
 function PastSet({
   set,
   units,
+  bodyweight,
   record,
   onEdit,
   onDelete,
 }: {
   set: SetRecord;
   units: Units;
+  bodyweight: boolean;
   record: PersonalRecord | undefined;
   onEdit: (weightKg: number, reps: number) => Promise<void>;
   onDelete: () => Promise<void>;
@@ -119,7 +122,10 @@ function PastSet({
     return (
       <div className="past-set">
         <span>
-          {formatNumber(kgToUnits(set.weightKg, units), 2)} {units} × {set.reps}
+          {bodyweight
+            ? t.session.bodyweightLoad(set.weightKg ? `${formatNumber(kgToUnits(set.weightKg, units), 2)} ${units}` : '')
+            : `${formatNumber(kgToUnits(set.weightKg, units), 2)} ${units}`}{' '}
+          × {set.reps}
           {record && ` · PR +${record.percentGain}% · ${t.session.points(record.progressPoints)}`}
         </span>
         <button type="button" className="btn-link" onClick={() => setEditing(true)}>
@@ -136,7 +142,7 @@ function PastSet({
       <input
         inputMode="decimal"
         autoComplete="off"
-        aria-label={t.session.weight}
+        aria-label={bodyweight ? t.session.addedWeight : t.session.weight}
         value={weight}
         onChange={(event) => setWeight(event.target.value.replace(/[^\d.,]/g, ''))}
       />
