@@ -93,7 +93,7 @@ function Tabs({ userId }: { userId: string }) {
           />
         )}
         {current === 'home' && training && <StartSession logging={logging} />}
-        {current === 'train' && training && <History training={training} />}
+        {current === 'train' && training && <History training={training} units={units} />}
         {current === 'profile' && training && profile && (
           <ProfileSettings userId={userId} training={training} profile={profile} units={units} onSaved={reload} />
         )}
