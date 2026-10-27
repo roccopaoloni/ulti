@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { execFileSync } from 'node:child_process';
 import { expect, test, vi } from 'vitest';
+import { scoringEventsOf, sql } from './sql.ts';
 import { newUser } from './users.ts';
 
 type Lifter = { id: string; client: SupabaseClient };
@@ -19,7 +19,7 @@ async function sync({ client }: Lifter, mutations: unknown[]) {
 }
 
 // Everything the lifter can read back of their own training.
-async function trainingOf({ client }: Lifter) {
+async function trainingOf({ id, client }: Lifter) {
   const sessions = await client
     .from('sessions')
     .select('id, started_at, time_zone, local_date, finished_at')
@@ -29,9 +29,8 @@ async function trainingOf({ client }: Lifter) {
     .select('id, session_id, exercise_id, weight_kg, reps, logged_at')
     .eq('deleted', false)
     .order('logged_at');
-  const scoringEvents = await client.from('scoring_events').select('id');
-  expect([sessions.error, sets.error, scoringEvents.error]).toEqual([null, null, null]);
-  return { sessions: sessions.data, sets: sets.data, scoringEvents: scoringEvents.data };
+  expect([sessions.error, sets.error]).toEqual([null, null]);
+  return { sessions: sessions.data, sets: sets.data, scoringEvents: scoringEventsOf(id).map(({ id }) => ({ id })) };
 }
 
 // Ana's Monday-evening squat Session in Buenos Aires (UTC−3), as her phone records it: she starts
@@ -388,16 +387,6 @@ test("Bea can't read Ana's training or write it, directly or through a sync", as
 
   expect(await trainingOf(ana)).toEqual(anasMondayOnTheServer(monday));
 });
-
-// SQL run straight on the local database, in its container (named after project_id in
-// supabase/config.toml), for what no API does: breaking the recompute, and running a scheduled job now.
-function sql(statement: string) {
-  return execFileSync(
-    'docker',
-    ['exec', '-e', 'PGPASSWORD=postgres', 'supabase_db_ulti', 'psql', '-h', '127.0.0.1', '-U', 'postgres', '-tAc', statement],
-    { encoding: 'utf8' },
-  ).trim();
-}
 
 test('if the recompute fails, the Session is saved anyway, and a scheduled job recomputes it later', { timeout: 60_000 }, async () => {
   const ana = await lifter('ana');
