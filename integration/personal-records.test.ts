@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { expect, test } from 'vitest';
+import { scoringEventsOf as storedScoringEvents } from './sql.ts';
 import { newUser } from './users.ts';
 
 type Lifter = { id: string; client: SupabaseClient };
@@ -39,11 +40,8 @@ const rewrite = (setRecord: object, change: object) => ({
   set: { ...setRecord, updatedAt: '2026-10-25T12:00:00.000Z', ...change },
 });
 
-async function scoringEventsOf({ client }: Lifter) {
-  const { data, error } = await client.from('scoring_events').select('id, event').order('id');
-  expect(error).toBeNull();
-  return data!;
-}
+// No user can read Scoring Events through the API, so the tests read them straight from the database.
+const scoringEventsOf = async ({ id }: Lifter) => storedScoringEvents(id);
 
 // Ana's first two squat Sessions set her baseline (100 × 6, e1RM 120); her third, 105 × 6 (126), is a Personal Record.
 async function anaWithARecord() {
@@ -124,6 +122,42 @@ test("flipping the Set's label to Warm-up removes the Personal Record it had ear
   await sync(ana, [rewrite(third.setRecord, { label: 'warm-up' })]);
 
   expect(await scoringEventsOf(ana)).toEqual([]);
+});
+
+test("Ana's sex and bodyweight weight her Personal Record, the event records what was used, and nobody else can read it", async () => {
+  const ana = await lifter('ana');
+  const bea = await lifter('bea');
+  const entry = (field: string, value: unknown) => ({
+    id: crypto.randomUUID(),
+    kind: 'saveProfileEntry',
+    entry: { field, effectiveFrom: '2026-10-01', value, updatedAt: '2026-10-01T09:00:00.000Z' },
+  });
+  await sync(ana, [
+    entry('sex', 'male'),
+    entry('bodyweightKg', 83),
+    ...squatSession('2026-10-05', 100, 6).mutations,
+    ...squatSession('2026-10-12', 100, 6).mutations,
+    ...squatSession('2026-10-19', 105, 6).mutations,
+  ]);
+
+  // A male 83 kg lifter's 126 kg e1RM squat is at the 53.93rd percentile of FitnessVolt's gym
+  // standards, which weights the 5% gain's 50 points up to 55.
+  const [{ event }] = await scoringEventsOf(ana);
+  expect(event.strengthLevelPercentile).toBeCloseTo(53.93, 1);
+  expect(event.bodyweightKg).toBe(83);
+  expect(event.progressPoints).toBe(55);
+
+  const { data } = await bea.client.from('profile_history').select('*');
+  expect(data).toEqual([]);
+});
+
+test("a signed-in user can't read Scoring Events at all, their own included, so their Strength Level never reaches them", async () => {
+  const { ana } = await anaWithARecord();
+
+  const { data, error } = await ana.client.from('scoring_events').select('id, event');
+
+  expect(error?.code).toBe('42501');
+  expect(data).toBeNull();
 });
 
 test('pull-ups are scored at the lifter\'s four-week average bodyweight plus the added weight', async () => {

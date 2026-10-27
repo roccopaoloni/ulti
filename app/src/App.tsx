@@ -124,6 +124,15 @@ function Tabs({ userId }: { userId: string }) {
                 {signOutError}
               </p>
             )}
+            <section aria-label={t.about.title}>
+              <h2 className="disp">{t.about.title}</h2>
+              <p>
+                <a href="https://fitnessvolt.com/strength-standards/strength-data/" target="_blank" rel="noreferrer">
+                  {t.about.fitnessVoltLink}
+                </a>
+              </p>
+              <p>{t.about.symmetricStrength}</p>
+            </section>
           </>
         )}
       </main>
