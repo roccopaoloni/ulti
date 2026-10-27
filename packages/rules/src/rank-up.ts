@@ -1,6 +1,7 @@
 // The Rank-up moment (spec: Rank, design: The Rank-up moment). Pure: whether a Rank-up happened,
 // and which headline, chips and kicker back it up.
-import type { Rank, Tier } from './rank.ts';
+import { rankOf, seasonOf, type Rank, type Tier } from './rank.ts';
+import type { ConsistencyWeek, PersonalRecord } from './index.ts';
 
 const TIERS: Tier[] = ['bronze', 'silver', 'gold', 'diamond', 'elite'];
 
@@ -116,5 +117,36 @@ export function rankUpMessage(input: {
     chips,
     kicker: pool[Math.min(pool.length - 1, Math.floor(roll * pool.length))],
     recentHeadlines: [head.headline.id, ...recentHeadlines].slice(0, HEADLINE_MEMORY),
+  };
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// The Season's numbers behind a Rank-up, from the Scoring Events on the phone. `streakWeeks` is the
+// user's current Streak. Leading a Group, passing someone and the Elite count are not known here.
+export function rankUpStatsOf(input: {
+  events: PersonalRecord[];
+  consistency: ConsistencyWeek[];
+  today: string;
+  streakWeeks: number;
+  nameOf: (exerciseId: string) => string;
+}): RankUpStats {
+  const season = seasonOf(input.today);
+  const records = input.events.filter(({ localDate }) => localDate >= season.start && localDate <= season.end);
+  const weeks = input.consistency.filter(({ week }) => week >= season.start && week <= season.end);
+  const consistency = weeks.reduce((sum, { consistencyPoints }) => sum + consistencyPoints, 0);
+  const progress = records.reduce((sum, { progressPoints }) => sum + progressPoints, 0);
+  const best = records.reduce<PersonalRecord | undefined>((top, record) => (!top || record.percentGain > top.percentGain ? record : top), undefined);
+  const days = (Date.parse(`${input.today}T00:00:00Z`) - Date.parse(`${season.start}T00:00:00Z`)) / DAY_MS;
+  return {
+    weeks: Math.max(1, Math.ceil(days / 7)),
+    sessions: weeks.reduce((sum, { trainedDates }) => sum + trainedDates.length, 0),
+    prs: records.length,
+    streak: input.streakWeeks,
+    points: consistency + progress,
+    consistency,
+    progress,
+    startTier: rankOf(0).tier,
+    ...(best && { best: { exercise: input.nameOf(best.exercise), percent: Math.round(best.percentGain) } }),
   };
 }

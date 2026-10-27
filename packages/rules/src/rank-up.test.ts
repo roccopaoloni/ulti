@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { rankUpMessage, rankUpOf, type RankUp, type RankUpStats } from './index.ts';
+import { rankUpMessage, rankUpOf, rankUpStatsOf, type ConsistencyWeek, type PersonalRecord, type RankUp, type RankUpStats } from './index.ts';
 
 test('the first ever open has no last-seen Rank, so no Rank-up fires from nothing', () => {
   expect(rankUpOf(null, { tier: 'gold', division: 3 })).toBeNull();
@@ -74,4 +74,28 @@ test('the kicker rotates and is never the same twice in a row; "Subiste de liga"
   for (const last of ['charged', 'newRank', 'somethingElse', 'tierUp'] as const) {
     for (const roll of [0, 0.2, 0.5, 0.8, 0.999]) expect(message({ lastKicker: last, roll }).kicker).not.toBe(last);
   }
+});
+
+test('Season stats are assembled from the Scoring Events of the Season only', () => {
+  const week = (monday: string, trained: number, points: number) =>
+    ({ kind: 'consistency', week: monday, trainedDates: Array(trained).fill(monday), consistencyPoints: points }) as unknown as ConsistencyWeek;
+  const record = (localDate: string, exercise: string, percentGain: number, progressPoints: number) =>
+    ({ kind: 'personal-record', localDate, exercise, percentGain, progressPoints }) as PersonalRecord;
+  const stats = rankUpStatsOf({
+    events: [record('2026-10-08', 'squat', 12.4, 100), record('2026-10-20', 'bench', 4, 50), record('2026-09-20', 'squat', 30, 400)],
+    consistency: [week('2026-09-21', 3, 120), week('2026-10-05', 3, 120), week('2026-10-12', 2, 60)],
+    today: '2026-10-27',
+    streakWeeks: 2,
+    nameOf: (id) => id.toUpperCase(),
+  });
+  expect(stats).toEqual({
+    weeks: 4, sessions: 5, prs: 2, streak: 2, points: 330, consistency: 180, progress: 150, startTier: 'bronze',
+    best: { exercise: 'SQUAT', percent: 12 },
+  });
+});
+
+test('Season stats claim no best lift without a Personal Record', () => {
+  const stats = rankUpStatsOf({ events: [], consistency: [], today: '2026-10-02', streakWeeks: 0, nameOf: (id) => id });
+  expect(stats).toMatchObject({ weeks: 1, sessions: 0, prs: 0, points: 0 });
+  expect(stats.best).toBeUndefined();
 });
