@@ -1,4 +1,4 @@
-import { rankOf, rankUpMessage, rankUpOf, rankUpStatsOf, streak, type Chip, type Headline, type HeadlineId, type Kicker, type Rank, type RankUp } from '@ulti/rules';
+import { rankOf, rankUpMessage, rankUpOf, rankUpStatsOf, showsPosition, streak, type Chip, type Headline, type HeadlineId, type Kicker, type Rank, type RankUp } from '@ulti/rules';
 import { useEffect, useRef, useState } from 'react';
 import { useI18n } from './i18n.ts';
 import { today } from './profile.ts';
@@ -33,7 +33,7 @@ type Moment = { rankUp: RankUp; kicker: Kicker; headline: Headline; chips: Chip[
 // starts again from the bottom), the seen Rank follows it down, so the climb back is seen too.
 export function RankUpGate({ userId, training }: { userId: string; training: Training }) {
   const { t, language } = useI18n();
-  const { seasonPoints, scoring, settled } = useSeasonStanding(training);
+  const { seasonPoints, scoring, standing, settled } = useSeasonStanding(training);
   const [moment, setMoment] = useState<Moment | null>(null);
   const decided = useRef(false);
 
@@ -69,6 +69,12 @@ export function RankUpGate({ userId, training }: { userId: string; training: Tra
   const { rankUp } = moment;
   const r = t.rankUp;
   const tierName = (tier: Rank['tier']) => t.rank.tier[tier];
+  const plaque =
+    standing?.position != null && standing.top_percent != null
+      ? showsPosition(rankUp.to, standing.position)
+        ? `#${standing.position}`
+        : t.rank.plaqueTopPercent(standing.top_percent)
+      : undefined;
   // A chip counts up from zero: the number it ends on, and how the number is written.
   const counted = (chip: Chip): RankUpChip => {
     switch (chip.id) {
@@ -86,6 +92,7 @@ export function RankUpGate({ userId, training }: { userId: string; training: Tra
       from={rankUp.from}
       to={rankUp.to}
       tierName={tierName(rankUp.to.tier)}
+      plaque={plaque}
       strings={{ news: r.news, tapHint: r.tapHint, continue: r.continue }}
       kicker={r.kicker[moment.kicker]}
       headline={r.headline(moment.headline, tierName)}

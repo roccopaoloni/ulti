@@ -99,6 +99,8 @@ export type RankUpMomentProps = {
   from: Rank;
   to: Rank;
   tierName: string;
+  // The Elite plaque's text: the user's "#N" or "top X%", when known.
+  plaque?: string;
   strings: { news: string; tapHint: string; continue: string };
   kicker: string;
   headline: string;
@@ -117,7 +119,7 @@ const cssVar = (name: string) => getComputedStyle(document.documentElement).getP
 
 type Particle = { k: 'burst' | 'ring' | 'conf' | 'ember' | 'star'; x: number; y: number; vx?: number; vy?: number; life: number; max: number; s?: number; c: string; w?: number; r?: number; vr?: number };
 
-export function RankUpMoment({ from, to, tierName, strings, kicker, headline, chips, onContinue }: RankUpMomentProps) {
+export function RankUpMoment({ from, to, tierName, plaque, strings, kicker, headline, chips, onContinue }: RankUpMomentProps) {
   const division = to.tier === from.tier;
   const cfg = division ? DIVISION : CONFIG[to.tier as Exclude<Tier, 'bronze'>];
   const root = useRef<HTMLDivElement>(null);
@@ -274,9 +276,9 @@ export function RankUpMoment({ from, to, tierName, strings, kicker, headline, ch
 
     const count = (span: HTMLElement, chip: RankUpChip) => {
       const t0 = performance.now(), d = 700;
-      const step = (ts: number) => {
+      const step = () => {
         if (!alive || skipped) return;
-        const f = Math.min(1, (ts - t0) / d);
+        const f = Math.min(1, (performance.now() - t0) / d);
         span.textContent = chip.format(Math.round(chip.n * (1 - Math.pow(1 - f, 3))));
         if (f < 1) requestAnimationFrame(step);
       };
@@ -458,7 +460,7 @@ export function RankUpMoment({ from, to, tierName, strings, kicker, headline, ch
             </div>
             <div className="ru-shards">{shards}</div>
           </div>
-          <div className="ru-new"><Badge rank={to} tierName={tierName} mode="lg" /></div>
+          <div className="ru-new"><Badge rank={to} tierName={tierName} mode="lg" plaque={plaque} /></div>
         </div>
         <p className="ru-tap">{division ? '' : strings.tapHint}</p>
         <h1 className="disp ru-name">

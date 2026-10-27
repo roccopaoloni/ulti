@@ -1312,11 +1312,11 @@ prefers-reduced-motion switches every animation off, so it stays off the badge. 
 .ru.stats .ru-chips span{opacity:1;transform:none;transition:all .35s calc(var(--i)*120ms)}
 .ru-msg{font-weight:700;font-size:18px;line-height:1.35;max-width:28ch;text-wrap:balance;opacity:0;transform:translateY(8px);min-height:2.7em}
 .ru.msg .ru-msg{opacity:1;transform:none;transition:all .5s}
-.ru-cont{max-width:340px;display:none;cursor:pointer}
+.ru-cont{max-width:340px;display:none;align-items:center;justify-content:center;cursor:pointer}
 .ru.msg .ru-cont{display:flex;animation:ru-fade .4s .3s both}
 .ru-flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:4}
 .ru.flash .ru-flash{animation:ru-flash2 .14s ease-out}
-.ru.skip *{animation:none!important;transition:none!important}
+.ru.skip *,.ru.skip .ru-div::after{animation:none!important;transition:none!important}
 @keyframes ru-shard2{0%{opacity:1;transform:translate(0,0) rotate(0)}100%{opacity:0;transform:translate(var(--dx),var(--dy)) rotate(var(--r)) scale(.85)}}
 @keyframes ru-jolt{0%{transform:scale(1.035)}30%{transform:translate(-3px,2px) scale(1.015)}60%{transform:translate(2px,-1px)}100%{transform:none}}
 @keyframes ru-breathe{0%,100%{opacity:.55}50%{opacity:1}}
