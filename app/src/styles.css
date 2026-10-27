@@ -454,6 +454,40 @@ button {
 .member-name .muted {
   font-weight: 500;
 }
+.board-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+.board-row:first-child {
+  border-top: 0;
+}
+.board-pos {
+  width: 18px;
+  font-weight: 700;
+  line-height: 32px;
+}
+.board-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.board-main .member-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.board-points {
+  line-height: 32px;
+}
+.crown {
+  color: var(--accent);
+  flex: none;
+}
 .owner {
   display: flex;
   align-items: center;
@@ -898,6 +932,42 @@ button.cell {
 }
 .pr-points {
   font: 700 12px var(--body);
+}
+.increment {
+  padding: 0;
+  font-size: 12px;
+}
+/* The "go heavier" recommendation on the pre-filled rows. */
+.go-heavier {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+.go-heavier .btn-link {
+  padding: 0;
+  font-size: 12px;
+}
+.badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font: 800 13px var(--body);
+}
+/* The RIR chips after ✓. */
+.rir {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.rir-chip {
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  font-weight: 700;
 }
 
 /* The Routine editor on the Train tab. */

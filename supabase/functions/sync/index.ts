@@ -22,6 +22,7 @@ type SetRecord = {
   weightKg: number;
   reps: number;
   label?: 'warm-up' | 'working';
+  rir?: number;
   deleted?: boolean;
   loggedAt: string;
   updatedAt: string;
@@ -31,12 +32,14 @@ type ProfileEntry = { field: string; effectiveFrom: string; value: unknown; upda
 type ExerciseRecord = { id: string; name: string };
 // The Routine is saved whole: its Sessions are never looked into here.
 type RoutineRecord = { id: string; days: unknown[]; updatedAt: string };
+type IncrementRecord = { exerciseId: string; incrementKg: number; updatedAt: string };
 type Mutation =
   | { id: string; kind: 'saveSession'; session: SessionRecord }
   | { id: string; kind: 'saveSet'; set: SetRecord }
   | { id: string; kind: 'saveExercise'; exercise: ExerciseRecord }
   | { id: string; kind: 'saveProfileEntry'; entry: ProfileEntry }
-  | { id: string; kind: 'saveRoutine'; routine: RoutineRecord };
+  | { id: string; kind: 'saveRoutine'; routine: RoutineRecord }
+  | { id: string; kind: 'saveIncrement'; increment: IncrementRecord };
 
 // Sets dated after the moment the endpoint received them are rejected. A phone's clock can run a
 // little fast, though, and a Set synced the moment it's logged would be lost to that: this much
@@ -87,6 +90,7 @@ async function save(client: Client, userId: string, mutations: Mutation[], recei
     if (!kept || Date.parse(kept.updatedAt) <= Date.parse(record.updatedAt)) records.set(record.id, record);
   };
   const routines = new Map<string, RoutineRecord>();
+  const increments = new Map<string, IncrementRecord & { id: string }>();
   const exercises = new Map<string, ExerciseRecord>();
   const entries = new Map<string, ProfileEntry & { id: string }>();
   const rejected: string[] = [];
@@ -94,7 +98,10 @@ async function save(client: Client, userId: string, mutations: Mutation[], recei
     if (!unseen.delete(mutation.id)) continue;
     if (mutation.kind === 'saveSession') keepLatest(sessions, mutation.session);
     else if (mutation.kind === 'saveRoutine') keepLatest(routines, mutation.routine);
-    else if (mutation.kind === 'saveExercise') exercises.set(mutation.exercise.id, mutation.exercise);
+    else if (mutation.kind === 'saveIncrement') {
+      const { increment } = mutation;
+      keepLatest(increments, { ...increment, id: increment.exerciseId });
+    } else if (mutation.kind === 'saveExercise') exercises.set(mutation.exercise.id, mutation.exercise);
     else if (mutation.kind === 'saveProfileEntry') {
       const { entry } = mutation;
       if (!isProfileValue(entry.field, entry.value)) rejected.push(mutation.id);
@@ -127,10 +134,10 @@ async function save(client: Client, userId: string, mutations: Mutation[], recei
       updated_at = excluded.updated_at
     where sessions.updated_at < excluded.updated_at`;
   await transaction.queryArray`
-    insert into public.sets (user_id, id, session_id, exercise_id, weight_kg, reps, label, deleted, logged_at, updated_at)
-    select ${userId}, s.id, s."sessionId", s."exerciseId", s."weightKg", s.reps, s.label, coalesce(s.deleted, false), s."loggedAt", s."updatedAt"
+    insert into public.sets (user_id, id, session_id, exercise_id, weight_kg, reps, label, rir, deleted, logged_at, updated_at)
+    select ${userId}, s.id, s."sessionId", s."exerciseId", s."weightKg", s.reps, s.label, s.rir, coalesce(s.deleted, false), s."loggedAt", s."updatedAt"
     from jsonb_to_recordset(${JSON.stringify([...sets.values()])}::jsonb) as s(
-      id uuid, "sessionId" uuid, "exerciseId" text, "weightKg" numeric, reps integer, label text, deleted boolean, "loggedAt" timestamptz, "updatedAt" timestamptz
+      id uuid, "sessionId" uuid, "exerciseId" text, "weightKg" numeric, reps integer, label text, rir smallint, deleted boolean, "loggedAt" timestamptz, "updatedAt" timestamptz
     )
     on conflict (user_id, id) do update set
       session_id = excluded.session_id,
@@ -138,6 +145,7 @@ async function save(client: Client, userId: string, mutations: Mutation[], recei
       weight_kg = excluded.weight_kg,
       reps = excluded.reps,
       label = excluded.label,
+      rir = excluded.rir,
       deleted = excluded.deleted,
       logged_at = excluded.logged_at,
       updated_at = excluded.updated_at
@@ -152,6 +160,16 @@ async function save(client: Client, userId: string, mutations: Mutation[], recei
       days = excluded.days,
       updated_at = excluded.updated_at
     where routines.updated_at < excluded.updated_at`;
+  await transaction.queryArray`
+    insert into public.increment_overrides (user_id, exercise_id, increment_kg, updated_at)
+    select ${userId}, i."exerciseId", i."incrementKg", i."updatedAt"
+    from jsonb_to_recordset(${JSON.stringify([...increments.values()])}::jsonb) as i(
+      "exerciseId" text, "incrementKg" numeric, "updatedAt" timestamptz
+    )
+    on conflict (user_id, exercise_id) do update set
+      increment_kg = excluded.increment_kg,
+      updated_at = excluded.updated_at
+    where increment_overrides.updated_at < excluded.updated_at`;
   await transaction.queryArray`
     insert into public.profile_history (user_id, field, effective_from, value, updated_at)
     select ${userId}, e.field, e."effectiveFrom", e.value, e."updatedAt"

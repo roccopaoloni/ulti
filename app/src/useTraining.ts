@@ -17,16 +17,17 @@ async function refreshCatalog(training: Training) {
   // Row-level security returns the shared catalog and this user's own Custom Exercises.
   const { data, error } = await supabase
     .from('exercises')
-    .select('id, name_en, name_es, equipment, default_increment_kg, owner_id');
+    .select('id, name_en, name_es, type, equipment, default_increment_kg, owner_id');
   if (error) return;
   await training.saveExercises(
-    data.map(({ id, name_en, name_es, equipment, default_increment_kg, owner_id }) => ({
+    data.map(({ id, name_en, name_es, type, equipment, default_increment_kg, owner_id }) => ({
       id,
       nameEn: name_en,
       nameEs: name_es,
       equipment,
       custom: owner_id !== null,
       incrementKg: Number(default_increment_kg),
+      bodyweight: type === 'bodyweight',
     })),
   );
 }
@@ -35,6 +36,14 @@ async function refreshCatalog(training: Training) {
 async function refreshRoutine(training: Training) {
   const { data } = await supabase.from('routines').select('id, days, updated_at');
   for (const row of data ?? []) await training.saveRoutineFromServer({ id: row.id, days: row.days, updatedAt: row.updated_at });
+}
+
+// The Increment overrides the server holds, for a phone that is new to this user.
+async function refreshIncrements(training: Training) {
+  const { data } = await supabase.from('increment_overrides').select('exercise_id, increment_kg, updated_at');
+  await training.saveIncrementsFromServer(
+    (data ?? []).map((row) => ({ exerciseId: row.exercise_id, incrementKg: Number(row.increment_kg), updatedAt: row.updated_at })),
+  );
 }
 
 // The signed-in user's training on this phone, once its store is open.
@@ -60,6 +69,7 @@ export function useTraining(userId: string): Training | null {
       setTraining(store);
       refreshCatalog(store);
       refreshRoutine(store).catch(() => {});
+      refreshIncrements(store).catch(() => {});
       addEventListener('online', onOnline);
     });
     return () => {
