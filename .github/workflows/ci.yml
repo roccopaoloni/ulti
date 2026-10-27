@@ -74,7 +74,8 @@ jobs:
       - run: npm ci
       - run: npx supabase link --project-ref "$SUPABASE_PROJECT_ID"
       - name: Apply migrations
-        run: npx supabase db push --yes
+        # Parallel branches merge migrations dated before ones already applied, so apply those too.
+        run: npx supabase db push --yes --include-all
         env:
           # Written to Vault with the migrations, for the database's scheduled jobs (config.toml).
           ULTI_FUNCTIONS_URL: https://${{ secrets.SUPABASE_PROJECT_ID }}.supabase.co/functions/v1
