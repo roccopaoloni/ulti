@@ -114,7 +114,7 @@ test('a Session counts on its own local date: Sunday night in Buenos Aires is in
 });
 
 // A Session with one Working Set of back squat. Ana's first two set her baseline (100 × 6); her
-// third, 105 × 6, is a Personal Record worth 50 Progress Points and a gain of 5%.
+// third, 105 × 6, is a Personal Record worth 110 Progress Points and a gain of 5%.
 function squatSession(localDate: string, weightKg: number) {
   const sessionId = crypto.randomUUID();
   const at = `${localDate}T21:00:00.000Z`;
@@ -138,20 +138,19 @@ test("the board shows a member's points, Session dots and Personal Records, and 
 
   const { members } = await board(bea, gymCrew, 'week', wednesday);
 
-  // 50 Progress Points and 40 Consistency Points. The Session dots count the qualifying Sessions.
+  // 110 Progress Points and 40 Consistency Points. The Session dots count the qualifying Sessions.
   expect(members[0]).toEqual({
     user_id: ana.id,
     position: 1,
     display_name: 'Ana',
     avatar_color: '#6fb6f7',
     me: false,
-    points: 90,
-    // Her Points across the Season, not the week's, put her at the start of Bronze IV.
+    points: 150,
     tier: 'bronze',
-    division: 4,
+    division: 5,
     weekly_target: 3,
     session_dates: ['2026-10-20'],
-    records: [{ exercise: 'back-squat', percent_gain: 5, points: 50 }],
+    records: [{ exercise: 'back-squat', percent_gain: 5, points: 110 }],
   });
   // Nor can Bea read Ana's events, or the bodyweight and sex Ana gave, from the tables.
   for (const table of ['scoring_events', 'profile_history']) {
@@ -162,16 +161,23 @@ test("the board shows a member's points, Session dots and Personal Records, and 
 });
 
 test("each member's Rank on the board comes from their Season Points, not the Period's", async () => {
-  // Three full weeks of a Weekly Target of 3 are 360 Consistency Points in the Season: Silver V.
-  const ana = await trained('Ana', '2026-10-05', '2026-10-06', '2026-10-07', '2026-10-12', '2026-10-13', '2026-10-14', '2026-10-19', '2026-10-20', '2026-10-21');
+  // Seven full weeks of a Weekly Target of 3 in the third quarter are 840 Consistency Points in that
+  // Season: Silver V. The week the board shows (the last of the Season) has none of them.
+  const ana = await lifter('Ana');
+  const mondays = ['2026-07-06', '2026-07-13', '2026-07-20', '2026-07-27', '2026-08-03', '2026-08-10', '2026-08-17'];
+  const days = mondays.flatMap((monday) => [0, 1, 2].map((offset) => new Date(Date.parse(monday) + offset * 86_400_000).toISOString().slice(0, 10)));
+  await sync(ana, [
+    { ...weeklyTarget(3), entry: { ...weeklyTarget(3).entry, effectiveFrom: '2026-07-01' } },
+    ...days.flatMap(utcSession),
+  ]);
   const bea = await lifter('Bea');
   const gymCrew = await groupOf(ana, bea);
 
-  const { members } = await board(bea, gymCrew, 'week', wednesday);
+  const { members } = await board(bea, gymCrew, 'week', '2026-09-30');
 
   const rows = members.map(({ display_name, points, tier, division }) => [display_name, points, tier, division]);
   expect(rows).toEqual([
-    ['Ana', 120, 'silver', 5],
+    ['Ana', 0, 'silver', 5],
     ['Bea', 0, 'bronze', 5],
   ]);
 });

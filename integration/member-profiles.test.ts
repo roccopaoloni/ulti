@@ -42,7 +42,7 @@ function squatSession(localDate: string, ...sets: { weightKg: number; reps: numb
 }
 
 // Ana's first two squat Sessions set her baseline (100 × 6); on the 19th, 105 × 6 is a Personal
-// Record worth 50 Progress Points and a gain of 5%; on the 20th she squats 100 × 5 six times,
+// Record worth 110 Progress Points and a gain of 5%; on the 20th she squats 100 × 5 six times,
 // enough for 40 Consistency Points.
 const sixSets = [0, 1, 2, 3, 4, 5].map(() => ({ weightKg: 100, reps: 5 }));
 async function ana() {
@@ -75,13 +75,13 @@ const alwaysVisible = {
   avatar_color: '#6fb6f7',
   me: false,
   position: 1,
-  points: 90,
-  // The Rank is always visible; her 90 Points in the Season put her in Bronze IV.
+  points: 150,
+  // The Rank is always visible; her 150 Points in the Season put her in Bronze V.
   tier: 'bronze',
-  division: 4,
+  division: 5,
   session_count: 2,
 };
-const record = { exercise: 'back-squat', percent_gain: 5, points: 50, local_date: '2026-10-19' };
+const record = { exercise: 'back-squat', percent_gain: 5, points: 110, local_date: '2026-10-19' };
 
 test('by default a member profile shows only Points, Rank, Session count and Personal Records as %', async () => {
   const user = await ana();

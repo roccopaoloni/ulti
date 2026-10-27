@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { signOut, useUser } from './auth.ts';
 import { AuthScreens, useAuthFlow } from './AuthScreens.tsx';
-import { RaceCards } from './Boards.tsx';
+import { FriendsTrainedToday, RaceCards, SinceLastVisit } from './Boards.tsx';
 import { newGroupPath, usePendingInvite } from './groups.ts';
 import { CreateGroup, GroupsTab, JoinInvite, ProfileCard } from './GroupsScreens.tsx';
 import { StampsCard, WeekCard } from './Consistency.tsx';
@@ -10,7 +10,7 @@ import { useI18n, type Term } from './i18n.ts';
 import { tabIcons } from './icons.tsx';
 import { Info } from './Info.tsx';
 import { navigate, paths, tabs, useCurrentTab, usePathname, type Tab } from './navigation.ts';
-import { hasEverything, useBodyProfile, useUnits } from './profile.ts';
+import { hasEverything, useBodyProfile, useLayout, useUnits } from './profile.ts';
 import { RankCard } from './RankCard.tsx';
 import { BodyweightPrompt, Onboarding, ProfileSettings, VisibilityCard } from './ProfileScreens.tsx';
 import { RoutineEditor } from './RoutineScreen.tsx';
@@ -52,6 +52,7 @@ function Tabs({ userId }: { userId: string }) {
   const { profile, ready, reload } = useBodyProfile(userId, training);
   const storedUnits = useUnits(userId);
   const units = storedUnits ?? 'kg';
+  const layout = useLayout(userId);
   const [promptDue, setPromptDue] = useState(false);
 
   useEffect(() => {
@@ -62,7 +63,7 @@ function Tabs({ userId }: { userId: string }) {
   if (training && ready && !hasEverything(profile, storedUnits)) {
     return <Onboarding userId={userId} training={training} onDone={reload} />;
   }
-  if (training && logging.open) return <SessionScreen training={training} units={units} onLeave={logging.leave} />;
+  if (training && logging.open) return <SessionScreen training={training} units={units} layout={layout} onLeave={logging.leave} />;
   return (
     <>
       <main className="screen">
@@ -96,9 +97,11 @@ function Tabs({ userId }: { userId: string }) {
             }}
           />
         )}
+        {current === 'home' && <SinceLastVisit userId={userId} />}
         {current === 'home' && training && profile && <WeekCard training={training} profile={profile} />}
         {current === 'home' && training && <StartSession logging={logging} training={training} />}
         {current === 'home' && <RaceCards userId={userId} />}
+        {current === 'home' && <FriendsTrainedToday userId={userId} />}
         {current === 'train' && training && <RoutineEditor training={training} profile={profile} onProfileSaved={reload} />}
         {current === 'train' && training && <History training={training} units={units} />}
         {current === 'profile' && training && <RankCard training={training} />}

@@ -5,20 +5,28 @@ import { Dots } from './Consistency.tsx';
 import {
   fetchMemberProfile,
   initials,
+  markVisit,
   refreshBoard,
   refreshGroups,
+  refreshNews,
+  setScoringMode,
   useBoard,
   useGroups,
+  useNews,
   type BoardRow,
   type Group,
   type MemberProfile,
+  type News,
   type Period,
+  type ScoringMode,
 } from './groups.ts';
-import { useI18n } from './i18n.ts';
+import { useI18n, type I18n } from './i18n.ts';
+import { Info } from './Info.tsx';
 import { useUnits } from './profile.ts';
 import type { Exercise, Training } from './training.ts';
 
 const periods: Period[] = ['week', 'month', 'year'];
+const modes: ScoringMode[] = ['standard', 'prHunt', 'grind'];
 
 // Fetches a Group's board for a Period now and whenever the phone comes back online. Offline, the
 // board shows as last fetched.
@@ -171,6 +179,9 @@ export function GroupBoard({ userId, group, training }: { userId: string; group:
   if (open) {
     return <MemberProfileView userId={userId} groupId={group.id} memberId={open} period={period} nameOf={nameOf} onClose={() => setOpen(null)} />;
   }
+  const owner = group.members.some(({ me, owner }) => me && owner);
+  const g = t.groups;
+  const next = board?.next_scoring_mode;
   return (
     <section className="card">
       <div className="chips">
@@ -180,6 +191,31 @@ export function GroupBoard({ userId, group, training }: { userId: string; group:
           </button>
         ))}
       </div>
+      {board?.scoring_mode && (
+        <p className="muted">
+          {g.scoringMode(g.modes[board.scoring_mode])} <Info term="scoringMode" />
+          {period !== 'year' && next && next !== board.scoring_mode && <> · {g.modeNext(g.modes[next], g.periods[period].toLowerCase())}</>}
+        </p>
+      )}
+      {owner && period !== 'year' && (
+        <div className="chips" role="group" aria-label={g.modeChoose}>
+          {modes.map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              className="chip"
+              aria-pressed={mode === (next ?? board?.scoring_mode)}
+              onClick={() =>
+                setScoringMode(group.id, mode)
+                  .then(() => refreshBoard(userId, group.id, period))
+                  .catch(() => {})
+              }
+            >
+              {g.modes[mode]}
+            </button>
+          ))}
+        </div>
+      )}
       {board && (
         <ul className="members">
           {board.members.map((row, index) => (
@@ -221,6 +257,87 @@ export function RaceCards({ userId }: { userId: string }) {
     <>
       {groups?.map((group) => (
         <RaceCard key={group.id} userId={userId} group={group} />
+      ))}
+    </>
+  );
+}
+
+// "Bea passed Ana (You)": a Group's passes, the ones involving the user first, at most three.
+function passLines(news: News | null, g: I18n['t']['groups']) {
+  const label = (who: { display_name: string; me: boolean }) => (who.me ? `${who.display_name} (${g.you})` : who.display_name);
+  const passes = [...(news?.passes ?? [])].sort((a, b) => Number(b.passer.me || b.passed.me) - Number(a.passer.me || a.passed.me));
+  return passes.slice(0, 3).map((pass) => g.passed(label(pass.passer), label(pass.passed)));
+}
+
+function SinceVisitCard({ userId, group }: { userId: string; group: Group }) {
+  const { t } = useI18n();
+  const lines = passLines(useNews(userId, group.id), t.groups);
+  if (lines.length === 0) return null;
+  return (
+    <section className="card">
+      <div className="eyebrow">
+        {t.groups.sinceVisit} · {group.name}
+      </div>
+      {lines.map((line) => (
+        <p key={line} className="disp">
+          {line}
+        </p>
+      ))}
+    </section>
+  );
+}
+
+// Home's top card: what happened in each Group since the user's last visit. It also fetches the
+// news for the cards below it, and then counts today as the last visit.
+export function SinceLastVisit({ userId }: { userId: string }) {
+  const groups = useGroups(userId);
+  const ids = groups?.map((group) => group.id).join(',');
+  useEffect(() => {
+    if (!ids) return;
+    const refresh = () =>
+      Promise.all(ids.split(',').map((id) => refreshNews(userId, id))).then(
+        () => markVisit(userId),
+        () => {},
+      );
+    refresh();
+    addEventListener('online', refresh);
+    return () => removeEventListener('online', refresh);
+  }, [userId, ids]);
+  return (
+    <>
+      {groups?.map((group) => (
+        <SinceVisitCard key={group.id} userId={userId} group={group} />
+      ))}
+    </>
+  );
+}
+
+function TrainedToday({ userId, group }: { userId: string; group: Group }) {
+  const { t } = useI18n();
+  const news = useNews(userId, group.id);
+  if (!news || news.trained_today.length === 0) return null;
+  return (
+    <section className="card">
+      <div className="eyebrow">{group.name}</div>
+      {news.trained_today.map((member, index) => (
+        <p key={index} className="member-name">
+          <span className="avatar" style={{ '--c': member.avatar_color } as CSSProperties} aria-hidden="true">
+            {initials(member.display_name)}
+          </span>{' '}
+          {t.groups.trainedToday(member.display_name)}
+        </p>
+      ))}
+    </section>
+  );
+}
+
+// Home: the Group members who already trained today, one card per Group that has any.
+export function FriendsTrainedToday({ userId }: { userId: string }) {
+  const groups = useGroups(userId);
+  return (
+    <>
+      {groups?.map((group) => (
+        <TrainedToday key={group.id} userId={userId} group={group} />
       ))}
     </>
   );

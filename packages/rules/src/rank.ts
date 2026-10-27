@@ -7,22 +7,21 @@ export type Division = 1 | 2 | 3 | 4 | 5;
 export type Rank = { tier: Tier; division: Division | null };
 
 // The Season Rank Points at which each Tier's Division V starts, and how many points each Division
-// of the Tier spans. Placeholders until the tuning ticket (#31), chosen from the design rule that a
-// full Season of perfect consistency with no Personal Records tops out in Gold:
+// of the Tier spans. Tuned with the simulation (src/simulation, `npm run simulate`) against the
+// design rules:
 //   - A Season has at most 14 weeks that start in it (92 days, Monday to Sunday), and a perfect week
-//     is CONSISTENCY_WEEKLY_AMOUNT = 120, so perfect consistency earns at most 14 * 120 = 1680
-//     (13 * 120 = 1560 in the usual quarter).
-//   - Gold I starts at 800 + 4 * 180 = 1520, within reach of 1560, so showing up every week reaches Gold I.
-//   - Diamond V starts at 800 + 5 * 180 = 1700, above 1680, so Diamond needs Progress Points as well.
-//   - Elite starts at 1700 + 5 * 260 = 3000: 1320 points beyond a perfect Season's 1680, over a
-//     Season's worth of Personal Records at the placeholder curve.
+//     is CONSISTENCY_WEEKLY_AMOUNT = 120, so perfect consistency with no Personal Records earns at
+//     most 14 * 120 = 1680 (13 * 120 = 1560 in the usual quarter): Gold, since Diamond V starts at 2300.
+//   - A typical simulated lifter earns about 1800 (60% Consistency, 40% Progress), so they land in
+//     Gold; Diamond takes Progress well beyond the typical, and Elite at 3300 is the top 3% or so of
+//     the simulated lifters. Bronze and Silver are the lifters who miss many weeks.
 export const TIER_CUTOFFS: { tier: Exclude<Tier, 'elite'>; start: number; divisionSpan: number }[] = [
-  { tier: 'bronze', start: 0, divisionSpan: 60 },
-  { tier: 'silver', start: 300, divisionSpan: 100 },
-  { tier: 'gold', start: 800, divisionSpan: 180 },
-  { tier: 'diamond', start: 1700, divisionSpan: 260 },
+  { tier: 'bronze', start: 0, divisionSpan: 160 },
+  { tier: 'silver', start: 800, divisionSpan: 100 },
+  { tier: 'gold', start: 1300, divisionSpan: 200 },
+  { tier: 'diamond', start: 2300, divisionSpan: 200 },
 ];
-export const ELITE_CUTOFF = 3000;
+export const ELITE_CUTOFF = 3300;
 
 const cutoffOf = (points: number) => [...TIER_CUTOFFS].reverse().find(({ start }) => points >= start) ?? TIER_CUTOFFS[0];
 

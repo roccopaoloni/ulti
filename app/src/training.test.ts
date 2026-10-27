@@ -410,7 +410,7 @@ test("a Personal Record's provisional points are weighted by the sex and bodywei
   await logSession(105);
 
   // The same worked example as the rules: a 5% gain by a male 83 kg lifter at the 53.9th percentile.
-  expect((await training.scoring()).events.map((e) => e.progressPoints)).toEqual([55]);
+  expect((await training.scoring()).events.map((e) => e.progressPoints)).toEqual([120]);
   training.close();
 });
 
@@ -431,7 +431,7 @@ test('a Personal Record is derived on the phone as soon as the Set is logged, of
   const record = await logSession(105);
 
   const { events, history } = await training.scoring();
-  expect(events.map((e) => [e.setId, e.percentGain, e.progressPoints])).toEqual([[record.id, 5, 50]]);
+  expect(events.map((e) => [e.setId, e.percentGain, e.progressPoints])).toEqual([[record.id, 5, 110]]);
   expect(history.sessions).toHaveLength(3);
 
   await training.deleteSet(record.id);
@@ -575,7 +575,7 @@ test('a pull-up Set with added weight logs offline, queues as the added weight, 
 
   // 80 kg × 1.2 = 96, then (80 + 4) kg × 1.2 = 100.8: a 5% gain.
   const { events } = await training.scoring();
-  expect(events.map((e) => [e.setId, e.bodyweightKg, e.percentGain, e.progressPoints])).toEqual([[record.id, 80, 5, 50]]);
+  expect(events.map((e) => [e.setId, e.bodyweightKg, e.percentGain, e.progressPoints])).toEqual([[record.id, 80, 5, 110]]);
   training.close();
 });
 
@@ -619,14 +619,14 @@ test('after a Session with every Working Set at the top of the Rep Range, the ne
   network.offline = true;
   const training = await anasPhone(network).open();
   await training.saveExercises(benchCatalog);
-  expect(await training.goHeavier('bench-press', benchRange)).toBeUndefined();
+  expect(await training.recommendation('bench-press', benchRange)).toBeUndefined();
 
   await benchSession(training, [[60, 12], [60, 12], [60, 12]]);
   // The next Session has started and Ana has logged a weaker Set: it doesn't change the advice.
   const next = await training.startSession();
   await training.logSet(next.id, 'bench-press', 60, 9);
 
-  expect(await training.goHeavier('bench-press', benchRange)).toEqual({ weightKg: 62.5, reps: 8, incrementKg: 2.5 });
+  expect(await training.recommendation('bench-press', benchRange)).toEqual({ kind: 'goHeavier', weightKg: 62.5, reps: 8, incrementKg: 2.5 });
   training.close();
 });
 
@@ -637,10 +637,10 @@ test('RIR 0 logged on those Sets makes the recommendation wait for one more Sess
   await training.saveExercises(benchCatalog);
 
   await benchSession(training, [[60, 12, 1], [60, 12, 0], [60, 12, 1]]);
-  expect(await training.goHeavier('bench-press', benchRange)).toBeUndefined();
+  expect(await training.recommendation('bench-press', benchRange)).toBeUndefined();
 
   await benchSession(training, [[60, 12], [60, 12], [60, 12]]);
-  expect(await training.goHeavier('bench-press', benchRange)).toEqual({ weightKg: 62.5, reps: 8, incrementKg: 2.5 });
+  expect(await training.recommendation('bench-press', benchRange)).toEqual({ kind: 'goHeavier', weightKg: 62.5, reps: 8, incrementKg: 2.5 });
   training.close();
 });
 
@@ -655,7 +655,7 @@ test("Ana's Increment override changes the recommendation and the keypad step, s
   await training.setIncrement('bench-press', 1.25);
   await training.saveExercises(benchCatalog);
 
-  expect(await training.goHeavier('bench-press', benchRange)).toEqual({ weightKg: 61.25, reps: 8, incrementKg: 1.25 });
+  expect(await training.recommendation('bench-press', benchRange)).toEqual({ kind: 'goHeavier', weightKg: 61.25, reps: 8, incrementKg: 1.25 });
   expect((await training.exercises()).find(({ id }) => id === 'bench-press')?.incrementKg).toBe(1.25);
   network.offline = false;
   phone.connectivity.dispatchEvent(new Event('online'));
@@ -689,6 +689,37 @@ test('a Custom Exercise at the top of the Rep Range gets no recommendation', asy
   for (let i = 0; i < 3; i++) await training.logSet(session.id, dip.id, 20, 12);
   await training.finishSession(session.id);
 
-  expect(await training.goHeavier(dip.id, benchRange)).toBeUndefined();
+  expect(await training.recommendation(dip.id, benchRange)).toBeUndefined();
+  training.close();
+});
+
+test('two Sessions under the bottom of the Rep Range recommend a Stall reset, judged without the Session in progress', async () => {
+  const network = server();
+  network.offline = true;
+  const training = await anasPhone(network).open();
+  await training.saveExercises(benchCatalog);
+  await benchSession(training, [[60, 7], [60, 6]]);
+  expect(await training.recommendation('bench-press', benchRange)).toBeUndefined();
+
+  await benchSession(training, [[60, 7], [60, 7]]);
+  const next = await training.startSession();
+  await training.logSet(next.id, 'bench-press', 60, 12);
+
+  expect(await training.recommendation('bench-press', benchRange)).toEqual({ kind: 'stall', weightKg: 55, reps: 8 });
+  training.close();
+});
+
+test('a Custom Exercise never gets a Stall', async () => {
+  const network = server();
+  network.offline = true;
+  const training = await anasPhone(network).open();
+  const dip = await training.createExercise('Assisted dip');
+  for (let i = 0; i < 2; i++) {
+    const session = await training.startSession();
+    await training.logSet(session.id, dip.id, 20, 3);
+    await training.finishSession(session.id);
+  }
+
+  expect(await training.recommendation(dip.id, benchRange)).toBeUndefined();
   training.close();
 });
