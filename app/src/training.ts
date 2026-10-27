@@ -318,12 +318,14 @@ export async function openTraining(userId: string, options: Options) {
 
     // The Scoring Events derived from everything on this phone, the Session in progress included:
     // provisional until the server's recompute (spec: instant "PR!" badge), by the same rules.
-    async scoring() {
-      const sessions = await db.getAll('sessions');
+    // `without` leaves one Session out, to see what it added.
+    async scoring(without?: string) {
+      const sessions = (await db.getAll('sessions')).filter(({ id }) => id !== without);
       sessions.sort((a, b) => a.startedAt.localeCompare(b.startedAt));
       const custom = new Map((await db.getAll('exercises')).map((exercise) => [exercise.id, exercise.custom]));
       const history: TrainingHistory = {
         userId,
+        weeklyTargets: (await this.profile()).weeklyTarget,
         sessions: await Promise.all(
           sessions.map(async ({ id, localDate }) => {
             const sets = await db.getAllFromIndex('sets', 'bySession', id);
@@ -342,7 +344,12 @@ export async function openTraining(userId: string, options: Options) {
           }),
         ),
       };
-      return { history, events: deriveScoringEvents(history) };
+      const all = deriveScoringEvents(history);
+      return {
+        history,
+        events: all.filter((event) => event.kind === 'personal-record'),
+        consistency: all.filter((event) => event.kind === 'consistency'),
+      };
     },
 
     exercises: () => db.getAll('exercises'),

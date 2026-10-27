@@ -3,6 +3,7 @@ import { signOut, useUser } from './auth.ts';
 import { AuthScreens, useAuthFlow } from './AuthScreens.tsx';
 import { newGroupPath, usePendingInvite } from './groups.ts';
 import { CreateGroup, GroupsTab, JoinInvite, ProfileCard } from './GroupsScreens.tsx';
+import { StampsCard, WeekCard } from './Consistency.tsx';
 import { History } from './HistoryScreen.tsx';
 import { useI18n, type Term } from './i18n.ts';
 import { tabIcons } from './icons.tsx';
@@ -92,8 +93,10 @@ function Tabs({ userId }: { userId: string }) {
             }}
           />
         )}
+        {current === 'home' && training && profile && <WeekCard training={training} profile={profile} />}
         {current === 'home' && training && <StartSession logging={logging} />}
         {current === 'train' && training && <History training={training} units={units} />}
+        {current === 'profile' && training && <StampsCard training={training} />}
         {current === 'profile' && training && profile && (
           <ProfileSettings userId={userId} training={training} profile={profile} units={units} onSaved={reload} />
         )}

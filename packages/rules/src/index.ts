@@ -22,6 +22,8 @@ export type Session = {
 export type TrainingHistory = {
   userId: string;
   sessions: Session[];
+  // The dated Weekly Target history (ADR 0002).
+  weeklyTargets: Dated<number>[];
 };
 
 // Bump when a change to the rules changes the events they derive, so stored events show which rules made them.
@@ -55,8 +57,27 @@ export type PersonalRecord = {
   progressPoints: number;
 };
 
+// The Consistency Points a week of meeting the Weekly Target is worth, the same for everyone. 120
+// splits evenly for every target from 2 to 6. A placeholder until the tuning ticket (#31).
+export const CONSISTENCY_WEEKLY_AMOUNT = 120;
+// A qualifying Session has at least this many Working Sets (spec: Consistency Points).
+export const QUALIFYING_WORKING_SETS = 6;
+
+// A week's Consistency Points (spec: Consistency Points): the share of the Weekly Target completed.
+export type ConsistencyWeek = {
+  kind: 'consistency';
+  id: string;
+  // The Monday that starts the week, as a local date.
+  week: string;
+  weeklyTarget: number;
+  // The local dates of the qualifying Sessions that counted, at most the Weekly Target.
+  sessionDates: string[];
+  rulesVersion: number;
+  consistencyPoints: number;
+};
+
 // Each kind of Scoring Event joins this union as its rules land.
-export type ScoringEvent = PersonalRecord;
+export type ScoringEvent = PersonalRecord | ConsistencyWeek;
 
 // The estimated one-rep max by the Epley formula, used everywhere (spec: e1RM).
 export function e1rm(weightKg: number, reps: number): number {
@@ -73,7 +94,11 @@ export function inCalibration(history: TrainingHistory, exercise: string): boole
 }
 
 export function deriveScoringEvents(history: TrainingHistory): ScoringEvent[] {
-  const events: ScoringEvent[] = [];
+  return [...derivePersonalRecords(history), ...deriveConsistency(history)];
+}
+
+function derivePersonalRecords(history: TrainingHistory): PersonalRecord[] {
+  const events: PersonalRecord[] = [];
   const bests = new Map<string, number>();
   const sessionsDone = new Map<string, number>();
   for (const session of history.sessions) {
@@ -110,6 +135,73 @@ export function deriveScoringEvents(history: TrainingHistory): ScoringEvent[] {
     }
   }
   return events;
+}
+
+function deriveConsistency(history: TrainingHistory): ConsistencyWeek[] {
+  // Only Working Sets reach scoring (spec: Warm-up detection).
+  const qualifying = history.sessions.filter((session) => workingSets(session).length >= QUALIFYING_WORKING_SETS);
+  const events: ConsistencyWeek[] = [];
+  for (const week of [...new Set(qualifying.map((session) => weekStart(session.localDate)))].sort()) {
+    const weeklyTarget = weeklyTargetOf(history.weeklyTargets, week);
+    if (weeklyTarget === undefined) continue;
+    const sessionDates = qualifying
+      .filter((session) => weekStart(session.localDate) === week)
+      .map((session) => session.localDate)
+      .slice(0, weeklyTarget);
+    events.push({
+      kind: 'consistency',
+      id: `${history.userId}:consistency:${week}`,
+      week,
+      weeklyTarget,
+      sessionDates,
+      rulesVersion: RULES_VERSION,
+      consistencyPoints: (CONSISTENCY_WEEKLY_AMOUNT * sessionDates.length) / weeklyTarget,
+    });
+  }
+  return events;
+}
+
+// The Weekly Target a week (given by its Monday) is scored with. A change applies from the next
+// Monday, so the target in force is the one on the week's Monday; the very first target also covers
+// the week it was set in.
+export function weeklyTargetOf(weeklyTargets: Dated<number>[], week: string): number | undefined {
+  return valueInForce(weeklyTargets, week) ?? valueInForce(weeklyTargets, weekEnd(week));
+}
+
+// The weeks (as their Mondays) in which the Weekly Target was met, Deload Weeks included (spec: Week Stamps).
+export function weekStamps(events: ConsistencyWeek[]): string[] {
+  return events.filter((event) => event.sessionDates.length === event.weeklyTarget).map((event) => event.week);
+}
+
+// The number of consecutive Week Stamps up to the last finished week, plus this week's once it has
+// its own: the week still running neither breaks the Streak nor extends it before then.
+export function streak(events: ConsistencyWeek[], today: string): number {
+  const stamped = new Set(weekStamps(events));
+  let week = weekStart(today);
+  let count = stamped.has(week) ? 1 : 0;
+  for (week = previousMonday(week); stamped.has(week); week = previousMonday(week)) count++;
+  return count;
+}
+
+function previousMonday(week: string): string {
+  const day = new Date(`${week}T00:00:00Z`);
+  day.setUTCDate(day.getUTCDate() - 7);
+  return day.toISOString().slice(0, 10);
+}
+
+// The Monday of the local date's week (weeks run Monday to Sunday).
+export function weekStart(localDate: string): string {
+  const day = new Date(`${localDate}T00:00:00Z`);
+  // getUTCDay: Sunday is 0, Monday is 1.
+  day.setUTCDate(day.getUTCDate() - ((day.getUTCDay() || 7) - 1));
+  return day.toISOString().slice(0, 10);
+}
+
+// The Sunday that ends the week starting on the given Monday.
+function weekEnd(week: string): string {
+  const day = new Date(`${week}T00:00:00Z`);
+  day.setUTCDate(day.getUTCDate() + 6);
+  return day.toISOString().slice(0, 10);
 }
 
 // Labels one Exercise's Sets of one Session, in the order they were logged: a Set is a Warm-up Set

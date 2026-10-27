@@ -153,6 +153,21 @@ type Messages = {
     // Shown on an Exercise during Calibration.
     calibration: string;
   };
+  // Consistency Points, Week Stamps and the Streak.
+  consistency: {
+    thisWeek: string;
+    // "2 of 3 sessions" under the dots.
+    progress: (done: number, target: number) => string;
+    points: (points: number) => string;
+    // Shown on the summary card when the Session filled a dot, and when it didn't.
+    filled: string;
+    notCounted: string;
+    summaryTitle: string;
+    close: string;
+    streak: (weeks: number) => string;
+    stamps: string;
+    noStamps: string;
+  };
   // The Train tab's history of past Sessions.
   history: {
     title: string;
@@ -349,6 +364,18 @@ const en: Messages = {
     points: (points) => `+${points} pts`,
     calibration: 'Your first sessions set your baseline',
   },
+  consistency: {
+    thisWeek: 'This week',
+    progress: (done, target) => `${done} of ${target} sessions`,
+    points: (points) => `${points} pts this week`,
+    filled: 'You showed up. That is what counts.',
+    notCounted: 'Not counted yet: a session needs at least six working sets, and sessions beyond your target earn nothing extra.',
+    summaryTitle: 'Session done',
+    close: 'Continue',
+    streak: (weeks) => (weeks === 1 ? 'Streak: 1 week' : `Streak: ${weeks} weeks`),
+    stamps: 'Week Stamps',
+    noStamps: 'Meet your Weekly Target in a week to earn your first stamp.',
+  },
   history: {
     title: 'Past sessions',
     empty: 'Your finished sessions will show up here.',
@@ -543,6 +570,18 @@ const es: Messages = {
     record: (exercise, percentGain, points) => `¡PR! ${exercise} +${percentGain}% · +${points} pts`,
     points: (points) => `+${points} pts`,
     calibration: 'Tus primeras sesiones fijan tu base',
+  },
+  consistency: {
+    thisWeek: 'Esta semana',
+    progress: (done, target) => `${done} de ${target} sesiones`,
+    points: (points) => `${points} pts esta semana`,
+    filled: 'Fuiste. Eso es lo que cuenta.',
+    notCounted: 'Todavía no cuenta: una sesión necesita al menos seis series de trabajo, y las sesiones sobre tu objetivo no suman más.',
+    summaryTitle: 'Sesión terminada',
+    close: 'Continuar',
+    streak: (weeks) => (weeks === 1 ? 'Racha: 1 semana' : `Racha: ${weeks} semanas`),
+    stamps: 'Sellos de semana',
+    noStamps: 'Cumplí tu objetivo semanal en una semana para ganar tu primer sello.',
   },
   history: {
     title: 'Sesiones anteriores',
