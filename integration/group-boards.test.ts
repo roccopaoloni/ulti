@@ -140,6 +140,7 @@ test("the board shows a member's points, Session dots and Personal Records, and 
 
   // 50 Progress Points and 40 Consistency Points. The Session dots count the qualifying Sessions.
   expect(members[0]).toEqual({
+    user_id: ana.id,
     position: 1,
     display_name: 'Ana',
     avatar_color: '#6fb6f7',
