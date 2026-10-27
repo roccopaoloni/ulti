@@ -89,6 +89,10 @@ export async function leaveGroup(userId: string, groupId: string) {
   await refreshGroups(userId);
 }
 
+export async function setScoringMode(groupId: string, mode: ScoringMode) {
+  await call(supabase.rpc('set_scoring_mode', { group_id: groupId, mode, on_date: today() }));
+}
+
 export async function resetInvite(userId: string, groupId: string) {
   await call(supabase.rpc('reset_invite', { group_id: groupId }));
   await refreshGroups(userId);
@@ -131,7 +135,10 @@ export type BoardRow = {
   session_dates: string[];
   records: { exercise: string; percent_gain: number; points: number }[];
 };
-export type Board = { members: BoardRow[] };
+export type ScoringMode = 'standard' | 'prHunt' | 'grind';
+// scoring_mode is the Mode this board is scored with; next_scoring_mode is the Owner's latest choice,
+// which differs while a change waits for the next Period.
+export type Board = { scoring_mode?: ScoringMode; next_scoring_mode?: ScoringMode; members: BoardRow[] };
 
 // Boards are kept as last fetched, so they show offline too.
 const boardKey = (userId: string, groupId: string, period: Period) => `ulti-board:${userId}:${groupId}:${period}`;
