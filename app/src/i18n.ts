@@ -216,6 +216,15 @@ type Messages = {
     stamps: string;
     noStamps: string;
   };
+  // Rank and the Season.
+  rank: {
+    title: string;
+    tier: Record<'bronze' | 'silver' | 'gold' | 'diamond' | 'elite', string>;
+    topPercent: (percent: number) => string;
+    position: (position: number) => string;
+    toNext: (points: number, next: string) => string;
+    maxed: string;
+  };
   // The Train tab's history of past Sessions.
   history: {
     title: string;
@@ -466,6 +475,14 @@ const en: Messages = {
     stamps: 'Week Stamps',
     noStamps: 'Meet your Weekly Target in a week to earn your first stamp.',
   },
+  rank: {
+    title: 'Rank',
+    tier: { bronze: 'Bronze', silver: 'Silver', gold: 'Gold', diamond: 'Diamond', elite: 'Elite' },
+    topPercent: (percent) => `top ${percent}% this Season`,
+    position: (position) => `#${position} this Season`,
+    toNext: (points, next) => `${points} pts to ${next}`,
+    maxed: 'Top Tier reached',
+  },
   history: {
     title: 'Past sessions',
     empty: 'Your finished sessions will show up here.',
@@ -710,6 +727,14 @@ const es: Messages = {
     streak: (weeks) => (weeks === 1 ? 'Racha: 1 semana' : `Racha: ${weeks} semanas`),
     stamps: 'Sellos de semana',
     noStamps: 'Cumplí tu objetivo semanal en una semana para ganar tu primer sello.',
+  },
+  rank: {
+    title: 'Rango',
+    tier: { bronze: 'Bronce', silver: 'Plata', gold: 'Oro', diamond: 'Diamante', elite: 'Élite' },
+    topPercent: (percent) => `top ${percent}% esta temporada`,
+    position: (position) => `#${position} esta temporada`,
+    toNext: (points, next) => `${points} pts para ${next}`,
+    maxed: 'Llegaste a la liga más alta',
   },
   history: {
     title: 'Sesiones anteriores',
