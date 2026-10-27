@@ -4,8 +4,9 @@
 -- position change that comes from Standard Points. No points, weights, reps or dates leave here.
 
 -- The caller's today is on_date. A member trained today when a qualifying Session of theirs has
--- that local date, which a week's Consistency event lists in sessionDates (so a Session beyond the
--- Weekly Target is not listed).
+-- that local date, which a week's Consistency event lists in trainedDates, Sessions beyond the
+-- Weekly Target included. Events stored before trainedDates existed lack it until their owner's
+-- next sync recomputes them, and fall back to sessionDates.
 --
 -- Scoring Events carry local dates and no clock times, so "since the last visit" is a local date:
 -- since is the day of the last visit, and what happened on that day counts as already seen. The
@@ -35,7 +36,7 @@ begin
         and exists (
           select from public.scoring_events e
           where e.user_id = m.user_id and e.event ->> 'kind' = 'consistency' and (e.event ->> 'week')::date = this_week
-            and e.event -> 'sessionDates' @> to_jsonb(group_news.on_date::text)
+            and coalesce(e.event -> 'trainedDates', e.event -> 'sessionDates') @> to_jsonb(group_news.on_date::text)
         )
     ), '[]'::jsonb),
     'passes', coalesce((
