@@ -150,6 +150,41 @@ export async function refreshBoard(userId: string, groupId: string, period: Peri
   write(boardKey(userId, groupId, period), board);
 }
 
+// What group_news() returns: the other members who already trained today, and who passed whom in
+// the week since the caller's last visit. Names and colours only; the server hides the rest.
+type Who = { display_name: string; me: boolean };
+export type News = {
+  trained_today: { display_name: string; avatar_color: string }[];
+  passes: { passer: Who; passed: Who }[];
+};
+// Kept as last fetched with the day it was fetched for, so "today" never shows a day late offline.
+type StoredNews = News & { date: string };
+
+const newsKey = (userId: string, groupId: string) => `ulti-news:${userId}:${groupId}`;
+const visitKey = (userId: string) => `ulti-last-visit:${userId}`;
+
+export function useNews(userId: string, groupId: string) {
+  const stored = useStored<StoredNews>(newsKey(userId, groupId));
+  return stored?.date === today() ? stored : null;
+}
+
+// The day of the last visit is read once per page load, so the news stays on Home while the user
+// moves between tabs. Without a last visit there is nothing to catch up on.
+const sinceThisLoad = new Map<string, string | null>();
+function lastVisit(userId: string) {
+  if (!sinceThisLoad.has(userId)) sinceThisLoad.set(userId, JSON.parse(localStorage.getItem(visitKey(userId)) ?? 'null'));
+  return sinceThisLoad.get(userId)!;
+}
+
+export async function refreshNews(userId: string, groupId: string) {
+  const news = await call<News>(supabase.rpc('group_news', { group_id: groupId, since: lastVisit(userId) ?? today(), on_date: today() }));
+  write(newsKey(userId, groupId), { ...news, date: today() });
+}
+
+// Today becomes the last visit once the news has been fetched, so a visit that never got the news
+// (offline) leaves it for the next one.
+export const markVisit = (userId: string) => write(visitKey(userId), today());
+
 // What member_profile() returns of a member: always their points, position, Session count and
 // Personal Records as %; the weights and reps and the Sessions only if they allow it.
 export type MemberProfile = {

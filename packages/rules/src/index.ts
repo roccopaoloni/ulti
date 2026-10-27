@@ -93,6 +93,9 @@ export type ConsistencyWeek = {
   weeklyTarget: number;
   // The local dates of the qualifying Sessions that counted, at most the Weekly Target.
   sessionDates: string[];
+  // The local dates of all the week's qualifying Sessions, beyond the Weekly Target too (Group
+  // news lists who trained today). They earn no points.
+  trainedDates: string[];
   rulesVersion: number;
   consistencyPoints: number;
   points: ModePoints;
@@ -227,10 +230,8 @@ function deriveConsistency(history: TrainingHistory): ConsistencyWeek[] {
   for (const week of [...new Set(qualifying.map((session) => weekStart(session.localDate)))].sort()) {
     const weeklyTarget = weeklyTargetOf(history.weeklyTargets, week);
     if (weeklyTarget === undefined) continue;
-    const sessionDates = qualifying
-      .filter((session) => weekStart(session.localDate) === week)
-      .map((session) => session.localDate)
-      .slice(0, weeklyTarget);
+    const trainedDates = qualifying.filter((session) => weekStart(session.localDate) === week).map((session) => session.localDate);
+    const sessionDates = trainedDates.slice(0, weeklyTarget);
     const consistencyPoints = (CONSISTENCY_WEEKLY_AMOUNT * sessionDates.length) / weeklyTarget;
     events.push({
       kind: 'consistency',
@@ -238,6 +239,7 @@ function deriveConsistency(history: TrainingHistory): ConsistencyWeek[] {
       week,
       weeklyTarget,
       sessionDates,
+      trainedDates,
       rulesVersion: RULES_VERSION,
       consistencyPoints,
       points: consistencyModePoints(consistencyPoints),

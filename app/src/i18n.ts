@@ -59,6 +59,10 @@ type Messages = {
     behind: (points: number, name: string) => string;
     ahead: (points: number, name: string) => string;
     leading: string;
+    // Home's news: the "since your last visit" card and the friends who trained today.
+    sinceVisit: string;
+    passed: (passer: string, passed: string) => string;
+    trainedToday: (name: string) => string;
     retry: string;
     notNow: string;
     profileTitle: string;
@@ -368,6 +372,9 @@ const en: Messages = {
     behind: (points, name) => `${points} pts behind ${name}`,
     ahead: (points, name) => `${points} pts ahead of ${name}`,
     leading: 'Leading the way',
+    sinceVisit: 'Since your last visit',
+    passed: (passer, passed) => `${passer} passed ${passed}`,
+    trainedToday: (name) => `${name} already trained today`,
     retry: 'Try again',
     notNow: 'Not now',
     profileTitle: 'How your friends see you',
@@ -647,6 +654,9 @@ const es: Messages = {
     behind: (points, name) => `${points} pts detrás de ${name}`,
     ahead: (points, name) => `${points} pts delante de ${name}`,
     leading: 'Vas al frente',
+    sinceVisit: 'Desde tu última visita',
+    passed: (passer, passed) => `${passer} pasó a ${passed}`,
+    trainedToday: (name) => `${name} ya entrenó hoy`,
     retry: 'Probar de nuevo',
     notNow: 'Ahora no',
     profileTitle: 'Cómo te ven tus amigos',
