@@ -80,6 +80,18 @@ test("friends who trained today are the other members with a qualifying Session 
   expect(trained_today).toEqual([{ display_name: 'Ana', avatar_color: '#6fb6f7' }]);
 });
 
+test('a friend past their Weekly Target still trained today', async () => {
+  const ana = await lifter('Ana');
+  await sync(ana, [
+    weeklyTarget(2),
+    ...['2026-10-19', '2026-10-20', wednesday].flatMap((date) => session(date)),
+  ]);
+  const dee = await lifter('Dee');
+  const gymCrew = await groupOf(ana, dee);
+
+  expect((await news(dee, gymCrew, wednesday, wednesday)).trained_today).toEqual([{ display_name: 'Ana', avatar_color: '#6fb6f7' }]);
+});
+
 test('since the last visit, the news says who passed whom in the week, and only that', async () => {
   const ana = await trained('Ana', monday);
   const bea = await trained('Bea', '2026-10-20', wednesday);
