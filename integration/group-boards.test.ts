@@ -152,7 +152,8 @@ test("the board shows a member's points, Session dots and Personal Records, and 
   // Nor can Bea read Ana's events, or the bodyweight and sex Ana gave, from the tables.
   for (const table of ['scoring_events', 'profile_history']) {
     const read = await bea.client.from(table).select().eq('user_id', ana.id);
-    expect(read.data).toEqual([]);
+    // Either no rows come back, or the read is refused outright (once no one reads events directly).
+    expect(read.data ?? []).toEqual([]);
   }
 });
 
