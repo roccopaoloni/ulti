@@ -2,6 +2,7 @@
 // batch of mutations; the endpoint saves them, then recomputes the user's whole history.
 import { Client } from '@db/postgres';
 import { withSupabase } from '@supabase/server';
+import { isProfileValue } from '@ulti/rules';
 import { lockUser, recompute } from '../_shared/recompute.ts';
 
 // What the phone saves. updatedAt is when the phone made the write: the latest one wins.
@@ -24,11 +25,14 @@ type SetRecord = {
   loggedAt: string;
   updatedAt: string;
 };
+// One entry of a dated history: the value in force from a local date on (ADR 0002).
+type ProfileEntry = { field: string; effectiveFrom: string; value: unknown; updatedAt: string };
 type ExerciseRecord = { id: string; name: string };
 type Mutation =
   | { id: string; kind: 'saveSession'; session: SessionRecord }
   | { id: string; kind: 'saveSet'; set: SetRecord }
-  | { id: string; kind: 'saveExercise'; exercise: ExerciseRecord };
+  | { id: string; kind: 'saveExercise'; exercise: ExerciseRecord }
+  | { id: string; kind: 'saveProfileEntry'; entry: ProfileEntry };
 
 // Sets dated after the moment the endpoint received them are rejected. A phone's clock can run a
 // little fast, though, and a Set synced the moment it's logged would be lost to that: this much
@@ -79,11 +83,17 @@ async function save(client: Client, userId: string, mutations: Mutation[], recei
     if (!kept || Date.parse(kept.updatedAt) <= Date.parse(record.updatedAt)) records.set(record.id, record);
   };
   const exercises = new Map<string, ExerciseRecord>();
+  const entries = new Map<string, ProfileEntry & { id: string }>();
   const rejected: string[] = [];
   for (const mutation of mutations) {
     if (!unseen.delete(mutation.id)) continue;
     if (mutation.kind === 'saveSession') keepLatest(sessions, mutation.session);
     else if (mutation.kind === 'saveExercise') exercises.set(mutation.exercise.id, mutation.exercise);
+    else if (mutation.kind === 'saveProfileEntry') {
+      const { entry } = mutation;
+      if (!isProfileValue(entry.field, entry.value)) rejected.push(mutation.id);
+      else keepLatest(entries, { ...entry, id: `${entry.field} ${entry.effectiveFrom}` });
+    }
     else if (Date.parse(mutation.set.loggedAt) > receivedAt + clockAllowanceMs) rejected.push(mutation.id);
     else keepLatest(sets, mutation.set);
   }
@@ -125,6 +135,16 @@ async function save(client: Client, userId: string, mutations: Mutation[], recei
       logged_at = excluded.logged_at,
       updated_at = excluded.updated_at
     where sets.updated_at < excluded.updated_at`;
+  await transaction.queryArray`
+    insert into public.profile_history (user_id, field, effective_from, value, updated_at)
+    select ${userId}, e.field, e."effectiveFrom", e.value, e."updatedAt"
+    from jsonb_to_recordset(${JSON.stringify([...entries.values()])}::jsonb) as e(
+      field text, "effectiveFrom" date, value jsonb, "updatedAt" timestamptz
+    )
+    on conflict (user_id, field, effective_from) do update set
+      value = excluded.value,
+      updated_at = excluded.updated_at
+    where profile_history.updated_at < excluded.updated_at`;
   // The user's Scoring Events are out of date until the recompute succeeds.
   await transaction.queryArray`insert into private.dirty_users (user_id) values (${userId}) on conflict do nothing`;
   await transaction.commit();

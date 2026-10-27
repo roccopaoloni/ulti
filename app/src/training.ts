@@ -1,4 +1,4 @@
-import type { SetLabel } from '@ulti/rules';
+import { bodyweightPromptDue, nextMonday, type Dated, type ProfileField, type Sex, type SetLabel } from '@ulti/rules';
 import { openDB, type DBSchema } from 'idb';
 
 // The user's own training lives on the phone, in IndexedDB, so logging never needs a signal
@@ -42,10 +42,23 @@ export type Exercise = {
   incrementKg: number;
 };
 
+// One entry of a dated history (ADR 0002). A date has one entry per field; the server keeps the
+// latest write.
+export type ProfileEntry = { field: ProfileField; effectiveFrom: string; value: Sex | number; updatedAt: string };
+
+// The user's sex, bodyweight (kg) and Weekly Target, each as its history.
+export type Profile = {
+  sex: Dated<Sex>[];
+  bodyweightKg: Dated<number>[];
+  weeklyTarget: Dated<number>[];
+};
+
+
 export type Mutation =
   | { id: string; kind: 'saveSession'; session: SessionRecord }
   | { id: string; kind: 'saveSet'; set: SetRecord }
-  | { id: string; kind: 'saveExercise'; exercise: { id: string; name: string } };
+  | { id: string; kind: 'saveExercise'; exercise: { id: string; name: string } }
+  | { id: string; kind: 'saveProfileEntry'; entry: ProfileEntry };
 
 // The sync endpoint: it resolves once the server has the batch, and throws otherwise.
 export type Send = (mutations: Mutation[]) => Promise<{ rejected: string[] }>;
@@ -67,8 +80,11 @@ interface Store extends DBSchema {
   outbox: { key: number; value: Mutation };
   // The Session in progress, kept here so it survives the app reloading into a new version.
   state: { key: 'sessionInProgress'; value: InProgress };
+  // The last day the user was asked for bodyweight and dismissed the prompt.
+  bodyweightPrompt: { key: 'dismissedOn'; value: string };
   // The catalog, as last fetched from the server.
   exercises: { key: string; value: Exercise };
+  profile: { key: [string, string]; value: ProfileEntry };
 }
 
 // The Session being logged and the Exercises added to it, in order, including any with no Sets yet.
@@ -77,21 +93,28 @@ type InProgress = { sessionId: string; exerciseIds: string[] };
 export type Training = Awaited<ReturnType<typeof openTraining>>;
 
 export async function openTraining(userId: string, options: Options) {
-  const db = await openDB<Store>(`ulti-${userId}`, 1, {
-    upgrade(db) {
-      db.createObjectStore('sessions', { keyPath: 'id' });
-      db.createObjectStore('sets', { keyPath: 'id' }).createIndex('bySession', 'sessionId');
-      db.createObjectStore('outbox', { autoIncrement: true });
-      db.createObjectStore('state');
-      db.createObjectStore('exercises', { keyPath: 'id' });
+  const db = await openDB<Store>(`ulti-${userId}`, 2, {
+    upgrade(db, oldVersion) {
+      if (oldVersion < 1) {
+        db.createObjectStore('sessions', { keyPath: 'id' });
+        db.createObjectStore('sets', { keyPath: 'id' }).createIndex('bySession', 'sessionId');
+        db.createObjectStore('outbox', { autoIncrement: true });
+        db.createObjectStore('state');
+        db.createObjectStore('exercises', { keyPath: 'id' });
+      }
+      if (oldVersion < 2) {
+        db.createObjectStore('profile', { keyPath: ['field', 'effectiveFrom'] });
+        db.createObjectStore('bodyweightPrompt');
+      }
     },
   });
 
   // Saves a record and queues its mutation in one transaction, with the Session in progress when
   // it changes: none of them exists without the others.
   async function write(mutation: Mutation, inProgress?: InProgress | null) {
-    const tx = db.transaction(['sessions', 'sets', 'exercises', 'outbox', 'state'], 'readwrite');
+    const tx = db.transaction(['sessions', 'sets', 'exercises', 'outbox', 'state', 'profile'], 'readwrite');
     if (mutation.kind === 'saveSession') await tx.objectStore('sessions').put(mutation.session);
+    else if (mutation.kind === 'saveProfileEntry') await tx.objectStore('profile').put(mutation.entry);
     else if (mutation.kind === 'saveSet') {
       if (mutation.set.deleted) await tx.objectStore('sets').delete(mutation.set.id);
       else await tx.objectStore('sets').put(mutation.set);
@@ -233,6 +256,53 @@ export async function openTraining(userId: string, options: Options) {
       const sessions = await Promise.all([...new Set(sets.map((set) => set.sessionId))].map((id) => db.get('sessions', id)));
       const last = sessions.reduce((a, b) => (a!.startedAt > b!.startedAt ? a : b))!;
       return sets.filter((set) => set.sessionId === last.id).sort((a, b) => a.loggedAt.localeCompare(b.loggedAt));
+    },
+
+    // Sets a field of the profile. A Weekly Target starts next Monday in the user's time zone, so
+    // it can't be lowered on a Saturday to look consistent; the rest start today.
+    async setProfile(field: ProfileField, value: Sex | number) {
+      const now = options.now();
+      const today = localDate(now, options.timeZone());
+      const entry: ProfileEntry = {
+        field,
+        effectiveFrom: field === 'weeklyTarget' ? nextMonday(today) : today,
+        value,
+        updatedAt: now.toISOString(),
+      };
+      await write({ id: crypto.randomUUID(), kind: 'saveProfileEntry', entry });
+    },
+
+    async profile(): Promise<Profile> {
+      const entries = await db.getAll('profile');
+      const of = <T>(field: ProfileField) =>
+        entries
+          .filter((entry) => entry.field === field)
+          .sort((a, b) => a.effectiveFrom.localeCompare(b.effectiveFrom))
+          .map(({ effectiveFrom, value }) => ({ effectiveFrom, value: value as T }));
+      return { sex: of<Sex>('sex'), bodyweightKg: of<number>('bodyweightKg'), weeklyTarget: of<number>('weeklyTarget') };
+    },
+
+    // Keeps what the server holds of the profile, as on a phone that is new to this user. Whatever
+    // the phone already has, including writes the server hasn't seen yet, stays as it is.
+    async saveProfileHistory(entries: Omit<ProfileEntry, 'updatedAt'>[]) {
+      const tx = db.transaction('profile', 'readwrite');
+      for (const entry of entries) {
+        if (!(await tx.store.get([entry.field, entry.effectiveFrom]))) await tx.store.put({ ...entry, updatedAt: '' });
+      }
+      await tx.done;
+    },
+
+    // Whether it is time to ask for bodyweight again: two weeks after the last time the user gave
+    // it or dismissed the prompt. Before a first bodyweight, onboarding asks instead.
+    async bodyweightPromptDue() {
+      const given = (await this.profile()).bodyweightKg.at(-1)?.effectiveFrom;
+      if (!given) return false;
+      const dismissed = await db.get('bodyweightPrompt', 'dismissedOn');
+      return bodyweightPromptDue(dismissed && dismissed > given ? dismissed : given, localDate(options.now(), options.timeZone()));
+    },
+
+    async dismissBodyweightPrompt() {
+      await db.put('bodyweightPrompt', localDate(options.now(), options.timeZone()), 'dismissedOn');
     },
 
     exercises: () => db.getAll('exercises'),
