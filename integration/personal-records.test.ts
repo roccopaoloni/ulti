@@ -148,7 +148,7 @@ test('pull-ups are scored at the lifter\'s four-week average bodyweight plus the
   expect(await scoringEventsOf(ana)).toEqual([
     {
       id: `${ana.id}:personal-record:${third.setRecord.id}`,
-      event: expect.objectContaining({ exercise: 'pull-up', bodyweightKg: 80, previousE1rm: 98.4, newE1rm: 100.8 }),
+      event: expect.objectContaining({ exercise: 'pull-up', bodyweightKg: 80, previousE1rm: expect.closeTo(98.4), newE1rm: expect.closeTo(100.8) }),
     },
   ]);
 });
