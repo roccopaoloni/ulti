@@ -1,10 +1,14 @@
 import {
   bodyweightPromptDue,
+  canStartDeload,
   deriveScoringEvents,
   nextMonday,
   nextRoutineDay,
   recommend,
+  recommendDeload,
+  weekStart,
   type Dated,
+  type DeloadReason,
   type ProfileField,
   type RoutineDay,
   type RoutineExercise,
@@ -81,7 +85,20 @@ export type IncrementOverride = { exerciseId: string; incrementKg: number; updat
 // made one, the latest write is the Routine.
 export type RoutineRecord = { id: string; days: RoutineDay[]; updatedAt: string };
 
+// A Deload Week the lifter started themselves, or answered a suggestion for (spec: Deload Weeks,
+// suggested or self-started, accepted or dismissed). It is the week starting on `week` (a Monday);
+// the latest write for a week wins.
+export type DeloadRecord = {
+  week: string;
+  origin: 'suggested' | 'self';
+  // Why the app suggested it.
+  reason?: DeloadReason;
+  status: 'accepted' | 'dismissed';
+  updatedAt: string;
+};
+
 export type Mutation =
+  | { id: string; kind: 'saveDeload'; deload: DeloadRecord }
   | { id: string; kind: 'saveSession'; session: SessionRecord }
   | { id: string; kind: 'saveSet'; set: SetRecord }
   | { id: string; kind: 'saveExercise'; exercise: { id: string; name: string } }
@@ -116,6 +133,7 @@ interface Store extends DBSchema {
   profile: { key: [string, string]; value: ProfileEntry };
   routines: { key: string; value: RoutineRecord };
   increments: { key: string; value: IncrementOverride };
+  deloads: { key: string; value: DeloadRecord };
 }
 
 // The Session being logged and the Exercises added to it, in order, including any with no Sets yet,
@@ -128,7 +146,7 @@ const DEFAULT_INCREMENT_KG = 2.5;
 export type Training = Awaited<ReturnType<typeof openTraining>>;
 
 export async function openTraining(userId: string, options: Options) {
-  const db = await openDB<Store>(`ulti-${userId}`, 4, {
+  const db = await openDB<Store>(`ulti-${userId}`, 5, {
     upgrade(db, oldVersion) {
       if (oldVersion < 1) {
         db.createObjectStore('sessions', { keyPath: 'id' });
@@ -147,14 +165,18 @@ export async function openTraining(userId: string, options: Options) {
       if (oldVersion < 4) {
         db.createObjectStore('increments', { keyPath: 'exerciseId' });
       }
+      if (oldVersion < 5) {
+        db.createObjectStore('deloads', { keyPath: 'week' });
+      }
     },
   });
 
   // Saves a record and queues its mutation in one transaction, with the Session in progress when
   // it changes: none of them exists without the others.
   async function write(mutation: Mutation, inProgress?: InProgress | null) {
-    const tx = db.transaction(['sessions', 'sets', 'exercises', 'outbox', 'state', 'profile', 'routines', 'increments'], 'readwrite');
-    if (mutation.kind === 'saveSession') await tx.objectStore('sessions').put(mutation.session);
+    const tx = db.transaction(['sessions', 'sets', 'exercises', 'outbox', 'state', 'profile', 'routines', 'increments', 'deloads'], 'readwrite');
+    if (mutation.kind === 'saveDeload') await tx.objectStore('deloads').put(mutation.deload);
+    else if (mutation.kind === 'saveSession') await tx.objectStore('sessions').put(mutation.session);
     else if (mutation.kind === 'saveProfileEntry') await tx.objectStore('profile').put(mutation.entry);
     else if (mutation.kind === 'saveRoutine') await tx.objectStore('routines').put(mutation.routine);
     else if (mutation.kind === 'saveIncrement') await tx.objectStore('increments').put(mutation.increment);
@@ -308,8 +330,12 @@ export async function openTraining(userId: string, options: Options) {
     async lastSets(exerciseId: string) {
       const inProgress = await db.get('state', 'sessionInProgress');
       const sets = (await db.getAll('sets')).filter((set) => set.exerciseId === exerciseId && set.sessionId !== inProgress?.sessionId);
-      if (sets.length === 0) return [];
-      const sessions = await Promise.all([...new Set(sets.map((set) => set.sessionId))].map((id) => db.get('sessions', id)));
+      // Deload Week Sessions are skipped: their lighter Sets are not what the next Session builds on.
+      const deloadWeeks = await this.deloadWeeks();
+      const sessions = (await Promise.all([...new Set(sets.map((set) => set.sessionId))].map((id) => db.get('sessions', id)))).filter(
+        (session) => !deloadWeeks.includes(weekStart(session!.localDate)),
+      );
+      if (sessions.length === 0) return [];
       const last = sessions.reduce((a, b) => (a!.startedAt > b!.startedAt ? a : b))!;
       return sets.filter((set) => set.sessionId === last.id).sort((a, b) => a.loggedAt.localeCompare(b.loggedAt));
     },
@@ -375,6 +401,7 @@ export async function openTraining(userId: string, options: Options) {
         userId,
         weeklyTargets: profile.weeklyTarget,
         profile,
+        deloadWeeks: await this.deloadWeeks(),
         sessions: await Promise.all(
           sessions.map(async ({ id, localDate }) => {
             const sets = await db.getAllFromIndex('sets', 'bySession', id);
@@ -463,6 +490,74 @@ export async function openTraining(userId: string, options: Options) {
       const inProgress = await db.get('state', 'sessionInProgress');
       const { history } = await this.scoring(inProgress?.sessionId);
       return recommend(history, exerciseId, { ...repRange, incrementKg: exercise?.incrementKg ?? DEFAULT_INCREMENT_KG });
+    },
+
+    // The Mondays of the Deload Weeks the lifter started or accepted.
+    async deloadWeeks() {
+      return (await db.getAll('deloads')).filter(({ status }) => status === 'accepted').map(({ week }) => week).sort();
+    },
+
+    // Whether this week is a Deload Week, whether the lifter can start one, and the app's
+    // suggestion for one, if any and not dismissed (spec: Deload Week). The Routine's catalog
+    // Exercises are what the suggestion looks at.
+    async deload() {
+      const today = localDate(options.now(), options.timeZone());
+      const inProgress = await db.get('state', 'sessionInProgress');
+      const { history } = await this.scoring(inProgress?.sessionId);
+      const catalog = await this.exercises();
+      const routine = new Map<string, { exercise: string; rule: { repMin: number; repMax: number; incrementKg: number } }>();
+      for (const planned of (await this.routine())?.days.flatMap((day) => day.exercises) ?? []) {
+        const exercise = catalog.find(({ id }) => id === planned.exerciseId);
+        if (!exercise || exercise.custom || routine.has(planned.exerciseId)) continue;
+        routine.set(planned.exerciseId, {
+          exercise: planned.exerciseId,
+          rule: { repMin: planned.repMin, repMax: planned.repMax, incrementKg: exercise.incrementKg },
+        });
+      }
+      const dismissed = (await db.getAll('deloads')).filter(({ status }) => status === 'dismissed').map(({ week }) => week);
+      return {
+        active: history.deloadWeeks!.includes(weekStart(today)),
+        canStart: canStartDeload(history, today),
+        suggestion: recommendDeload(history, today, [...routine.values()], dismissed),
+      };
+    },
+
+    // The lifter starts a Deload Week themselves, at most once every four weeks: false when it is too soon.
+    async startDeload() {
+      if (!(await this.deload()).canStart) return false;
+      const deload: DeloadRecord = {
+        week: weekStart(localDate(options.now(), options.timeZone())),
+        origin: 'self',
+        status: 'accepted',
+        updatedAt: stamp(),
+      };
+      await write({ id: crypto.randomUUID(), kind: 'saveDeload', deload });
+      return true;
+    },
+
+    // Accepts or dismisses the suggested Deload Week; both answers are stored.
+    async answerDeload(accept: boolean) {
+      const reason = (await this.deload()).suggestion;
+      if (!reason) return;
+      const deload: DeloadRecord = {
+        week: weekStart(localDate(options.now(), options.timeZone())),
+        origin: 'suggested',
+        reason,
+        status: accept ? 'accepted' : 'dismissed',
+        updatedAt: stamp(),
+      };
+      await write({ id: crypto.randomUUID(), kind: 'saveDeload', deload });
+    },
+
+    // Keeps the Deload Weeks the server holds, as on a phone that is new to this user, unless the
+    // phone has a later write of one.
+    async saveDeloadsFromServer(deloads: DeloadRecord[]) {
+      const tx = db.transaction('deloads', 'readwrite');
+      for (const deload of deloads) {
+        const kept = await tx.store.get(deload.week);
+        if (!kept || kept.updatedAt < deload.updatedAt) await tx.store.put(deload);
+      }
+      await tx.done;
     },
 
     // Exercises are never removed, so the refresh adds to the phone's copy rather than replacing

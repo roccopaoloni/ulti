@@ -5,7 +5,7 @@ import type { Tab } from './navigation.ts';
 export type Language = 'en' | 'es';
 
 // Glossary terms that appear in the interface, each explained by an ⓘ.
-export type Term = 'weeklyTarget' | 'strengthLevel' | 'routine' | 'group' | 'rank' | 'owner' | 'scoringMode' | 'session' | 'set' | 'exercise' | 'calibration';
+export type Term = 'weeklyTarget' | 'strengthLevel' | 'routine' | 'group' | 'rank' | 'owner' | 'scoringMode' | 'session' | 'set' | 'exercise' | 'calibration' | 'deload';
 
 type Messages = {
   tagline: string;
@@ -206,6 +206,18 @@ type Messages = {
     increment: (amount: string, units: string) => string;
     incrementLabel: string;
   };
+  // The Deload Week card on Home, under "Start Session".
+  deload: {
+    // This week is a Deload Week.
+    active: string;
+    // Why a Deload Week is suggested.
+    stalled: string;
+    rir: string;
+    time: string;
+    accept: string;
+    dismiss: string;
+    start: string;
+  };
   // The Train tab's Routine.
   routine: {
     title: string;
@@ -330,6 +342,11 @@ const en: Messages = {
       term: 'Calibration',
       explanation:
         "Your first two sessions with an exercise only set your starting best, so they can't earn Progress Points. After that, beating your all-time best estimated one-rep max is a Personal Record.",
+    },
+    deload: {
+      term: 'Deload Week',
+      explanation:
+        'A week of the same Routine with about half the sets at about 10% less weight, to recover from built-up fatigue. A session still counts toward your Weekly Target with just three working sets, your Week Stamp and Streak are safe, and deload sessions are ignored when the app decides whether to go heavier or whether an exercise has stalled.',
     },
   },
   groups: {
@@ -503,6 +520,15 @@ const en: Messages = {
     increment: (amount, units) => `Step ${amount} ${units}`,
     incrementLabel: 'Increment',
   },
+  deload: {
+    active: 'Deload Week: about half the sets at about 10% less weight',
+    stalled: 'Two or more exercises have stalled. Take a Deload Week to recover.',
+    rir: 'Your reps in reserve keep falling at the same weights. Take a Deload Week to recover.',
+    time: "It's been a while since your last Deload Week. Want to take one?",
+    accept: 'Start Deload Week',
+    dismiss: 'Not now',
+    start: 'Start a Deload Week',
+  },
   routine: {
     title: 'Routine',
     empty: 'Add the sessions of your week, each with its exercises.',
@@ -619,6 +645,11 @@ const es: Messages = {
       term: 'Calibración',
       explanation:
         'Tus primeras dos sesiones con un ejercicio solo fijan tu mejor marca de partida, así que no dan Puntos de progreso. Después, superar tu mejor 1RM estimado de siempre es un PR.',
+    },
+    deload: {
+      term: 'Semana de descarga',
+      explanation:
+        'Una semana con la misma Rutina, con más o menos la mitad de las series y un 10% menos de peso, para recuperarte de la fatiga acumulada. Una sesión cuenta para tu Objetivo semanal con solo tres series efectivas, tu Sello de semana y tu Racha están a salvo, y las sesiones de descarga se ignoran cuando la app decide si subir de peso o si un ejercicio se estancó.',
     },
   },
   groups: {
@@ -787,6 +818,15 @@ const es: Messages = {
     rir: 'Repeticiones en reserva (RIR)',
     increment: (amount, units) => `Salto de ${amount} ${units}`,
     incrementLabel: 'Incremento',
+  },
+  deload: {
+    active: 'Semana de descarga: más o menos la mitad de las series con un 10% menos de peso',
+    stalled: 'Dos o más ejercicios se estancaron. Hacé una Semana de descarga para recuperarte.',
+    rir: 'Tus repeticiones en reserva siguen bajando con los mismos pesos. Hacé una Semana de descarga para recuperarte.',
+    time: 'Pasó un buen tiempo desde tu última Semana de descarga. ¿Querés hacer una?',
+    accept: 'Empezar Semana de descarga',
+    dismiss: 'Ahora no',
+    start: 'Empezar una Semana de descarga',
   },
   routine: {
     title: 'Rutina',

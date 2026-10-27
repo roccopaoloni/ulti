@@ -34,6 +34,9 @@ export type TrainingHistory = {
   // Sex and bodyweight check-ins, dated (ADR 0002). Bodyweight Exercises are scored with the
   // average bodyweight; without them every other Personal Record is weighted as the 50th percentile.
   profile?: { sex: Dated<Sex>[]; bodyweightKg: Dated<number>[] };
+  // The Mondays of the Deload Weeks the lifter accepted or started (spec: Deload Week). Their
+  // Sessions need fewer Working Sets to qualify, and are ignored by Calibration, go heavier and Stall.
+  deloadWeeks?: string[];
 };
 
 // Bump when a change to the rules changes the events they derive, so stored events show which rules made them.
@@ -83,6 +86,8 @@ export type PersonalRecord = {
 export const CONSISTENCY_WEEKLY_AMOUNT = 120;
 // A qualifying Session has at least this many Working Sets (spec: Consistency Points).
 export const QUALIFYING_WORKING_SETS = 6;
+// ... or this many during a Deload Week, which has about half the Sets.
+export const DELOAD_QUALIFYING_WORKING_SETS = 3;
 
 // A week's Consistency Points (spec: Consistency Points): the share of the Weekly Target completed.
 export type ConsistencyWeek = {
@@ -131,7 +136,7 @@ export function e1rm(weightKg: number, reps: number): number {
 // Whether the Exercise's Sessions so far, the one in progress included, are all still setting the
 // lifter's baseline: the app says so (spec: Calibration copy).
 export function inCalibration(history: TrainingHistory, exercise: string): boolean {
-  const sessions = history.sessions.filter((session) =>
+  const sessions = regularSessions(history).filter((session) =>
     workingSets(session).some((set) => set.exercise === exercise && !set.custom),
   );
   return sessions.length <= CALIBRATION_SESSIONS;
@@ -167,7 +172,7 @@ function derivePersonalRecords(history: TrainingHistory): PersonalRecord[] {
   const events: PersonalRecord[] = [];
   const bests = new Map<string, number>();
   const sessionsDone = new Map<string, number>();
-  for (const session of history.sessions) {
+  for (const session of regularSessions(history)) {
     // Only Working Sets reach scoring (spec: Warm-up detection), and Custom Exercises never score.
     const working = workingSets(session).filter((set) => !set.custom);
     for (const exercise of new Set(working.map((set) => set.exercise))) {
@@ -225,7 +230,9 @@ function derivePersonalRecords(history: TrainingHistory): PersonalRecord[] {
 
 function deriveConsistency(history: TrainingHistory): ConsistencyWeek[] {
   // Only Working Sets reach scoring (spec: Warm-up detection).
-  const qualifying = history.sessions.filter((session) => workingSets(session).length >= QUALIFYING_WORKING_SETS);
+  const qualifying = history.sessions.filter(
+    (session) => workingSets(session).length >= (inDeloadWeek(history, session) ? DELOAD_QUALIFYING_WORKING_SETS : QUALIFYING_WORKING_SETS),
+  );
   const events: ConsistencyWeek[] = [];
   for (const week of [...new Set(qualifying.map((session) => weekStart(session.localDate)))].sort()) {
     const weeklyTarget = weeklyTargetOf(history.weeklyTargets, week);
@@ -246,6 +253,17 @@ function deriveConsistency(history: TrainingHistory): ConsistencyWeek[] {
     });
   }
   return events;
+}
+
+// Whether the Session was done in a Deload Week.
+function inDeloadWeek(history: TrainingHistory, session: Session): boolean {
+  return !!history.deloadWeeks?.includes(weekStart(session.localDate));
+}
+
+// The Sessions outside Deload Weeks: the only ones Calibration, Personal Records, go heavier and
+// Stall look at (spec: Deload Week).
+function regularSessions(history: TrainingHistory): Session[] {
+  return history.sessions.filter((session) => !inDeloadWeek(history, session));
 }
 
 // The Weekly Target a week (given by its Monday) is scored with. A change applies from the next
@@ -422,7 +440,7 @@ export type GoHeavier = { weightKg: number; reps: number; incrementKg: number };
 // reached the top of its Rep Range, the next Session is the Increment heavier with reps back at the
 // bottom of the range.
 export function recommendGoHeavier(history: TrainingHistory, exercise: string, rule: GoHeavierRule): GoHeavier | undefined {
-  const sessions = history.sessions
+  const sessions = regularSessions(history)
     .map((session) => workingSets(session).filter((set) => set.exercise === exercise && !set.custom))
     .filter((working) => working.length > 0);
   const reachedTop = (working: Set[] | undefined) => !!working && working.every((set) => set.reps >= rule.repMax);
@@ -448,7 +466,7 @@ const STALL_RESET = 0.9;
 // The suggestion is about 10% under the last Session's training weight, rounded to the Increment,
 // back at the bottom of the range.
 export function recommendStall(history: TrainingHistory, exercise: string, rule: GoHeavierRule): Stall | undefined {
-  const done = history.sessions
+  const done = regularSessions(history)
     .map((session) => ({ localDate: session.localDate, working: workingSets(session).filter((set) => set.exercise === exercise && !set.custom) }))
     .filter(({ working }) => working.length > 0);
   const sessions = done.map(({ working }) => working);
@@ -485,4 +503,69 @@ export function recommend(history: TrainingHistory, exercise: string, rule: GoHe
   if (stall) return { kind: 'stall', ...stall };
   const heavier = recommendGoHeavier(history, exercise, rule);
   return heavier && { kind: 'goHeavier', ...heavier };
+}
+
+// A Deload Week is the Routine with about half the Sets at about this much of the weight.
+const DELOAD_WEIGHT = 0.9;
+// A new Deload Week, suggested or self-started, can begin at most this many weeks after the last
+// one began; a dismissed suggestion keeps quiet for as long.
+export const DELOAD_GAP_WEEKS = 4;
+// The gentle nudge comes after this many weeks without a Deload Week.
+export const DELOAD_NUDGE_WEEKS = 8;
+// The Stalled Exercises, or Exercises with falling RIR, that call for a Deload Week.
+const DELOAD_MIN_EXERCISES = 2;
+// RIR counts as falling after this many Sessions of the Exercise with RIR logged.
+const RIR_FALLING_SESSIONS = 3;
+
+export type DeloadReason = 'stalled' | 'rir' | 'time';
+
+const weeksBetween = (from: string, to: string) => Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / (7 * 86_400_000));
+
+// Whether the lifter can start a Deload Week in the week of the local date: not while one runs,
+// and not within four weeks of the last one's start (spec: Deload Week).
+export function canStartDeload(history: TrainingHistory, today: string): boolean {
+  const week = weekStart(today);
+  return (history.deloadWeeks ?? []).every((started) => weeksBetween(started, week) >= DELOAD_GAP_WEEKS);
+}
+
+// RIR "keeps falling at the same weights" for an Exercise when its last three regular Sessions with
+// RIR logged were all trained to the same top Working Set weight and their average RIR got lower
+// each time.
+function rirFalling(history: TrainingHistory, exercise: string): boolean {
+  const sessions = regularSessions(history)
+    .map((session) => workingSets(session).filter((set) => set.exercise === exercise && !set.custom && set.rir !== undefined))
+    .filter((working) => working.length > 0)
+    .slice(-RIR_FALLING_SESSIONS);
+  if (sessions.length < RIR_FALLING_SESSIONS) return false;
+  const topWeights = sessions.map((working) => Math.max(...working.map((set) => set.weightKg)));
+  const averages = sessions.map((working) => working.reduce((sum, set) => sum + set.rir!, 0) / working.length);
+  return topWeights.every((weight) => weight === topWeights[0]) && averages.every((average, i) => i === 0 || average < averages[i - 1]!);
+}
+
+// Why a Deload Week is recommended in the week of the local date, if it is (spec: Deload Week):
+// two or more of the Routine's Exercises Stalled, RIR falling across two or more, or eight weeks
+// without one (counted from the first Session when there never was one). `dismissed` holds the
+// Mondays of the weeks the lifter dismissed a suggestion in.
+export function recommendDeload(
+  history: TrainingHistory,
+  today: string,
+  routine: { exercise: string; rule: GoHeavierRule }[],
+  dismissed: readonly string[] = [],
+): DeloadReason | undefined {
+  const week = weekStart(today);
+  if (!canStartDeload(history, today)) return undefined;
+  if (dismissed.some((quiet) => weeksBetween(quiet, week) < DELOAD_GAP_WEEKS)) return undefined;
+  if (routine.filter(({ exercise, rule }) => recommendStall(history, exercise, rule)).length >= DELOAD_MIN_EXERCISES) return 'stalled';
+  if (routine.filter(({ exercise }) => rirFalling(history, exercise)).length >= DELOAD_MIN_EXERCISES) return 'rir';
+  const since = [...(history.deloadWeeks ?? [])].sort().at(-1) ?? (history.sessions[0] && weekStart(history.sessions[0].localDate));
+  return since !== undefined && weeksBetween(since, week) >= DELOAD_NUDGE_WEEKS ? 'time' : undefined;
+}
+
+// The rows of an Exercise's Sets in a Deload Week (spec: Deload Week), from the rows a regular
+// Session would start with: the last half of them (at least one), about 10% lighter and rounded to
+// the Increment. A weight of none stays none.
+export function deloadRows<T extends { weightKg: number }>(rows: readonly (T | undefined)[], incrementKg: number): (T | undefined)[] {
+  return rows.slice(rows.length - Math.max(1, Math.ceil(rows.length / 2))).map((row) =>
+    row && { ...row, weightKg: row.weightKg === 0 ? 0 : Math.round((row.weightKg * DELOAD_WEIGHT) / incrementKg) * incrementKg },
+  );
 }
