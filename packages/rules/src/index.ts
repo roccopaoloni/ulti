@@ -309,3 +309,5 @@ export function plannedRows<T>(lastSets: readonly T[], plannedSets: number | und
   while (rows.length < (plannedSets ?? 0)) rows.push(lastSets.at(-1));
   return rows;
 }
+
+export * from './rank.ts';
