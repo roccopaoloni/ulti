@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { deriveScoringEvents, type Session } from './index.ts';
+import { deriveScoringEvents, type PersonalRecord, type Session } from './index.ts';
 
 // Ana's pull-up Sets: weightKg is the weight added to her bodyweight (0 for a plain pull-up).
 let next = 0;
@@ -18,6 +18,9 @@ const history = (bodyweightKg: { effectiveFrom: string; value: number }[], ...se
   weeklyTargets: [],
   bodyweightKg,
 });
+
+const recordsOf = (training: ReturnType<typeof history>) =>
+  deriveScoringEvents(training).filter((event): event is PersonalRecord => event.kind === 'personal-record');
 
 test('a pull-up Personal Record counts her bodyweight plus the added weight', () => {
   const record = pullUp(4, 6);
@@ -46,7 +49,7 @@ test('a pull-up Personal Record counts her bodyweight plus the added weight', ()
 
 test('the load uses the check-in in force on each day of the last four weeks, not the latest one', () => {
   const record = pullUp(4, 6);
-  const [event] = deriveScoringEvents(
+  const [event] = recordsOf(
     history(
       // 82 kg until 5 Oct, then 78 kg: on 19 Oct the last 28 days are 14 at each, an average of 80.
       [
@@ -66,7 +69,7 @@ test('the load uses the check-in in force on each day of the last four weeks, no
 });
 
 test('a one-day 2 kg swing in bodyweight cannot make a repeated Set a real Personal Record', () => {
-  const [event] = deriveScoringEvents(
+  const [event] = recordsOf(
     history(
       [
         { effectiveFrom: '2026-09-01', value: 80 },
