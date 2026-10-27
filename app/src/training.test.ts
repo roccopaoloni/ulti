@@ -415,6 +415,8 @@ test('a Personal Record is derived on the phone as soon as the Set is logged, of
 
   await training.deleteSet(record.id);
   expect((await training.scoring()).events).toEqual([]);
+  training.close();
+});
 
 const pushDay = { id: 'push', name: 'Push', exercises: [{ exerciseId: 'bench-press', sets: 3, repMin: 8, repMax: 12 }] };
 const pullDay = { id: 'pull', name: 'Pull', exercises: [{ exerciseId: 'barbell-row', sets: 4, repMin: 6, repMax: 10 }] };

@@ -898,6 +898,8 @@ button.cell {
 }
 .pr-points {
   font: 700 12px var(--body);
+}
+
 /* The Routine editor on the Train tab. */
 .routine {
   display: flex;

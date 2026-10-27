@@ -300,3 +300,12 @@ export function nextRoutineDay(dayIds: readonly string[], lastDoneId: string | u
   const last = lastDoneId === undefined ? -1 : dayIds.indexOf(lastDoneId);
   return dayIds[(last + 1) % dayIds.length];
 }
+
+// The rows of an Exercise's Sets still to do when a Session starts: the last Session's Sets, with
+// the Routine Day's planned Sets filling any rows past them by repeating the last one (an empty
+// row when there was no earlier Session). If the last Session had more Sets than planned, all stay.
+export function plannedRows<T>(lastSets: readonly T[], plannedSets: number | undefined): (T | undefined)[] {
+  const rows: (T | undefined)[] = [...lastSets];
+  while (rows.length < (plannedSets ?? 0)) rows.push(lastSets.at(-1));
+  return rows;
+}
