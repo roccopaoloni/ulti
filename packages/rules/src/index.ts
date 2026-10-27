@@ -164,13 +164,13 @@ function deriveConsistency(history: TrainingHistory): ConsistencyWeek[] {
 }
 
 // The weeks (as their Mondays) in which the Weekly Target was met, Deload Weeks included (spec: Week Stamps).
-export function weekStamps(events: ScoringEvent[]): string[] {
+export function weekStamps(events: ConsistencyWeek[]): string[] {
   return events.filter((event) => event.sessionDates.length === event.weeklyTarget).map((event) => event.week);
 }
 
 // The number of consecutive Week Stamps up to the last finished week, plus this week's once it has
 // its own: the week still running neither breaks the Streak nor extends it before then.
-export function streak(events: ScoringEvent[], today: string): number {
+export function streak(events: ConsistencyWeek[], today: string): number {
   const stamped = new Set(weekStamps(events));
   let week = weekStart(today);
   let count = stamped.has(week) ? 1 : 0;

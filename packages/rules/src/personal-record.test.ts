@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { deriveScoringEvents, inCalibration, type Session } from './index.ts';
+import { deriveScoringEvents as deriveAll, inCalibration, type Session } from './index.ts';
 
 // Ana's Sets are numbered by Session so each Set has its own ID.
 let next = 0;
@@ -12,7 +12,9 @@ const set = (exercise: string, weightKg: number, reps: number, extra: object = {
   ...extra,
 });
 const session = (localDate: string, ...sets: ReturnType<typeof set>[]): Session => ({ localDate, sets });
-const history = (...sessions: Session[]) => ({ userId: 'ana', sessions });
+const history = (...sessions: Session[]) => ({ userId: 'ana', sessions, weeklyTargets: [] });
+// Only the Personal Records among the Scoring Events.
+const deriveScoringEvents = (h: ReturnType<typeof history>) => deriveAll(h).filter((e) => e.kind === 'personal-record');
 
 test("Ana's first two squat Sessions set her baseline, and her third beats it with a Personal Record", () => {
   const record = set('back-squat', 105, 6);

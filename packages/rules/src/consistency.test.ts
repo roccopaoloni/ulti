@@ -117,7 +117,7 @@ function weeks(...done: [number, number, number, number]) {
     ['2026-10-19', '2026-10-20', '2026-10-21'],
   ];
   const sessions = done.flatMap((count, week) => days[week].slice(0, count).map((day) => session(day)));
-  return deriveScoringEvents(ana(sessions, [{ effectiveFrom: '2026-09-01', value: 2 }]));
+  return consistencyOf(ana(sessions, [{ effectiveFrom: '2026-09-01', value: 2 }]));
 }
 
 test('a week that meets the Weekly Target earns a Week Stamp, and one short of it does not', () => {
