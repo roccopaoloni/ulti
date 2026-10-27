@@ -15,6 +15,7 @@ export function ExerciseBlock({
   training,
   exerciseId,
   incrementKg,
+  bodyweight,
   units,
   target,
   sets,
@@ -27,6 +28,8 @@ export function ExerciseBlock({
   training: Training;
   exerciseId: string;
   incrementKg: number;
+  // A bodyweight Exercise: its weight is the weight added to the lifter's own, shown as "BW +10 kg".
+  bodyweight: boolean;
   units: Units;
   // What the Routine plans for this Exercise, when the Session came from one.
   target?: RoutineExercise;
@@ -47,6 +50,17 @@ export function ExerciseBlock({
   // Past the plan, the next Set repeats the last one logged.
   const plan = last && plannedRows(last, target?.sets);
   const next = plan ? (plan[sets.length] ?? sets.at(-1)) : undefined;
+  const weightCell = (weightKg: number) =>
+    bodyweight ? (
+      <span className="cell">
+        {t.session.bodyweightLoad(weightKg ? `${formatNumber(kgToUnits(weightKg, units), 2)} ${units}` : '')}
+      </span>
+    ) : (
+      <span className="cell">
+        {formatNumber(kgToUnits(weightKg, units), 2)}
+        <small>{units}</small>
+      </span>
+    );
   return (
     <section className="ex">
       <h2 className="ex-name">{name}</h2>
@@ -67,10 +81,7 @@ export function ExerciseBlock({
             {index + 1}
             <small>{labels[index] === 'warm-up' ? t.session.warmUp : t.session.working}</small>
           </button>
-          <span className="cell">
-            {formatNumber(kgToUnits(set.weightKg, units), 2)}
-            <small>{units}</small>
-          </span>
+          {weightCell(set.weightKg)}
           <span className="xmark">×</span>
           <span className="cell">{set.reps}</span>
           <span className="check" aria-hidden="true">
@@ -79,15 +90,18 @@ export function ExerciseBlock({
         </div>
       ))}
       {plan && (
-        <NextSet key={sets.length} number={sets.length + 1} planned={next} incrementKg={incrementKg} units={units} onLog={onLog} />
+        <NextSet key={sets.length} number={sets.length + 1} planned={next} incrementKg={incrementKg} bodyweight={bodyweight} units={units} onLog={onLog} />
       )}
       {plan?.slice(sets.length + 1).map((set, index) => (
         <div key={index} className="set upcoming" aria-hidden="true">
           <span className="tag">{sets.length + index + 2}</span>
-          <span className="cell">
-            {set ? formatNumber(kgToUnits(set.weightKg, units), 2) : '–'}
-            <small>{units}</small>
-          </span>
+          {set ? (
+            weightCell(set.weightKg)
+          ) : (
+            <span className="cell">
+              –<small>{units}</small>
+            </span>
+          )}
           <span className="xmark">×</span>
           <span className="cell">{set?.reps ?? '–'}</span>
           <span />
@@ -102,12 +116,14 @@ function NextSet({
   number,
   planned,
   incrementKg,
+  bodyweight,
   units,
   onLog,
 }: {
   number: number;
   planned: Planned | undefined;
   incrementKg: number;
+  bodyweight: boolean;
   units: Units;
   onLog: (weightKg: number, reps: number) => Promise<void>;
 }) {
@@ -115,7 +131,7 @@ function NextSet({
   const s = t.session;
   // The keypad's decimal key matches the language (design: Numbers).
   const decimal = language === 'es' ? ',' : '.';
-  const [weight, setWeight] = useState(planned ? String(Math.round(kgToUnits(planned.weightKg, units) * 100) / 100).replace('.', decimal) : '');
+  const [weight, setWeight] = useState(planned ? String(Math.round(kgToUnits(planned.weightKg, units) * 100) / 100).replace('.', decimal) : bodyweight ? '0' : '');
   const [reps, setReps] = useState(planned ? String(planned.reps) : '');
   const [editing, setEditing] = useState<'weight' | 'reps' | null>(null);
   const [busy, setBusy] = useState(false);
@@ -134,7 +150,8 @@ function NextSet({
   return (
     <div className="set">
       <span className="tag">{number}</span>
-      <button type="button" className="cell" aria-label={s.weight} onClick={() => setEditing('weight')}>
+      <button type="button" className="cell" aria-label={bodyweight ? s.addedWeight : s.weight} onClick={() => setEditing('weight')}>
+        {bodyweight && 'BW +'}
         {weight || '–'}
         <small>{units}</small>
       </button>
@@ -147,7 +164,7 @@ function NextSet({
       </button>
       {editing && (
         <Keypad
-          label={editing === 'weight' ? s.weight : s.reps}
+          label={editing === 'weight' ? (bodyweight ? s.addedWeight : s.weight) : s.reps}
           value={editing === 'weight' ? weight : reps}
           decimal={editing === 'weight' ? decimal : null}
           step={editing === 'weight' ? incrementInUnits(incrementKg, units) : 1}

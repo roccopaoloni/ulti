@@ -247,11 +247,11 @@ test('a Custom Exercise created offline is pickable at once, survives a catalog 
   const session = await training.startSession();
   await training.logSet(session.id, plank.id, 10, 1);
   // The catalog comes back from the server without it, as it has not arrived there yet.
-  await training.saveExercises([{ id: 'back-squat', nameEn: 'Back squat', nameEs: 'Sentadilla', equipment: 'barbell', custom: false, incrementKg: 5 }]);
+  await training.saveExercises([{ id: 'back-squat', nameEn: 'Back squat', nameEs: 'Sentadilla', equipment: 'barbell', custom: false, incrementKg: 5, bodyweight: false }]);
 
   expect(await training.exercises()).toEqual(
     expect.arrayContaining([
-      { id: plank.id, nameEn: 'Weighted plank', nameEs: 'Weighted plank', equipment: null, custom: true, incrementKg: 2.5 },
+      { id: plank.id, nameEn: 'Weighted plank', nameEs: 'Weighted plank', equipment: null, custom: true, incrementKg: 2.5, bodyweight: false },
       expect.objectContaining({ id: 'back-squat', custom: false }),
     ]),
   );
@@ -530,5 +530,30 @@ test("a week's Consistency Points are derived on the phone as Sessions finish, o
 
   const { consistency } = await training.scoring();
   expect(consistency.map((week) => [week.week, week.weeklyTarget, week.consistencyPoints])).toEqual([['2026-10-19', 3, 80]]);
+  training.close();
+});
+
+test('a pull-up Set with added weight logs offline, queues as the added weight, and is scored at the phone\'s bodyweight', async () => {
+  const network = server();
+  network.offline = true;
+  const training = await anasPhone(network).open();
+  await training.saveExercises([
+    { id: 'pull-up', nameEn: 'Pull-up', nameEs: 'Dominadas', equipment: 'bodyweight', custom: false, incrementKg: 2.5, bodyweight: true },
+  ]);
+  await training.setProfile('bodyweightKg', 80);
+  const logSession = async (addedKg: number) => {
+    const session = await training.startSession();
+    const set = await training.logSet(session.id, 'pull-up', addedKg, 6);
+    await training.finishSession(session.id);
+    return set;
+  };
+
+  await logSession(0);
+  await logSession(0);
+  const record = await logSession(4);
+
+  // 80 kg × 1.2 = 96, then (80 + 4) kg × 1.2 = 100.8: a 5% gain.
+  const { events } = await training.scoring();
+  expect(events.map((e) => [e.setId, e.bodyweightKg, e.percentGain, e.progressPoints])).toEqual([[record.id, 80, 5, 50]]);
   training.close();
 });

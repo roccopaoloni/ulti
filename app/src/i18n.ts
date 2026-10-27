@@ -134,6 +134,9 @@ type Messages = {
     // Creates a Custom Exercise named as typed in the search, logged as weight × reps.
     createCustom: (name: string) => string;
     weight: string;
+    // The keypad's label for the weight added to a bodyweight Exercise, and how a Set shows it: "BW +10 kg", or "BW" with none (added is empty).
+    addedWeight: string;
+    bodyweightLoad: (added: string) => string;
     reps: string;
     logSet: string;
     // The label on a Set row, which one tap flips: a Warm-up Set or a Working Set.
@@ -376,6 +379,8 @@ const en: Messages = {
     customTag: 'Custom',
     createCustom: (name) => `Create custom exercise "${name}"`,
     weight: 'Weight',
+    addedWeight: 'Added weight',
+    bodyweightLoad: (added) => (added ? `BW +${added}` : 'BW'),
     reps: 'Reps',
     logSet: 'Log set',
     warmUp: 'Warm-up',
@@ -605,6 +610,8 @@ const es: Messages = {
     customTag: 'Personalizado',
     createCustom: (name) => `Crear ejercicio personalizado "${name}"`,
     weight: 'Peso',
+    addedWeight: 'Peso añadido',
+    bodyweightLoad: (added) => (added ? `PC +${added}` : 'PC'),
     reps: 'Repeticiones',
     logSet: 'Registrar serie',
     warmUp: 'Entrada en calor',

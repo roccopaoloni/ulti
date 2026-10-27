@@ -54,6 +54,8 @@ export type Exercise = {
   equipment: string | null;
   custom: boolean;
   incrementKg: number;
+  // Pull-ups, dips and the like: logged as the weight added to the lifter's own bodyweight.
+  bodyweight: boolean;
 };
 
 // One entry of a dated history (ADR 0002). A date has one entry per field; the server keeps the
@@ -145,7 +147,7 @@ export async function openTraining(userId: string, options: Options) {
       else await tx.objectStore('sets').put(mutation.set);
     } else {
       const { id, name } = mutation.exercise;
-      await tx.objectStore('exercises').put({ id, nameEn: name, nameEs: name, equipment: null, custom: true, incrementKg: 2.5 });
+      await tx.objectStore('exercises').put({ id, nameEn: name, nameEs: name, equipment: null, custom: true, incrementKg: 2.5, bodyweight: false });
     }
     await tx.objectStore('outbox').add(mutation);
     if (inProgress) await tx.objectStore('state').put(inProgress, 'sessionInProgress');
@@ -345,10 +347,11 @@ export async function openTraining(userId: string, options: Options) {
     async scoring(without?: string) {
       const sessions = (await db.getAll('sessions')).filter(({ id }) => id !== without);
       sessions.sort((a, b) => a.startedAt.localeCompare(b.startedAt));
-      const custom = new Map((await db.getAll('exercises')).map((exercise) => [exercise.id, exercise.custom]));
+      const catalog = new Map((await db.getAll('exercises')).map((exercise) => [exercise.id, exercise]));
       const history: TrainingHistory = {
         userId,
         weeklyTargets: (await this.profile()).weeklyTarget,
+        bodyweightKg: (await this.profile()).bodyweightKg,
         sessions: await Promise.all(
           sessions.map(async ({ id, localDate }) => {
             const sets = await db.getAllFromIndex('sets', 'bySession', id);
@@ -358,7 +361,8 @@ export async function openTraining(userId: string, options: Options) {
               sets: sets.map((set) => ({
                 id: set.id,
                 exercise: set.exerciseId,
-                custom: custom.get(set.exerciseId) ?? false,
+                custom: catalog.get(set.exerciseId)?.custom ?? false,
+                bodyweight: catalog.get(set.exerciseId)?.bodyweight ?? false,
                 weightKg: set.weightKg,
                 reps: set.reps,
                 label: set.label,
