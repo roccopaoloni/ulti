@@ -1,5 +1,7 @@
 // ULTI's rules: pure functions shared by the client and the server, with no I/O.
 
+import { STANDARD_PERCENTILES, STRENGTH_STANDARDS, type StandardsRow } from './strength-standards.ts';
+
 export type Set = {
   id: string;
   exercise: string;
@@ -24,6 +26,9 @@ export type TrainingHistory = {
   sessions: Session[];
   // The dated Weekly Target history (ADR 0002).
   weeklyTargets: Dated<number>[];
+  // Sex and bodyweight, dated (ADR 0002). Without them every Personal Record is weighted as the
+  // 50th percentile.
+  profile?: { sex: Dated<Sex>[]; bodyweightKg: Dated<number>[] };
 };
 
 // Bump when a change to the rules changes the events they derive, so stored events show which rules made them.
@@ -37,8 +42,17 @@ export const MAX_RECORD_REPS = 12;
 // single Personal Record earns. Placeholders until the tuning ticket (#31).
 export const POINTS_PER_PERCENT_GAIN = 10;
 export const MAX_POINTS_PER_RECORD = 100;
-// Everyone counts as the 50th percentile until Strength Level weighting lands.
+// A lifter with no Strength Level to go on counts as the 50th percentile.
 const DEFAULT_PERCENTILE = 50;
+// Progress Points are multiplied by STRENGTH_WEIGHT_RANGE ^ ((percentile - 50) / WEIGHT_SPAN_PERCENTILES):
+// 1 at the 50th percentile, 5 times as much 70 percentiles higher. That meets the design target
+// that a 1% gain at the 90th percentile (advanced) equals a 5% gain at the 20th (beginner).
+// Placeholders until the tuning ticket (#31).
+export const STRENGTH_WEIGHT_RANGE = 5;
+export const WEIGHT_SPAN_PERCENTILES = 70;
+// The Benchmark Lifts that are bodyweight Exercises: their tables hold the total load, which needs
+// the bodyweight Exercises rules (#14), so until then they are scored like any other Exercise.
+const BODYWEIGHT_BENCHMARKS = new Set(['dip', 'chin-up', 'pull-up']);
 
 // A new all-time best e1RM on a catalog Exercise (spec: Personal Record).
 export type PersonalRecord = {
@@ -51,7 +65,8 @@ export type PersonalRecord = {
   newE1rm: number;
   percentGain: number;
   strengthLevelPercentile: number;
-  // The bodyweight used, once bodyweight Exercises are scored; null for weighted Exercises.
+  // The bodyweight in force on the day, recorded so an audit can see what weighted the points;
+  // null when the lifter has none.
   bodyweightKg: number | null;
   rulesVersion: number;
   progressPoints: number;
@@ -93,6 +108,28 @@ export function inCalibration(history: TrainingHistory, exercise: string): boole
   return sessions.length <= CALIBRATION_SESSIONS;
 }
 
+// The percentile of an e1RM on a Benchmark Lift for the lifter's sex and bodyweight, or undefined
+// for any other Exercise (spec: Strength Level). The weight class is the lightest one that holds the
+// bodyweight, else the nearest the lift has. "Prefer not to say" uses the midpoint of the male and
+// female standards. Between the table's percentiles the e1RM is interpolated, from 0 at no weight.
+export function strengthLevelPercentile(exercise: string, e1rmKg: number, sex: Sex, bodyweightKg: number): number | undefined {
+  const standards = STRENGTH_STANDARDS[exercise];
+  if (!standards) return undefined;
+  const classFor = (rows: StandardsRow[]) => (rows.find((row) => bodyweightKg <= row.upToKg) ?? rows[rows.length - 1]!).kg;
+  const kg =
+    sex === 'unspecified'
+      ? classFor(standards.male).map((value, i) => (value + classFor(standards.female)[i]!) / 2)
+      : classFor(standards[sex]);
+  const points = [0, ...STANDARD_PERCENTILES];
+  const values = [0, ...kg];
+  const above = values.findIndex((value) => value >= e1rmKg);
+  if (above === -1) return 99;
+  if (above === 0) return 0;
+  const [lo, hi] = [values[above - 1]!, values[above]!];
+  const [pLo, pHi] = [points[above - 1]!, points[above]!];
+  return pLo + ((pHi - pLo) * (e1rmKg - lo)) / (hi - lo);
+}
+
 export function deriveScoringEvents(history: TrainingHistory): ScoringEvent[] {
   return [...derivePersonalRecords(history), ...deriveConsistency(history)];
 }
@@ -118,6 +155,19 @@ function derivePersonalRecords(history: TrainingHistory): PersonalRecord[] {
       bests.set(exercise, value);
       if (calibrating || best === 0) continue;
       const gain = (value / best - 1) * 100;
+      const sex = valueInForce(history.profile?.sex ?? [], session.localDate) ?? 'unspecified';
+      const bodyweightKg = valueInForce(history.profile?.bodyweightKg ?? [], session.localDate) ?? null;
+      let percentile = DEFAULT_PERCENTILE;
+      if (bodyweightKg !== null && !BODYWEIGHT_BENCHMARKS.has(exercise)) {
+        // A Benchmark Lift is measured by its own e1RM; any other Exercise by the average of the
+        // lifter's levels on the Benchmark Lifts they do, each at their best e1RM so far.
+        const own = strengthLevelPercentile(exercise, value, sex, bodyweightKg);
+        const levels = [...bests]
+          .filter(([lift]) => !BODYWEIGHT_BENCHMARKS.has(lift))
+          .flatMap(([lift, liftBest]) => strengthLevelPercentile(lift, liftBest, sex, bodyweightKg) ?? []);
+        percentile = own ?? (levels.length === 0 ? DEFAULT_PERCENTILE : levels.reduce((a, b) => a + b, 0) / levels.length);
+      }
+      const weight = STRENGTH_WEIGHT_RANGE ** ((percentile - 50) / WEIGHT_SPAN_PERCENTILES);
       events.push({
         kind: 'personal-record',
         id: `${history.userId}:personal-record:${set.id}`,
@@ -127,10 +177,10 @@ function derivePersonalRecords(history: TrainingHistory): PersonalRecord[] {
         previousE1rm: best,
         newE1rm: value,
         percentGain: Math.round(gain * 100) / 100,
-        strengthLevelPercentile: DEFAULT_PERCENTILE,
-        bodyweightKg: null,
+        strengthLevelPercentile: Math.round(percentile * 100) / 100,
+        bodyweightKg,
         rulesVersion: RULES_VERSION,
-        progressPoints: Math.min(MAX_POINTS_PER_RECORD, Math.round(gain * POINTS_PER_PERCENT_GAIN)),
+        progressPoints: Math.min(MAX_POINTS_PER_RECORD, Math.round(gain * POINTS_PER_PERCENT_GAIN * weight)),
       });
     }
   }
