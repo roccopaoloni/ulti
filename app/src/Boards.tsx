@@ -109,8 +109,9 @@ function MemberProfileView({
       {failed && <p className="error">{g.retry}</p>}
       {profile && (
         <>
-          <p className="disp">
+          <p className="disp member-heading">
             {profile.position}. {profile.display_name} · {g.boardPoints(profile.points)}
+            {profile.tier && <Badge rank={{ tier: profile.tier, division: profile.division }} tierName={t.rank.tier[profile.tier]} mode="sm" />}
           </p>
           <p className="muted">{g.memberSessions(profile.session_count)}</p>
           {profile.records.length > 0 && (

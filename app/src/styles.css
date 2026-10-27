@@ -1121,3 +1121,7 @@ prefers-reduced-motion switches every animation off, so it stays off the badge. 
   filter: grayscale(1) brightness(0.75);
   opacity: 0.45;
 }
+.member-heading .badge-sm {
+  margin-left: 8px;
+  vertical-align: middle;
+}

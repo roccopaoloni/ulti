@@ -154,6 +154,8 @@ export type MemberProfile = {
   me: boolean;
   position: number;
   points: number;
+  tier: Tier;
+  division: Division | null;
   session_count: number;
   shares_weights: boolean;
   shares_sessions: boolean;
