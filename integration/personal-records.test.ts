@@ -69,7 +69,7 @@ test("Ana's third squat Session stores a Personal Record with its facts, and rep
         newE1rm: 126,
         percentGain: 5,
         strengthLevelPercentile: 50,
-        progressPoints: 50,
+        progressPoints: 110,
         rulesVersion: expect.any(Number),
       }),
     },
@@ -82,7 +82,7 @@ test('editing the Set that set a Personal Record changes the stored event, and a
   const { ana, third } = await anaWithARecord();
 
   await sync(ana, [rewrite(third.setRecord, { weightKg: 110 })]);
-  expect((await scoringEventsOf(ana)).map(({ event }) => [event.newE1rm, event.progressPoints])).toEqual([[132, 100]]);
+  expect((await scoringEventsOf(ana)).map(({ event }) => [event.newE1rm, event.progressPoints])).toEqual([[132, 150]]);
 
   await sync(ana, [rewrite(third.setRecord, { weightKg: 95, updatedAt: '2026-10-26T12:00:00.000Z' })]);
   expect(await scoringEventsOf(ana)).toEqual([]);
@@ -141,11 +141,11 @@ test("Ana's sex and bodyweight weight her Personal Record, the event records wha
   ]);
 
   // A male 83 kg lifter's 126 kg e1RM squat is at the 53.93rd percentile of FitnessVolt's gym
-  // standards, which weights the 5% gain's 50 points up to 55.
+  // standards, which weights the 5% gain's 110 points up to 120.
   const [{ event }] = await scoringEventsOf(ana);
   expect(event.strengthLevelPercentile).toBeCloseTo(53.93, 1);
   expect(event.bodyweightKg).toBe(83);
-  expect(event.progressPoints).toBe(55);
+  expect(event.progressPoints).toBe(120);
 
   const { data } = await bea.client.from('profile_history').select('*');
   expect(data).toEqual([]);

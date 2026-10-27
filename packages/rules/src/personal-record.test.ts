@@ -38,7 +38,7 @@ test("Ana's first two squat Sessions set her baseline, and her third beats it wi
       percentGain: 5,
       strengthLevelPercentile: 50,
       bodyweightKg: null,
-      progressPoints: 50,
+      progressPoints: 110,
     }),
   ]);
 });
@@ -59,13 +59,13 @@ test('a Set that only ties the best is not a Personal Record', () => {
 test('Sets of more than 12 reps never count, and do not raise the best either', () => {
   // 80 × 13 reps is an e1RM of 114.7, below her best anyway; 100 × 13 would be 143.3 and must not count.
   expect(pointsOf(squat('2026-10-19', 100, 13))).toEqual([]);
-  expect(pointsOf(squat('2026-10-19', 100, 13), squat('2026-10-26', 105, 6))).toEqual([50]);
+  expect(pointsOf(squat('2026-10-19', 100, 13), squat('2026-10-26', 105, 6))).toEqual([110]);
 });
 
 test('Sets of 1 to 12 reps can be Personal Records', () => {
   // 118 × 1 = 121.93 (a 1.6% gain) and 90 × 12 = 126 (a 5% gain), both above 120.
-  expect(pointsOf(squat('2026-10-19', 118, 1))).toEqual([16]);
-  expect(pointsOf(squat('2026-10-19', 90, 12))).toEqual([50]);
+  expect(pointsOf(squat('2026-10-19', 118, 1))).toEqual([35]);
+  expect(pointsOf(squat('2026-10-19', 90, 12))).toEqual([110]);
 });
 
 test('Custom Exercises never produce a Personal Record', () => {
@@ -81,7 +81,7 @@ test('Warm-up Sets never produce a Personal Record', () => {
 
 test('the best is all-time: after a long break she needs to beat the old best, not her recent one', () => {
   const afterBreak = [squat('2027-03-01', 80, 6), squat('2027-03-08', 95, 6), squat('2027-03-15', 105, 6)];
-  expect(pointsOf(...afterBreak)).toEqual([50]);
+  expect(pointsOf(...afterBreak)).toEqual([110]);
 });
 
 test("each Exercise has its own baseline: a new Exercise's first Sessions do not earn", () => {
@@ -89,7 +89,7 @@ test("each Exercise has its own baseline: a new Exercise's first Sessions do not
   const events = deriveScoringEvents(
     history(...baseline, bench('2026-10-13', 60), bench('2026-10-20', 80), squat('2026-10-21', 105, 6)),
   );
-  expect(events.map((e) => [e.exercise, e.progressPoints])).toEqual([['back-squat', 50]]);
+  expect(events.map((e) => [e.exercise, e.progressPoints])).toEqual([['back-squat', 110]]);
 });
 
 test("a ramp within one Session gives one Personal Record, from the pre-Session best to the Session's best Set, capped", () => {
@@ -100,7 +100,7 @@ test("a ramp within one Session gives one Personal Record, from the pre-Session 
   const events = deriveScoringEvents(history(...baseline, ramp));
 
   expect(events).toHaveLength(1);
-  expect(events[0]).toMatchObject({ setId: top.id, previousE1rm: 120, progressPoints: 100 });
+  expect(events[0]).toMatchObject({ setId: top.id, previousE1rm: 120, progressPoints: 150 });
   expect(events[0].newE1rm).toBeCloseTo(156);
 });
 
@@ -112,8 +112,8 @@ test("the Session's best Set earns the record even when it was not the last one 
 });
 
 test('a single Personal Record is capped, so a typo cannot win the week', () => {
-  // 100 × 6 = 120 to 200 × 6 = 240 is a 100% gain, worth 1000 uncapped.
-  expect(pointsOf(squat('2026-10-19', 200, 6))).toEqual([100]);
+  // 100 × 6 = 120 to 200 × 6 = 240 is a 100% gain, worth 2200 uncapped.
+  expect(pointsOf(squat('2026-10-19', 200, 6))).toEqual([150]);
 });
 
 test('the same history derives the same events every time, and a later Session leaves earlier events alone', () => {

@@ -37,22 +37,22 @@ export type TrainingHistory = {
 };
 
 // Bump when a change to the rules changes the events they derive, so stored events show which rules made them.
-export const RULES_VERSION = 1;
+export const RULES_VERSION = 2;
 
 // A lifter's first Sessions with an Exercise only set their starting best (spec: Calibration).
 export const CALIBRATION_SESSIONS = 2;
 // Only Sets of 1–12 reps can be Personal Records, so a switch to high-rep Sets can't fake one.
 export const MAX_RECORD_REPS = 12;
 // Progress Points per 1% of e1RM gained, before the Strength Level weight, and the most that any
-// single Personal Record earns. Placeholders until the tuning ticket (#31).
-export const POINTS_PER_PERCENT_GAIN = 10;
-export const MAX_POINTS_PER_RECORD = 100;
+// single Personal Record earns. Tuned with the simulation (#31): 22 sets a typical lifter's Progress to 40% of their Points; 150 is hit by a 7% gain at the 50th percentile.
+export const POINTS_PER_PERCENT_GAIN = 22;
+export const MAX_POINTS_PER_RECORD = 150;
 // A lifter with no Strength Level to go on counts as the 50th percentile.
 const DEFAULT_PERCENTILE = 50;
 // Progress Points are multiplied by STRENGTH_WEIGHT_RANGE ^ ((percentile - 50) / WEIGHT_SPAN_PERCENTILES):
 // 1 at the 50th percentile, 5 times as much 70 percentiles higher. That meets the design target
 // that a 1% gain at the 90th percentile (advanced) equals a 5% gain at the 20th (beginner).
-// Placeholders until the tuning ticket (#31).
+// The curve was kept at the simulation (#31): the ratio of those two weights is 5.00.
 export const STRENGTH_WEIGHT_RANGE = 5;
 export const WEIGHT_SPAN_PERCENTILES = 70;
 // The Benchmark Lifts that are bodyweight Exercises: their tables hold the total load, but they are
@@ -78,7 +78,7 @@ export type PersonalRecord = {
 };
 
 // The Consistency Points a week of meeting the Weekly Target is worth, the same for everyone. 120
-// splits evenly for every target from 2 to 6. A placeholder until the tuning ticket (#31).
+// splits evenly for every target from 2 to 6. Kept at 120 by the simulation (#31) with 22 Progress Points per 1%.
 export const CONSISTENCY_WEEKLY_AMOUNT = 120;
 // A qualifying Session has at least this many Working Sets (spec: Consistency Points).
 export const QUALIFYING_WORKING_SETS = 6;

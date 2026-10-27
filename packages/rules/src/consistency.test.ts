@@ -22,7 +22,7 @@ function ana(sessions: ReturnType<typeof session>[], weeklyTargets: Dated<number
 const consistencyOf = (history: TrainingHistory) =>
   deriveScoringEvents(history).filter((event) => event.kind === 'consistency');
 
-// The weekly amount is 120 for now (tuning is a later ticket), so a Weekly Target of 3 pays 40 a Session.
+// The weekly amount is 120 (tuned in #31), so a Weekly Target of 3 pays 40 a Session.
 test('with a Weekly Target of 3, two qualifying Sessions in a week earn two thirds of the weekly amount', () => {
   const events = consistencyOf(ana([session('2026-10-19'), session('2026-10-21')]));
 
@@ -142,7 +142,7 @@ test('deriving twice from the same history gives identical events, each stamped 
   const history = ana([session('2026-10-19'), session('2026-10-21')]);
 
   expect(deriveScoringEvents(history)).toEqual(deriveScoringEvents(history));
-  expect(consistencyOf(history)[0].rulesVersion).toBe(1);
+  expect(consistencyOf(history)[0].rulesVersion).toBe(2);
 });
 
 test('Sessions beyond the Weekly Target earn nothing extra', () => {
