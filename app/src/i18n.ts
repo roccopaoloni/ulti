@@ -265,6 +265,7 @@ type Messages = {
     position: (position: number) => string;
     toNext: (points: number, next: string) => string;
     maxed: string;
+    pastSeasons: string;
   };
   // The Rank-up moment (design: The Rank-up moment).
   rankUp: {
@@ -588,6 +589,7 @@ const en: Messages = {
     position: (position) => `#${position} this Season`,
     toNext: (points, next) => `${points} pts to ${next}`,
     maxed: 'Top Tier reached',
+    pastSeasons: 'Past Seasons',
   },
   rankUp: {
     news: 'You have news',
@@ -932,6 +934,7 @@ const es: Messages = {
     position: (position) => `#${position} esta temporada`,
     toNext: (points, next) => `${points} pts para ${next}`,
     maxed: 'Llegaste a la liga más alta',
+    pastSeasons: 'Temporadas anteriores',
   },
   rankUp: {
     news: 'Tenés novedades',

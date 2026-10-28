@@ -1,5 +1,6 @@
 import { rankOf, rankProgress, showsPosition, type Rank, type Tier } from '@ulti/rules';
-import type { CSSProperties } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
+import { supabase } from './auth.ts';
 import { Badge } from './Badge.tsx';
 import { useI18n } from './i18n.ts';
 import { useSeasonStanding } from './season.ts';
@@ -7,6 +8,8 @@ import type { Training } from './training.ts';
 
 const roman = ['', 'I', 'II', 'III', 'IV', 'V'];
 const tiers: Tier[] = ['bronze', 'silver', 'gold', 'diamond', 'elite'];
+
+type Stamp = { first_day: string; tier: Tier; division: Rank['division'] };
 
 // Profile: the Rank in the current Season, the user's standing and the progress to the next Division.
 // The Rank comes from the Scoring Events on this phone, so it is there offline; the standing comes
@@ -17,6 +20,14 @@ export function RankCard({ training }: { training: Training }) {
   const { t } = useI18n();
   const r = t.rank;
   const { seasonPoints, standing } = useSeasonStanding(training);
+  // The Rank each past Season finished in, frozen on the server: left out offline.
+  const [stamps, setStamps] = useState<Stamp[]>([]);
+  useEffect(() => {
+    supabase.rpc('my_season_stamps').then(
+      ({ data }) => data && setStamps(data as Stamp[]),
+      () => {},
+    );
+  }, []);
   if (seasonPoints === null) return null;
   const name = (rank: Rank) => (rank.division === null ? r.tier[rank.tier] : `${r.tier[rank.tier]} ${roman[rank.division]}`);
   const rank = rankOf(seasonPoints);
@@ -56,6 +67,20 @@ export function RankCard({ training }: { training: Training }) {
           </div>
         ))}
       </div>
+      {stamps.length > 0 && (
+        <>
+          <div className="eyebrow">{r.pastSeasons}</div>
+          <div className="shelf">
+            {stamps.map((stamp) => (
+              <div key={stamp.first_day}>
+                <Badge rank={stamp} tierName={r.tier[stamp.tier]} mode="still" />
+                <span>{name(stamp)}</span>
+                <span>{`Q${Math.floor((Number(stamp.first_day.slice(5, 7)) - 1) / 3) + 1} ${stamp.first_day.slice(0, 4)}`}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </section>
   );
 }
