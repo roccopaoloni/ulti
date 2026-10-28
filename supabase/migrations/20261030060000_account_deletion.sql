@@ -114,6 +114,8 @@ begin
   update public.period_results
   set user_id = gen_random_uuid(), display_name = '', avatar_color = '', former = true
   where user_id = me;
+  -- Season results are the user's own Rank history: nothing to keep.
+  delete from public.season_results where user_id = me;
   delete from auth.users where id = me;
 end;
 $$;
