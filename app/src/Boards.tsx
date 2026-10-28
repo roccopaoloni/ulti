@@ -54,14 +54,14 @@ function BoardRowView({ row, nameOf, onOpen }: { row: BoardRow; nameOf: (exercis
   const { t } = useI18n();
   const g = t.groups;
   return (
-    <li className="board-row" onClick={onOpen} style={{ cursor: 'pointer' }}>
+    <li className="board-row" onClick={row.former ? undefined : onOpen} style={{ cursor: row.former ? 'default' : 'pointer' }}>
       <span className="board-pos">{row.position}</span>
       <span className="avatar" style={{ '--c': row.avatar_color } as CSSProperties} aria-hidden="true">
         {initials(row.display_name)}
       </span>
       <span className="board-main">
         <button type="button" className="member-name btn-link" style={{ textAlign: 'start' }}>
-          {row.display_name}
+          {row.former ? g.formerMember : row.display_name}
           {row.me && <span className="muted"> · {g.you}</span>}
           {/* Boards stored before Ranks came with the board have none. */}
           {row.tier && <Badge rank={{ tier: row.tier, division: row.division }} tierName={t.rank.tier[row.tier]} mode="sm" />}

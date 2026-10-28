@@ -5,6 +5,7 @@ import { GroupBoard } from './Boards.tsx';
 import {
   avatarColors,
   createGroup,
+  deleteAccount,
   dropInvite,
   GroupsError,
   initials,
@@ -561,5 +562,37 @@ export function ProfileCard({ userId }: { userId: string }) {
         {g.save}
       </button>
     </form>
+  );
+}
+
+// On Profile: deletes the account after a confirmation. On success the user is signed out and the
+// device is cleared, so there is nothing left to close.
+export function DeleteAccount({ training }: { training: Training | null }) {
+  const { t } = useI18n();
+  const g = t.groups;
+  const dialog = useRef<HTMLDialogElement>(null);
+  const { busy, error, run } = useAction();
+
+  return (
+    <>
+      <button type="button" className="btn-link danger" onClick={() => dialog.current?.showModal()}>
+        {g.deleteAccount}
+      </button>
+      <Sheet dialog={dialog} label={g.deleteAccountTitle}>
+        <h2 className="disp sheet-title">{g.deleteAccountTitle}</h2>
+        <p>{g.deleteAccountText}</p>
+        {error && (
+          <p className="error" role="alert">
+            {error}
+          </p>
+        )}
+        <button type="button" className="btn-danger" disabled={busy} onClick={() => run(() => deleteAccount(training))}>
+          {g.deleteAccountConfirm}
+        </button>
+        <form method="dialog">
+          <button className="btn-ghost">{g.cancel}</button>
+        </form>
+      </Sheet>
+    </>
   );
 }

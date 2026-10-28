@@ -3,7 +3,7 @@ import { signOut, useUser } from './auth.ts';
 import { AuthScreens, useAuthFlow } from './AuthScreens.tsx';
 import { FriendsTrainedToday, RaceCards, SinceLastVisit } from './Boards.tsx';
 import { newGroupPath, usePendingInvite } from './groups.ts';
-import { CreateGroup, GroupsTab, JoinInvite, ProfileCard } from './GroupsScreens.tsx';
+import { CreateGroup, DeleteAccount, GroupsTab, JoinInvite, ProfileCard } from './GroupsScreens.tsx';
 import { StampsCard, WeekCard } from './Consistency.tsx';
 import { History } from './HistoryScreen.tsx';
 import { useI18n, type Term } from './i18n.ts';
@@ -132,6 +132,7 @@ function Tabs({ userId }: { userId: string }) {
                 {signOutError}
               </p>
             )}
+            <DeleteAccount training={training} />
             <section aria-label={t.about.title}>
               <h2 className="disp">{t.about.title}</h2>
               <p>

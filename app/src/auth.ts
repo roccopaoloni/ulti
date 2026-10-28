@@ -49,6 +49,13 @@ export function useUser(): User | null {
   }, [stored]);
 }
 
+// Forgets the signed-in user on this device without asking the server, which no longer knows them
+// once their account is deleted.
+export function forgetSession() {
+  localStorage.removeItem(sessionKey);
+  notify();
+}
+
 // Signs out on this device only. Offline it still signs out, unless the access token has expired:
 // then supabase-js keeps the session and returns the network error.
 export async function signOut() {

@@ -144,6 +144,7 @@ test("the board shows a member's points, Session dots and Personal Records, and 
     position: 1,
     display_name: 'Ana',
     avatar_color: '#6fb6f7',
+    former: false,
     me: false,
     points: 150,
     tier: 'bronze',

@@ -37,6 +37,7 @@ function anasPhone(
   };
   return {
     connectivity,
+    userId,
     open: (at = startsAt) => {
       clockAt = at;
       return openTraining(userId, options);
@@ -822,4 +823,32 @@ test('the Deload Weeks the server holds reach a phone that is new to this user',
   await training.saveDeloadsFromServer([{ week: '2026-10-19', origin: 'self', status: 'accepted', updatedAt: '2026-10-19T10:00:00.000Z' }]);
   expect((await training.deload()).active).toBe(true);
   training.close();
+});
+
+test('erasing the phone leaves no database and sends nothing that was queued', async () => {
+  const network = server();
+  network.offline = true;
+  const phone = anasPhone(network);
+  const training = await phone.open();
+  const session = await training.startSession();
+  await training.logSet(session.id, 'back-squat', 100, 5);
+  await training.setProfile('bodyweightKg', 80);
+  await training.saveRoutine([{ id: 'push', name: 'Push', exercises: [] }]);
+  await training.createExercise('Zercher squat');
+  expect((await indexedDB.databases()).map(({ name }) => name)).toContain(`ulti-${phone.userId}`);
+
+  await training.erase();
+
+  expect((await indexedDB.databases()).map(({ name }) => name)).not.toContain(`ulti-${phone.userId}`);
+  network.offline = false;
+  phone.connectivity.dispatchEvent(new Event('online'));
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(network.batches).toEqual([]);
+
+  // Opening it again finds nothing: no Sessions, no outbox.
+  const reopened = await phone.open();
+  expect(await reopened.pastSessions()).toEqual([]);
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(network.batches).toEqual([]);
+  reopened.close();
 });
