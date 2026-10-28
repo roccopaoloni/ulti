@@ -15,11 +15,11 @@ async function sync({ client }: Lifter, mutations: unknown[]) {
   expect(error).toBeNull();
 }
 
-// A Weekly Target of 1, so a week with one Session is a perfect week: 120 Consistency Points.
+// A Weekly Target of 2 (the lowest), so a week with two Sessions is a perfect week: 120 Consistency Points.
 const weeklyTarget = () => ({
   id: crypto.randomUUID(),
   kind: 'saveProfileEntry',
-  entry: { field: 'weeklyTarget', effectiveFrom: '2024-12-30', value: 1, updatedAt: '2024-12-30T12:00:00.000Z' },
+  entry: { field: 'weeklyTarget', effectiveFrom: '2024-12-30', value: 2, updatedAt: '2024-12-30T12:00:00.000Z' },
 });
 
 // One finished Session of six equal squat Sets (a perfect week, no Personal Record), started at 12:00
@@ -37,9 +37,11 @@ function session(localDate: string, timeZone = 'UTC') {
   ];
 }
 
-// The Mondays of the first 2025 Season (Q1) that a lifter trains on: each is a perfect week.
+// The Mondays of the first 2025 Season (Q1) that a lifter trains on, and the Tuesday after: each week is perfect.
 const MONDAYS = ['01-06', '01-13', '01-20', '01-27', '02-03', '02-10', '02-17', '02-24', '03-03', '03-10', '03-17', '03-24'].map((day) => `2025-${day}`);
-const trainOn = (days: string[], timeZone?: string) => days.flatMap((day) => session(day, timeZone));
+const nextDay = (day: string) => new Date(Date.parse(`${day}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
+const week = (monday: string, timeZone?: string) => [...session(monday, timeZone), ...session(nextDay(monday), timeZone)];
+const trainOn = (days: string[], timeZone?: string) => days.flatMap((day) => week(day, timeZone));
 
 // Only these tests train in 2025, so the Seasons under test hold only the users made here.
 // Q1 ends on 31 March; 72 hours later, in UTC, is 00:00 UTC on 4 April.
@@ -78,7 +80,7 @@ test('a Season freezes 72 hours after it ends, and the next one starts at the bo
   expect(await seasonPoints(ana, '2025-04-02')).toBe(800);
 
   // A first Session in the new Season adds to the starting points.
-  await sync(ana, session('2025-04-07'));
+  await sync(ana, week('2025-04-07'));
   expect(await seasonPoints(ana, '2025-04-07')).toBe(920);
 });
 
@@ -99,13 +101,13 @@ test('a Session synced within the 72 hours counts toward the final Rank, and one
   await sync(bea, [weeklyTarget(), ...trainOn(MONDAYS.slice(0, 10))]);
 
   // An eleventh week, synced after the Season ended but before it froze, lifts her to Gold V.
-  await sync(bea, session(MONDAYS[10]));
+  await sync(bea, week(MONDAYS[10]));
   finalizeSeasonsAt(frozenInUtc);
   expect(await stamps(bea)).toEqual([['2025-Q1', 'gold', 5]]);
   expect(await seasonPoints(bea, '2025-04-02')).toBe(800);
 
   // A twelfth, synced after the freeze, still adds to her Points but not to the frozen Season.
-  await sync(bea, session(MONDAYS[11]));
+  await sync(bea, week(MONDAYS[11]));
   expect(await stamps(bea)).toEqual([['2025-Q1', 'gold', 5]]);
   expect(await seasonPoints(bea, '2025-03-15')).toBe(1320);
   expect(await seasonPoints(bea, '2025-04-02')).toBe(800);
@@ -113,7 +115,7 @@ test('a Session synced within the 72 hours counts toward the final Rank, and one
 
 test('a Bronze finish starts the next Season in Bronze V, and an idle Season passes the soft reset on', async () => {
   const cy = await lifter('Cy');
-  await sync(cy, [weeklyTarget(), ...session(MONDAYS[0])]);
+  await sync(cy, [weeklyTarget(), ...week(MONDAYS[0])]);
   const dan = await lifter('Dan');
   await sync(dan, [weeklyTarget(), ...trainOn(MONDAYS.slice(0, 11))]);
 
