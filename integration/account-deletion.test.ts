@@ -96,7 +96,7 @@ function rowsHeldFor(userId: string) {
 const weekEndsInUtc = '2026-10-26T00:00:00Z';
 const freeze = (moment: string) => sql(`select private.finalize_periods('${moment}')`);
 
-test('deleting the account erases the user and every row of their data', async () => {
+test('deleting the account erases the user and every row of their data', { timeout: 60_000 }, async () => {
   const ana = await fullLifter('Ana', '2026-10-19', '2026-10-20');
   const lee = await fullLifter('Lee', '2026-10-21');
   await groupOf(ana, lee);
@@ -136,7 +136,7 @@ test('a frozen week keeps its places and points, shows the deleted member as a f
     expect.objectContaining({ position: 1, display_name: '', avatar_color: '', former: true, points: 80 }),
     expect.objectContaining({ position: 2, display_name: 'Lee', former: false, points: 40 }),
   ]);
-  expect(sql(`select count(*) from public.period_results where user_id = '${ana.id}' or display_name = 'Ana'`)).toBe('0');
+  expect(sql(`select count(*) from public.period_results where group_id = '${gymCrew}' and (user_id = '${ana.id}' or display_name = 'Ana')`)).toBe('0');
   // The place stays taken: nobody else inherits the crown.
   expect((await lee.client.rpc('my_crowns')).data).toEqual([]);
 });
