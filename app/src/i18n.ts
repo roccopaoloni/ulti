@@ -39,6 +39,11 @@ type Messages = {
     leaveNextOwner: (name: string) => string;
     leaveLast: string;
     leaveConfirm: string;
+    formerMember: string;
+    deleteAccount: string;
+    deleteAccountTitle: string;
+    deleteAccountText: string;
+    deleteAccountConfirm: string;
     cancel: string;
     invited: string;
     invitedText: string;
@@ -392,6 +397,12 @@ const en: Messages = {
     leaveNextOwner: (name) => `${name} will become the Owner.`,
     leaveLast: "You're the last member, so the Group will be deleted.",
     leaveConfirm: 'Leave',
+    formerMember: 'Former member',
+    deleteAccount: 'Delete account',
+    deleteAccountTitle: 'Delete your account?',
+    deleteAccountText:
+      "This permanently erases your account and everything in it: your Sessions, Sets, Routines, Custom Exercises, bodyweight and Rank. You'll leave all your Groups, and past boards that are already final will show you as a Former member. It needs a connection, and it can't be undone.",
+    deleteAccountConfirm: 'Delete my account',
     cancel: 'Cancel',
     invited: "You're invited",
     invitedText: "Create an account or sign in, and you'll join the Group your friend invited you to.",
@@ -740,6 +751,12 @@ const es: Messages = {
     leaveNextOwner: (name) => `${name} va a pasar a ser el creador.`,
     leaveLast: 'Sos el último miembro, así que el grupo se va a borrar.',
     leaveConfirm: 'Salir',
+    formerMember: 'Ex miembro',
+    deleteAccount: 'Borrar cuenta',
+    deleteAccountTitle: '¿Borrar tu cuenta?',
+    deleteAccountText:
+      'Esto borra para siempre tu cuenta y todo lo que tiene: tus sesiones, series, rutinas, ejercicios propios, peso corporal y rango. Vas a salir de todos tus grupos, y las tablas pasadas que ya son definitivas te van a mostrar como ex miembro. Necesita conexión y no se puede deshacer.',
+    deleteAccountConfirm: 'Borrar mi cuenta',
     cancel: 'Cancelar',
     invited: 'Te invitaron',
     invitedText: 'Creá una cuenta o entrá, y vas a quedar en el grupo al que te invitó tu amigo.',

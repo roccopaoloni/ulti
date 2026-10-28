@@ -1,8 +1,9 @@
 import type { Division, Tier } from '@ulti/rules';
-import { supabase } from './auth.ts';
+import { forgetSession, supabase } from './auth.ts';
 import { paths } from './navigation.ts';
-import { today } from './profile.ts';
+import { languageKey, today } from './profile.ts';
 import { useStored, write } from './stored.ts';
+import type { Training } from './training.ts';
 
 // What my_groups() returns: of each member, only what the server lets members see of each other.
 export type Member = { display_name: string; avatar_color: string; owner: boolean; me: boolean };
@@ -90,6 +91,18 @@ export async function leaveGroup(userId: string, groupId: string) {
   await refreshGroups(userId);
 }
 
+// Deletes the account on the server (online only, since the server has to erase it), then clears
+// everything this device holds for the user: their database and the small values in localStorage
+// (the device's language stays), and forgets the session.
+export async function deleteAccount(training: Training | null) {
+  await call(supabase.rpc('delete_account'));
+  await training?.erase();
+  for (const key of Object.keys(localStorage)) {
+    if (key.startsWith('ulti-') && key !== languageKey) localStorage.removeItem(key);
+  }
+  forgetSession();
+}
+
 export async function setScoringMode(groupId: string, mode: ScoringMode) {
   await call(supabase.rpc('set_scoring_mode', { group_id: groupId, mode, on_date: today() }));
 }
@@ -130,6 +143,8 @@ export type BoardRow = {
   position: number;
   display_name: string;
   avatar_color: string;
+  // A member who deleted their account: a frozen board keeps their place, with no name or colour.
+  former?: boolean;
   me: boolean;
   points: number;
   tier: Tier;
