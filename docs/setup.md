@@ -233,6 +233,18 @@ Nothing needs setting up. The deploy job applies the migration that creates `per
 - [ ] The finalizer job is active
 - [ ] The crown moment showed once on the next open, and the sound played (silent switch off)
 
+## 14. After Season finalization (#28) ships: check the Season freeze and the Past Seasons stamps
+
+Nothing needs setting up. The deploy job applies the migration that creates `season_results` and makes the existing `finalize-periods` job freeze Seasons too. The first run after the deploy freezes the Season that last ended (Q3 2026, over for more than 72 hours by then), so everyone's Rank this Season starts from the Tier below their Q3 finish: expect Ranks to move on the first open after the deploy, and a Rank-up moment for anyone whose starting points lift them above the Rank they last saw. Don't call `private.finalize_seasons` with a future date to see it sooner: it would freeze every real user's running Season for good.
+
+1. **Integrations → Cron → Jobs** should still list `finalize-periods`, active, every 5 minutes (it now runs both finalizers).
+2. **Table Editor → season_results** should hold one row per user who trained in Q3 2026, with the Rank they finished in and `next_starting_points`.
+3. Open the app signed in as one of them, on **Profile**. The Rank card should show the Q4 Rank starting at the bottom of the Tier below the Q3 finish (Bronze finishers stay at Bronze V), and a **Past Seasons** row with a Q3 2026 badge. Turn on airplane mode and reopen: the Rank should not drop to Bronze.
+4. On 1 January 2027 plus 72 hours (4 January), check that a Q4 2026 row appears for each user the same way.
+
+- [ ] The Q3 2026 results are in `season_results` and the Past Seasons stamp shows on Profile
+- [ ] No drop to Bronze when reopening offline
+
 ## Later: moving to a real domain
 
 When the test proves ULTI is worth it, buy a domain (about US$10–15 a year) and:
