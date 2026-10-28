@@ -101,6 +101,9 @@ test('deleting the account erases the user and every row of their data', { timeo
   const lee = await fullLifter('Lee', '2026-10-21');
   await groupOf(ana, lee);
   freeze(weekEndsInUtc);
+  sql(
+    `insert into public.season_results (user_id, first_day, points, tier, division, next_starting_points) values ('${ana.id}', '2026-07-01', 120, 'bronze', 3, 0)`,
+  );
   const [crown] = (await ana.client.rpc('my_crowns')).data;
   await ana.client.rpc('see_crown', { crown_id: crown.id });
 
