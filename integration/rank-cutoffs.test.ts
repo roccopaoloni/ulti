@@ -1,4 +1,4 @@
-import { ELITE_CUTOFF, rankOf, TIER_CUTOFFS } from '@ulti/rules';
+import { ELITE_CUTOFF, rankOf, startingPointsAfter, TIER_CUTOFFS } from '@ulti/rules';
 import { expect, test } from 'vitest';
 import { sql } from './sql.ts';
 
@@ -11,4 +11,14 @@ test("the database's Tier and Division cutoffs are the rules package's", () => {
   const fromDatabase = points.map((p) => JSON.parse(sql(`select private.rank_of(${p})`)));
 
   expect(fromDatabase).toEqual(points.map(rankOf));
+});
+
+// private.starting_points_after keeps its own copy of the soft reset, so the next Season's starting
+// points come from the final Tier the way the rules package says.
+test("the database's soft reset is the rules package's", () => {
+  const tiers = ['bronze', 'silver', 'gold', 'diamond', 'elite'] as const;
+
+  const fromDatabase = tiers.map((tier) => Number(sql(`select private.starting_points_after('${tier}')`)));
+
+  expect(fromDatabase).toEqual(tiers.map(startingPointsAfter));
 });
