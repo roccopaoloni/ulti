@@ -325,6 +325,26 @@ export async function openTraining(userId: string, options: Options) {
       return { session, exerciseIds: inProgress.exerciseIds, plan: inProgress.plan ?? [], sets };
     },
 
+    // Keeps the Sessions and Sets the server holds, as on a phone that is new to this user. Anything
+    // still in the outbox is the phone's newer word and stays as it is (a Set deleted here is not
+    // brought back), and so does a copy the phone wrote later. Deleted Sets are never downloaded.
+    async saveSessionsFromServer(sessions: SessionRecord[], sets: SetRecord[]) {
+      const tx = db.transaction(['sessions', 'sets', 'outbox'], 'readwrite');
+      const queued = new Set<string>();
+      for (const mutation of await tx.objectStore('outbox').getAll()) {
+        if (mutation.kind === 'saveSession') queued.add(mutation.session.id);
+        else if (mutation.kind === 'saveSet') queued.add(mutation.set.id);
+      }
+      for (const [store, records] of [[tx.objectStore('sessions'), sessions], [tx.objectStore('sets'), sets]] as const) {
+        for (const record of records) {
+          if (queued.has(record.id)) continue;
+          const kept = await store.get(record.id);
+          if (!kept || kept.updatedAt < record.updatedAt) await store.put(record as never);
+        }
+      }
+      await tx.done;
+    },
+
     // The Exercise's Sets from the last Session that had it, other than the one in progress: what
     // the next Session's rows are pre-filled with.
     async lastSets(exerciseId: string) {
