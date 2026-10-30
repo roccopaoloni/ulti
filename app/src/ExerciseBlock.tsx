@@ -112,7 +112,7 @@ export function ExerciseBlock({
           {t.session.calibration} <Info term="calibration" />
         </p>
       )}
-      {dumbbell && <p className="muted">{t.session.perDumbbell}</p>}
+      {dumbbell && <p className="per-dumbbell">{t.session.perDumbbell}</p>}
       {target && <p className="muted">{t.session.target(target.sets, target.repMin, target.repMax)}</p>}
       {!custom && (
         <button
