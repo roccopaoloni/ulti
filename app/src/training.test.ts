@@ -934,3 +934,17 @@ test('a newer server copy replaces a Set the phone already sent', async () => {
   training.close();
 });
 
+
+test('a phone knows whether it has downloaded the profile history, so an offline new phone can wait instead of onboarding', async () => {
+  const phone = anasPhone(server());
+  const training = await phone.open();
+  expect(await training.profileDownloaded()).toBe(false);
+
+  await training.saveProfileHistory([]);
+  expect(await training.profileDownloaded()).toBe(true);
+  training.close();
+
+  const reopened = await phone.open();
+  expect(await reopened.profileDownloaded()).toBe(true);
+  reopened.close();
+});
