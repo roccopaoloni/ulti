@@ -1024,3 +1024,76 @@ test("a Session the server holds unfinished is downloaded but is not this phone'
   training.close();
 });
 
+
+// A Day that is named but has no Exercise yet: the Routine is not whole.
+const legsDraft = { id: 'legs', name: 'Legs', exercises: [] };
+
+test('a Routine draft that is not whole survives a reload and stays on the phone, and the Routine sends once it is completed', async () => {
+  const network = server();
+  const phone = anasPhone(network);
+  const first = await phone.open();
+  expect(await first.routineDraft()).toEqual([]);
+
+  await first.saveRoutineDraft([pushDay, legsDraft]);
+  first.close();
+
+  const reloaded = await phone.open();
+  expect(await reloaded.routineDraft()).toEqual([pushDay, legsDraft]);
+  expect(await reloaded.routine()).toBeNull();
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  expect(network.batches).toEqual([]);
+
+  const legs = { ...legsDraft, exercises: [{ exerciseId: 'back-squat', sets: 3, repMin: 5, repMax: 8 }] };
+  await reloaded.saveRoutineDraft([pushDay, legs]);
+  await vi.waitFor(() => expect(network.batches).toHaveLength(1));
+  expect(routines(network.batches[0]).map((routine) => routine.days)).toEqual([[pushDay, legs]]);
+  expect(await reloaded.routineDraft()).toEqual([pushDay, legs]);
+  reloaded.close();
+});
+
+test('breaking a whole Routine keeps the last whole one as the Routine while the draft shows the edit', async () => {
+  const network = server();
+  network.offline = true;
+  const phone = anasPhone(network);
+  const training = await phone.open();
+  await training.saveRoutineDraft([pushDay]);
+
+  await training.saveRoutineDraft([pushDay, legsDraft]);
+  expect((await training.routine())?.days).toEqual([pushDay]);
+  expect(await training.routineDraft()).toEqual([pushDay, legsDraft]);
+  training.close();
+});
+
+test('many edits made offline send the Routine once, as it ended up', async () => {
+  const network = server();
+  network.offline = true;
+  const phone = anasPhone(network);
+  const training = await phone.open();
+  await training.saveRoutineDraft([pushDay]);
+  await training.saveRoutineDraft([pushDay, pullDay]);
+  await training.saveRoutineDraft([pullDay, pushDay]);
+
+  network.offline = false;
+  phone.connectivity.dispatchEvent(new Event('online'));
+  await vi.waitFor(() => expect(network.batches).toHaveLength(1));
+  expect(routines(network.batches[0]).map((routine) => routine.days)).toEqual([[pullDay, pushDay]]);
+  training.close();
+});
+
+test('the next Session and the pre-filled rows follow the order of Days and Exercises after they are reordered', async () => {
+  const network = server();
+  network.offline = true;
+  const phone = anasPhone(network);
+  const training = await phone.open();
+  await training.saveRoutineDraft([pushDay, pullDay]);
+  expect((await training.nextRoutineDay())?.id).toBe('push');
+
+  await training.saveRoutineDraft([pullDay, pushDay]);
+  expect((await training.nextRoutineDay())?.id).toBe('pull');
+
+  const press = { exerciseId: 'overhead-press', sets: 3, repMin: 8, repMax: 12 };
+  await training.saveRoutineDraft([pullDay, { ...pushDay, exercises: [press, ...pushDay.exercises] }]);
+  await training.startSession('push');
+  expect((await training.sessionInProgress())?.exerciseIds).toEqual(['overhead-press', 'bench-press']);
+  training.close();
+});

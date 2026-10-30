@@ -1,6 +1,7 @@
 import {
   bodyweightPromptDue,
   canStartDeload,
+  completeRoutine,
   deriveScoringEvents,
   nextMonday,
   isMuscle,
@@ -142,6 +143,8 @@ interface Store extends DBSchema {
   deloads: { key: string; value: DeloadRecord };
   // Set once the profile history has been downloaded from the server.
   downloaded: { key: 'profile'; value: true };
+  // The Routine as the lifter is editing it, kept only while it is not whole (so not the Routine yet).
+  routineDraft: { key: 'days'; value: RoutineDay[] };
 }
 
 // The Session being logged and the Exercises added to it, in order, including any with no Sets yet,
@@ -154,7 +157,7 @@ const DEFAULT_INCREMENT_KG = 2.5;
 export type Training = Awaited<ReturnType<typeof openTraining>>;
 
 export async function openTraining(userId: string, options: Options) {
-  const db = await openDB<Store>(`ulti-${userId}`, 6, {
+  const db = await openDB<Store>(`ulti-${userId}`, 7, {
     upgrade(db, oldVersion) {
       if (oldVersion < 1) {
         db.createObjectStore('sessions', { keyPath: 'id' });
@@ -178,6 +181,9 @@ export async function openTraining(userId: string, options: Options) {
       }
       if (oldVersion < 6) {
         db.createObjectStore('downloaded');
+      }
+      if (oldVersion < 7) {
+        db.createObjectStore('routineDraft');
       }
     },
   });
@@ -507,6 +513,29 @@ export async function openTraining(userId: string, options: Options) {
     async saveRoutine(days: RoutineDay[]) {
       const id = (await this.routine())?.id ?? crypto.randomUUID();
       await write({ id: crypto.randomUUID(), kind: 'saveRoutine', routine: { id, days, updatedAt: stamp() } });
+    },
+
+    // What the Routine editor shows: the draft the lifter left unfinished, else the Routine.
+    async routineDraft() {
+      return (await db.get('routineDraft', 'days')) ?? (await this.routine())?.days ?? [];
+    },
+
+    // Autosave of the Routine editor: every edit lands here and stays on the phone. A whole draft
+    // becomes the Routine and syncs; any other stays a draft and is never sent. Edits made while
+    // offline replace the Routine still waiting in the outbox, so it holds one, as it ended up.
+    async saveRoutineDraft(days: RoutineDay[]) {
+      const whole = completeRoutine(days);
+      if (!whole) {
+        await db.put('routineDraft', days, 'days');
+        return;
+      }
+      const tx = db.transaction(['outbox', 'routineDraft'], 'readwrite');
+      for (let cursor = await tx.objectStore('outbox').openCursor(); cursor; cursor = await cursor.continue()) {
+        if (cursor.value.kind === 'saveRoutine') await cursor.delete();
+      }
+      await tx.objectStore('routineDraft').delete('days');
+      await tx.done;
+      await this.saveRoutine(whole);
     },
 
     // Keeps the Routine the server holds, as on a phone that is new to this user, unless the phone
