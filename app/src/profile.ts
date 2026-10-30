@@ -27,18 +27,21 @@ export const setLayout = (userId: string, layout: Layout) => write(layoutKey(use
 export const languageKey = 'ulti-language';
 export const setLanguage = (language: Language) => write(languageKey, language);
 
-// The server's copy of the user's profile history and units: what a phone that is new to this
+// The server's copy of the user's profile history, units and "I don't follow a routine": what a phone that is new to this
 // user lacks. Offline, it throws and the phone goes on with what it has.
 async function pull(userId: string, training: Training) {
   const [history, profile] = await Promise.all([
     supabase.from('profile_history').select('field, effective_from, value'),
-    supabase.from('profiles').select('units').maybeSingle(),
+    supabase.from('profiles').select('units, no_routine, no_routine_at').maybeSingle(),
   ]);
   if (history.error) throw history.error;
   await training.saveProfileHistory(
     history.data.map((row) => ({ field: row.field as ProfileField, effectiveFrom: row.effective_from, value: row.value })),
   );
-  if (profile.data?.units && localStorage.getItem(unitsKey(userId)) === null) write(unitsKey(userId), profile.data.units);
+  if (profile.data?.no_routine_at) {
+    await training.saveNoRoutineFromServer({ value: profile.data.no_routine, updatedAt: profile.data.no_routine_at });
+  }
+  if (profile.data?.units &&localStorage.getItem(unitsKey(userId)) === null) write(unitsKey(userId), profile.data.units);
 }
 
 // The user's sex, bodyweight and Weekly Target on this phone. `ready` is true once the phone has

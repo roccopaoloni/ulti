@@ -152,6 +152,12 @@ type Messages = {
     promptTitle: string;
     promptText: (last: string) => string;
     dismiss: string;
+    // The last step of onboarding.
+    routineTitle: string;
+    routineText: string;
+    routineNow: string;
+    routineLater: string;
+    routineNone: string;
   };
   // Logging a Session.
   session: {
@@ -213,6 +219,12 @@ type Messages = {
     // Home's button, when the Routine suggests the next Session, and the way to log without it.
     startNext: (day: string) => string;
     startUnplanned: string;
+    // The sheet shown when starting a Session with no Routine.
+    noRoutineTitle: string;
+    noRoutineText: string;
+    noRoutineSetUp: string;
+    noRoutineLog: string;
+    noRoutineNever: string;
     // A Routine Day's plan for an Exercise, under its name: Sets × Rep Range.
     target: (sets: number, repMin: number, repMax: number) => string;
     // The Go heavier recommendation on the pre-filled rows, and the way to dismiss it.
@@ -546,6 +558,11 @@ const en: Messages = {
     promptTitle: 'Still the same weight?',
     promptText: (last) => `Your last bodyweight was ${last}. Update it, or keep it.`,
     dismiss: 'Keep it',
+    routineTitle: 'Your routine',
+    routineText: 'With a routine we recommend what weight to use and track your progress. You can set it up or change it any time from Train.',
+    routineNow: 'Set it up now',
+    routineLater: "I'll do it later",
+    routineNone: "I don't follow a routine",
   },
   session: {
     start: 'Start session',
@@ -592,6 +609,11 @@ const en: Messages = {
     calibration: 'Your first sessions set your baseline',
     startNext: (day) => `Next: ${day}`,
     startUnplanned: 'Log an unplanned session',
+    noRoutineTitle: 'No routine logged yet',
+    noRoutineText: 'Log your routine so we can recommend weights and track your progress.',
+    noRoutineSetUp: 'Set up my routine',
+    noRoutineLog: 'Log without a routine',
+    noRoutineNever: "I don't follow a routine",
     target: (sets, repMin, repMax) => `${sets} × ${repMin}–${repMax} reps`,
     dismissGoHeavier: 'Keep the same weight',
     stall: (weight, units) => `Stalled: drop to ${weight} ${units} and build back up`,
@@ -927,6 +949,11 @@ const es: Messages = {
     promptTitle: '¿Seguís pesando lo mismo?',
     promptText: (last) => `Tu último peso corporal fue ${last}. Actualizalo o dejalo así.`,
     dismiss: 'Dejarlo así',
+    routineTitle: 'Tu rutina',
+    routineText: 'Con una rutina te recomendamos qué peso usar y seguimos tu progreso. Podés armarla o cambiarla cuando quieras desde Entrenar.',
+    routineNow: 'Armarla ahora',
+    routineLater: 'Lo hago después',
+    routineNone: 'No sigo una rutina',
   },
   session: {
     start: 'Empezar sesión',
@@ -973,6 +1000,11 @@ const es: Messages = {
     calibration: 'Tus primeras sesiones fijan tu base',
     startNext: (day) => `Sigue: ${day}`,
     startUnplanned: 'Registrar una sesión sin rutina',
+    noRoutineTitle: 'Todavía no cargaste tu rutina',
+    noRoutineText: 'Cargá tu rutina para que te recomendemos pesos y sigamos tu progreso.',
+    noRoutineSetUp: 'Armar mi rutina',
+    noRoutineLog: 'Registrar sin rutina',
+    noRoutineNever: 'No sigo una rutina',
     target: (sets, repMin, repMax) => `${sets} × ${repMin}–${repMax} repeticiones`,
     dismissGoHeavier: 'Mantener el mismo peso',
     stall: (weight, units) => `Estancado: bajá a ${weight} ${units} y volvé a subir`,

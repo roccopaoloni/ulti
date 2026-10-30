@@ -4,6 +4,7 @@ import { Field } from './AuthScreens.tsx';
 import { refreshVisibility, saveVisibility, useVisibility, type Visibility } from './groups.ts';
 import { useI18n, type Language } from './i18n.ts';
 import { Info } from './Info.tsx';
+import { navigate, routinePath } from './navigation.ts';
 import { setLanguage, setLayout, setUnits, today, useLayout, type Layout } from './profile.ts';
 import type { Profile, Training } from './training.ts';
 
@@ -118,13 +119,52 @@ async function saveBody(training: Training, current: Profile | null, draft: Draf
   if (draft.target !== valueInForce(current?.weeklyTarget ?? [], day)) await training.setProfile('weeklyTarget', draft.target);
 }
 
-// Asked once, after the email is verified: the units, then the three dated histories.
+// The last step of onboarding: the Routine, set up now, later, or never.
+function RoutineStep({ training, onDone }: { training: Training; onDone: () => void }) {
+  const { t } = useI18n();
+  const b = t.body;
+  return (
+    <main className="screen">
+      <h1 className="disp title">{b.routineTitle}</h1>
+      <section className="card form">
+        <p className="muted">{b.routineText}</p>
+        <button
+          type="button"
+          className="btn-primary"
+          onClick={() => {
+            navigate(routinePath);
+            onDone();
+          }}
+        >
+          {b.routineNow}
+        </button>
+        <button type="button" className="btn-ghost" onClick={onDone}>
+          {b.routineLater}
+        </button>
+        <button
+          type="button"
+          className="btn-link"
+          onClick={async () => {
+            await training.setFollowsNoRoutine(true);
+            onDone();
+          }}
+        >
+          {b.routineNone}
+        </button>
+      </section>
+    </main>
+  );
+}
+
+// Asked once, after the email is verified: the units, then the three dated histories, then the
+// Routine.
 export function Onboarding({ userId, training, onDone }: { userId: string; training: Training; onDone: () => void }) {
   const { t } = useI18n();
   const b = t.body;
   const [units, setChosen] = useState<Units>('kg');
   const [draft, setDraft] = useState<Draft>({ sex: null, bodyweight: '', target: 3 });
   const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(false);
   const bodyweightKg = typedBodyweightKg(draft.bodyweight, units);
 
   async function submit(event: FormEvent) {
@@ -133,8 +173,10 @@ export function Onboarding({ userId, training, onDone }: { userId: string; train
     setBusy(true);
     setUnits(userId, units);
     await saveBody(training, null, draft, bodyweightKg);
-    onDone();
+    setSaved(true);
   }
+
+  if (saved) return <RoutineStep training={training} onDone={onDone} />;
 
   return (
     <main className="screen">
