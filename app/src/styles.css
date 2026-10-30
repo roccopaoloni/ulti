@@ -881,8 +881,21 @@ button.cell {
   align-items: center;
   gap: 12px;
 }
+/* The label sits above the Set, so the Set and its Edit and Delete links keep their room. */
 .past-set > span:first-child {
   flex: 1;
+  display: grid;
+  gap: 4px;
+  justify-items: start;
+}
+/* The label sits above the Set, so the Set and its Edit and Delete links keep their room. */
+.past-set .past-tag {
+  height: auto;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  white-space: nowrap;
 }
 .past-set input {
   width: 6ch;
