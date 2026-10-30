@@ -75,6 +75,54 @@ test('a value outside what the field allows is rejected, and the rest of the bat
   expect(await historyOf(ana)).toEqual([{ field: 'weeklyTarget', effective_from: '2026-10-26', value: 6 }]);
 });
 
+// Local dates relative to the real clock. The server doesn't know the user's time zone, so
+// yesterday in UTC is before the next Monday wherever she is.
+const day = (daysFromNow: number) => new Date(Date.now() + daysFromNow * 86_400_000).toISOString().slice(0, 10);
+const mondayAfter = (localDate: string) => {
+  const date = new Date(`${localDate}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + (8 - (date.getUTCDay() || 7)));
+  return date.toISOString().slice(0, 10);
+};
+
+test('a Weekly Target change backdated before next Monday is rejected alone, and one from next Monday is saved', async () => {
+  const ana = await lifter('ana');
+  await sync(ana, [entry('weeklyTarget', '2026-10-05', 4)]);
+  const backdated = entry('weeklyTarget', day(-1), 2);
+  const nextMonday = entry('weeklyTarget', mondayAfter(day(1)), 5);
+  const bodyweight = entry('bodyweightKg', day(-1), 63);
+
+  const response = await sync(ana, [backdated, nextMonday, bodyweight]);
+
+  expect(response).toEqual({ rejected: [backdated.id] });
+  expect(await historyOf(ana)).toEqual([
+    { field: 'bodyweightKg', effective_from: day(-1), value: 63 },
+    ...[
+      { field: 'weeklyTarget', effective_from: '2026-10-05', value: 4 },
+      { field: 'weeklyTarget', effective_from: mondayAfter(day(1)), value: 5 },
+    ],
+  ]);
+});
+
+test("a user's first Weekly Target can start on the day it is set, or earlier if it was set offline", async () => {
+  const ana = await lifter('ana');
+  const bea = await lifter('bea');
+
+  expect(await sync(ana, [entry('weeklyTarget', day(0), 3)])).toEqual({ rejected: [] });
+  expect(await sync(bea, [entry('weeklyTarget', day(-10), 3)])).toEqual({ rejected: [] });
+  expect(await historyOf(ana)).toEqual([{ field: 'weeklyTarget', effective_from: day(0), value: 3 }]);
+});
+
+test('in a first batch, only the earliest Weekly Target is the first one', async () => {
+  const ana = await lifter('ana');
+  const first = entry('weeklyTarget', day(-3), 3);
+  const backdatedChange = entry('weeklyTarget', day(-1), 2);
+
+  const response = await sync(ana, [backdatedChange, first]);
+
+  expect(response).toEqual({ rejected: [backdatedChange.id] });
+  expect(await historyOf(ana)).toEqual([{ field: 'weeklyTarget', effective_from: day(-3), value: 3 }]);
+});
+
 test("Bea can't read Ana's sex or bodyweight, nor write to her history", async () => {
   const ana = await lifter('ana');
   const bea = await lifter('bea');
