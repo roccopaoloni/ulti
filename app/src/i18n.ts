@@ -15,6 +15,7 @@ type Messages = {
   close: string;
   back: string;
   settings: { title: string; open: string; nameOffline: string; you: string; app: string; privacy: string; account: string };
+  install: { title: string; settingsTitle: string; homeText: string; install: string; notNow: string; iosShare: string; iosAdd: string; other: string };
   about: { title: string; fitnessVoltLink: string; symmetricStrength: string };
   glossary: Record<Term, { term: string; explanation: string }>;
   // Groups: creating, inviting, joining and leaving, and the display name and avatar members see.
@@ -334,6 +335,7 @@ const en: Messages = {
   close: 'Close',
   back: 'Back',
   settings: { title: 'Settings', open: 'Open settings', nameOffline: 'Your name and colour were not saved: they need a connection. Everything else was saved.', you: 'You', app: 'App', privacy: 'Privacy', account: 'Account' },
+  install: { title: 'Add ULTI to your Home Screen', settingsTitle: 'Install app', homeText: 'Open ULTI from your Home Screen like any app: full screen, with no browser bar.', install: 'Install', notNow: 'Not now', iosShare: 'Tap Share.', iosAdd: 'Scroll down and tap "Add to Home Screen".', other: 'Open your browser menu and choose "Install app" or "Add to Home Screen".' },
   about: {
     title: 'About',
     fitnessVoltLink: 'Powered by FitnessVolt',
@@ -707,6 +709,7 @@ const es: Messages = {
   close: 'Cerrar',
   back: 'Volver',
   settings: { title: 'Ajustes', open: 'Abrir ajustes', nameOffline: 'No se guardaron tu nombre y color: necesitan conexión. Todo lo demás sí se guardó.', you: 'Vos', app: 'App', privacy: 'Privacidad', account: 'Cuenta' },
+  install: { title: 'Agregá ULTI a tu pantalla de inicio', settingsTitle: 'Instalar app', homeText: 'Abrila desde la pantalla de inicio como una app más: a pantalla completa, sin la barra del navegador.', install: 'Instalar', notNow: 'Ahora no', iosShare: 'Tocá Compartir.', iosAdd: 'Bajá y tocá «Agregar a pantalla de inicio».', other: 'Abrí el menú de tu navegador y elegí «Instalar app» o «Agregar a pantalla de inicio».' },
   about: {
     title: 'Acerca de',
     fitnessVoltLink: 'Powered by FitnessVolt',
