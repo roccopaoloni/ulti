@@ -581,7 +581,7 @@ test('a pull-up Set with added weight logs offline, queues as the added weight, 
   training.close();
 });
 
-const benchCatalog = [{ id: 'bench-press', nameEn: 'Bench press', nameEs: 'Press banca', equipment: 'barbell', custom: false, incrementKg: 2.5, bodyweight: false, muscle: 'chest' }];
+const benchCatalog = [{ id: 'bench-press', nameEn: 'Bench press', nameEs: 'Press banca', equipment: 'barbell', custom: false, incrementKg: 2.5, bodyweight: false, muscle: 'chest' as const }];
 const benchRange = { repMin: 8, repMax: 12 };
 
 // Ana finishes a Bench Press Session of the given Sets, as [weightKg, reps, rir?].
