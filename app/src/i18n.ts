@@ -187,6 +187,7 @@ type Messages = {
     bodyweightLoad: (added: string) => string;
     reps: string;
     logSet: string;
+    unlogSet: string;
     // Focus layout: the Set shown, the chips' group, and the controls around the big numbers.
     focusSet: (number: number) => string;
     focusSets: string;
@@ -557,6 +558,7 @@ const en: Messages = {
     bodyweightLoad: (added) => (added ? `BW +${added}` : 'BW'),
     reps: 'Reps',
     logSet: 'Log set',
+    unlogSet: 'Un-log set',
     focusSet: (number) => `Set ${number}`,
     focusSets: 'Sets',
     focusExercises: 'Exercises',
@@ -925,6 +927,7 @@ const es: Messages = {
     bodyweightLoad: (added) => (added ? `PC +${added}` : 'PC'),
     reps: 'Repeticiones',
     logSet: 'Registrar serie',
+    unlogSet: 'Deshacer serie',
     focusSet: (number) => `Serie ${number}`,
     focusSets: 'Series',
     focusExercises: 'Ejercicios',

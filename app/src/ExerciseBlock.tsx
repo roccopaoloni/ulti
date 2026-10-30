@@ -29,6 +29,7 @@ export function ExerciseBlock({
   asksRir,
   onSetLabel,
   onRir,
+  onUnlog,
   onIncrement,
 }: {
   name: string;
@@ -58,6 +59,8 @@ export function ExerciseBlock({
   asksRir: (setId: string) => boolean;
   onSetLabel: (setId: string, label: SetLabel) => Promise<void>;
   onRir: (setId: string, rir: number) => Promise<void>;
+  // Un-logs a Set: it is removed.
+  onUnlog: (setId: string) => Promise<void>;
   onIncrement: (incrementKg: number) => Promise<void>;
 }) {
   const { t, language, formatNumber } = useI18n();
@@ -80,12 +83,20 @@ export function ExerciseBlock({
 
   // The chips asking for RIR stay after ✓ until answered or until the next Set is logged.
   const [askRir, setAskRir] = useState<string | null>(null);
+  // The Set just un-logged: the row to do comes back with its numbers and label, until it is logged again.
+  const [unlogged, setUnlogged] = useState<{ weightKg: number; reps: number; label: SetLabel } | null>(null);
+  const unlog = async (index: number) => {
+    const set = sets[index]!;
+    setAskRir(null);
+    setUnlogged({ weightKg: set.weightKg, reps: set.reps, label: labels[index]! });
+    await onUnlog(set.id);
+  };
   const [editingIncrement, setEditingIncrement] = useState<string | null>(null);
 
   // Past the plan, the next Set repeats the last one logged.
   const regularPlan = last && plannedRows(last, target?.sets);
   const plan = deload && regularPlan ? deloadRows(regularPlan, incrementKg) : regularPlan;
-  const next = plan ? (plan[sets.length] ?? sets.at(-1)) : undefined;
+  const next = unlogged ?? (plan ? (plan[sets.length] ?? sets.at(-1)) : undefined);
   // The labels the rows still to do would get, from the plan: the next row first, as the lifter edits it.
   const upcoming = plan?.slice(sets.length + 1) ?? [];
   const predicted = (nextRow: { weightKg: number; label?: SetLabel } | undefined) =>
@@ -155,9 +166,9 @@ export function ExerciseBlock({
           {weightCell(set.weightKg)}
           <span className="xmark">×</span>
           <span className="cell">{set.reps}</span>
-          <span className="check" aria-hidden="true">
+          <button type="button" className="check" aria-label={t.session.unlogSet} onClick={() => unlog(index)}>
             {records.has(set.id) ? <small className="pr-points">{t.session.points(records.get(set.id)!.progressPoints)}</small> : checkIcon}
-          </span>
+          </button>
         </div>
       ))}
       {askRir && sets.some((set) => set.id === askRir) && asksRir(askRir) && (
@@ -196,15 +207,20 @@ export function ExerciseBlock({
               focus
               number={sets.length + 1}
               planned={next}
+              chosenLabel={unlogged?.label}
               incrementKg={incrementKg}
               bodyweight={bodyweight}
               dumbbell={dumbbell}
               units={units}
               labelFor={labelFor}
-              onLog={async (weightKg, reps, label) => setAskRir(await onLog(weightKg, reps, label))}
+              onLog={async (weightKg, reps, label) => {
+                setUnlogged(null);
+                setAskRir(await onLog(weightKg, reps, label));
+              }}
             />
           }
           onSetLabel={onSetLabel}
+          onUnlog={unlog}
         />
       )}
       {!focus && plan && (
@@ -212,12 +228,16 @@ export function ExerciseBlock({
           key={`${sets.length}-${heavier ? 'heavier' : ''}`}
           number={sets.length + 1}
           planned={next}
+          chosenLabel={unlogged?.label}
           incrementKg={incrementKg}
           bodyweight={bodyweight}
           dumbbell={dumbbell}
           units={units}
           labelFor={labelFor}
-          onLog={async (weightKg, reps, label) => setAskRir(await onLog(weightKg, reps, label))}
+          onLog={async (weightKg, reps, label) => {
+                setUnlogged(null);
+                setAskRir(await onLog(weightKg, reps, label));
+              }}
         />
       )}
       {editingIncrement !== null && (
@@ -261,6 +281,7 @@ export function ExerciseBlock({
 function NextSet({
   number,
   planned,
+  chosenLabel,
   incrementKg,
   bodyweight,
   dumbbell,
@@ -272,6 +293,8 @@ function NextSet({
   number: number;
   focus?: boolean;
   planned: Planned | undefined;
+  // The label an un-logged Set had, which the row keeps until the lifter changes it.
+  chosenLabel?: SetLabel;
   incrementKg: number;
   bodyweight: boolean;
   dumbbell: boolean;
@@ -289,7 +312,7 @@ function NextSet({
   const [editing, setEditing] = useState<'weight' | 'reps' | null>(null);
   const [busy, setBusy] = useState(false);
   // The lifter's tap on the label: it sticks, and the weight no longer changes it.
-  const [chosen, setChosen] = useState<SetLabel>();
+  const [chosen, setChosen] = useState<SetLabel | undefined>(chosenLabel);
 
   const typedWeight = Number(weight.replace(',', '.'));
   const weightKg = unitsToKg(typedWeight, units);
@@ -384,6 +407,7 @@ function FocusSets({
   units,
   nextSet,
   onSetLabel,
+  onUnlog,
 }: {
   count: number;
   sets: SetRecord[];
@@ -397,6 +421,7 @@ function FocusSets({
   units: Units;
   nextSet: React.ReactNode;
   onSetLabel: (setId: string, label: SetLabel) => Promise<void>;
+  onUnlog: (index: number) => Promise<void>;
 }) {
   const { t, formatNumber } = useI18n();
   const s = t.session;
@@ -444,9 +469,15 @@ function FocusSets({
               <span className="unit">{s.reps}</span>
             </div>
           </div>
-          <button type="button" className="btn-primary f-done" disabled>
-            {checkIcon} {s.done}
-          </button>
+          {at < current ? (
+            <button type="button" className="btn-primary f-done" onClick={() => onUnlog(at)}>
+              {checkIcon} {s.unlogSet}
+            </button>
+          ) : (
+            <button type="button" className="btn-primary f-done" disabled>
+              {checkIcon} {s.done}
+            </button>
+          )}
         </>
       )}
       {at !== current && (

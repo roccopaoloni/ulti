@@ -274,6 +274,11 @@ export function SessionScreen({ training, units, layout, onLeave }: { training: 
               await training.setRir(setId, rir);
               await reload();
             }}
+            onUnlog={async (setId) => {
+              setBanner(null);
+              await training.deleteSet(setId);
+              await reload();
+            }}
             onIncrement={async (incrementKg) => {
               await training.setIncrement(exerciseId, incrementKg);
               setCatalog(await training.exercises());
