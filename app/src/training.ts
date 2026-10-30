@@ -107,7 +107,8 @@ export type Mutation =
   | { id: string; kind: 'saveIncrement'; increment: IncrementOverride };
 
 // The sync endpoint: it resolves once the server has the batch, and throws otherwise.
-export type Send = (mutations: Mutation[]) => Promise<{ rejected: string[] }>;
+// `moved`: profile entries the server saved from another date than the phone's.
+export type Send = (mutations: Mutation[]) => Promise<{ rejected: string[]; moved?: { id: string; effectiveFrom: string }[] }>;
 
 type Options = {
   send: Send;
@@ -225,8 +226,20 @@ export async function openTraining(userId: string, options: Options) {
     const tx = db.transaction('outbox');
     const [keys, mutations] = await Promise.all([tx.store.getAllKeys(), tx.store.getAll()]);
     if (mutations.length === 0) return;
-    await options.send(mutations);
-    await db.delete('outbox', IDBKeyRange.bound(keys[0], keys[keys.length - 1]));
+    const { moved = [] } = await options.send(mutations);
+    // A Weekly Target change synced late starts later than the phone said: the phone's copy follows
+    // the server's, unless a newer write already holds the new date.
+    const done = db.transaction(['outbox', 'profile'], 'readwrite');
+    for (const { id, effectiveFrom } of moved) {
+      const sent = mutations.find((mutation) => mutation.id === id);
+      if (sent?.kind !== 'saveProfileEntry') continue;
+      const { entry } = sent;
+      await done.objectStore('profile').delete([entry.field, entry.effectiveFrom]);
+      const held = await done.objectStore('profile').get([entry.field, effectiveFrom]);
+      if (!held || held.updatedAt < entry.updatedAt) await done.objectStore('profile').put({ ...entry, effectiveFrom });
+    }
+    await done.objectStore('outbox').delete(IDBKeyRange.bound(keys[0], keys[keys.length - 1]));
+    await done.done;
   }
 
   const onOnline = () => sync();
