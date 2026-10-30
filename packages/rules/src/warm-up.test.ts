@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { labelSets, workingSets } from './index.ts';
+import { labelSets, predictLabels, workingSets } from './index.ts';
 
 const kg = (...weights: number[]) => weights.map((weightKg) => ({ weightKg }));
 
@@ -34,6 +34,27 @@ test('the lifter can flip a label with one tap, in either direction', () => {
     'working',
     'warm-up',
   ]);
+});
+
+test("a row not logged yet shows the label it would get once the rest of the plan is done: Ana's 40 kg row before a ramp to 100 kg is a Warm-up", () => {
+  expect(predictLabels([], kg(40, 60, 80, 100))).toEqual(['warm-up', 'warm-up', 'warm-up', 'working']);
+});
+
+test('the prediction follows the weight: the same row at 100 kg is a Working Set', () => {
+  expect(predictLabels(kg(40), kg(100, 100))).toEqual(['working', 'working']);
+});
+
+test('the prediction counts the Sets already logged', () => {
+  expect(predictLabels(kg(100), kg(60))).toEqual(['working']);
+});
+
+test('a row the lifter tapped keeps their choice whatever its weight', () => {
+  expect(predictLabels([], [{ weightKg: 100, label: 'warm-up' }, { weightKg: 100 }])).toEqual(['warm-up', 'working']);
+  expect(predictLabels([], [{ weightKg: 40, label: 'working' }, { weightKg: 100 }])).toEqual(['working', 'working']);
+});
+
+test('an Exercise with no rows has nothing to predict', () => {
+  expect(predictLabels([], [])).toEqual([]);
 });
 
 test('only Working Sets are passed on, Exercise by Exercise', () => {

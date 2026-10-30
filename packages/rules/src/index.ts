@@ -318,6 +318,13 @@ export function labelSets(sets: { weightKg: number; label?: SetLabel }[]): SetLa
   return sets.map((set, index) => set.label ?? (index < firstWorking ? 'warm-up' : 'working'));
 }
 
+// The labels rows not logged yet would get, were they logged after the Sets already logged: each row
+// is labelled against the whole plan, so a light first row of a ramp shows Warm-up before it is
+// logged. A row with a label of its own (the lifter's tap) keeps it.
+export function predictLabels(logged: { weightKg: number; label?: SetLabel }[], rows: { weightKg: number; label?: SetLabel }[]): SetLabel[] {
+  return labelSets([...logged, ...rows]).slice(logged.length);
+}
+
 // The Session's Working Sets, in the order they were logged.
 export function workingSets(session: Session): Set[] {
   const labels = new Map<string, SetLabel[]>();
