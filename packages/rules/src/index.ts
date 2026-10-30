@@ -428,6 +428,29 @@ export const incrementInUnits = (incrementKg: number, units: Units) =>
 export type RoutineExercise = { exerciseId: string; sets: number; repMin: number; repMax: number };
 export type RoutineDay = { id: string; name: string; exercises: RoutineExercise[] };
 
+// The list with the item at `from` moved to place `to` (the end, if past it), as when a Routine Day
+// or Exercise is dragged to a new place.
+export function moveItem<T>(list: readonly T[], from: number, to: number): T[] {
+  const moved = [...list];
+  const [item] = moved.splice(from, 1);
+  moved.splice(Math.max(0, Math.min(to, moved.length)), 0, item);
+  return moved;
+}
+
+// A Routine being edited is whole when every Day is named and holds Exercises, each picked, with
+// Sets and a Rep Range that make sense. Only then is it the Routine; null until then.
+export function completeRoutine(draft: readonly RoutineDay[]): RoutineDay[] | null {
+  if (draft.length === 0) return null;
+  const whole = (n: number) => Number.isInteger(n) && n >= 1;
+  for (const day of draft) {
+    if (day.name.trim() === '' || day.exercises.length === 0) return null;
+    for (const { exerciseId, sets, repMin, repMax } of day.exercises) {
+      if (!exerciseId || !whole(sets) || !whole(repMin) || !whole(repMax) || repMin > repMax) return null;
+    }
+  }
+  return draft.map((day) => ({ ...day, name: day.name.trim() }));
+}
+
 // The Weekly Target a Routine suggests: one Session a week per Routine Day, within the 2–6 a
 // Weekly Target can be.
 export function suggestedWeeklyTarget(routineDays: number): number {
