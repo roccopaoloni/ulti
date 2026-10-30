@@ -3,11 +3,13 @@ import {
   canStartDeload,
   deriveScoringEvents,
   nextMonday,
+  isMuscle,
   nextRoutineDay,
   recommend,
   recommendDeload,
   weekStart,
   type Dated,
+  type Muscle,
   type DeloadReason,
   type ProfileField,
   type RoutineDay,
@@ -63,6 +65,9 @@ export type Exercise = {
   incrementKg: number;
   // Pull-ups, dips and the like: logged as the weight added to the lifter's own bodyweight.
   bodyweight: boolean;
+  // The main muscle it is filed under. A copy of the catalog kept before muscles existed lacks it
+  // until the next refresh.
+  muscle: Muscle;
 };
 
 // One entry of a dated history (ADR 0002). A date has one entry per field; the server keeps the
@@ -101,7 +106,7 @@ export type Mutation =
   | { id: string; kind: 'saveDeload'; deload: DeloadRecord }
   | { id: string; kind: 'saveSession'; session: SessionRecord }
   | { id: string; kind: 'saveSet'; set: SetRecord }
-  | { id: string; kind: 'saveExercise'; exercise: { id: string; name: string } }
+  | { id: string; kind: 'saveExercise'; exercise: { id: string; name: string; muscle: Muscle } }
   | { id: string; kind: 'saveProfileEntry'; entry: ProfileEntry }
   | { id: string; kind: 'saveRoutine'; routine: RoutineRecord }
   | { id: string; kind: 'saveIncrement'; increment: IncrementOverride };
@@ -189,8 +194,8 @@ export async function openTraining(userId: string, options: Options) {
       if (mutation.set.deleted) await tx.objectStore('sets').delete(mutation.set.id);
       else await tx.objectStore('sets').put(mutation.set);
     } else {
-      const { id, name } = mutation.exercise;
-      await tx.objectStore('exercises').put({ id, nameEn: name, nameEs: name, equipment: null, custom: true, incrementKg: 2.5, bodyweight: false });
+      const { id, name, muscle } = mutation.exercise;
+      await tx.objectStore('exercises').put({ id, nameEn: name, nameEs: name, equipment: null, custom: true, incrementKg: 2.5, bodyweight: false, muscle });
     }
     await tx.objectStore('outbox').add(mutation);
     if (inProgress) await tx.objectStore('state').put(inProgress, 'sessionInProgress');
@@ -605,10 +610,12 @@ export async function openTraining(userId: string, options: Options) {
       await Promise.all([...exercises.map((exercise) => tx.store.put(exercise)), tx.done]);
     },
 
-    // The lifter's own Exercise, for what the catalog doesn't have. Logged as weight × reps.
-    async createExercise(name: string) {
+    // The lifter's own Exercise, for what the catalog doesn't have, filed under a main muscle so the
+    // picker can find it. Logged as weight × reps.
+    async createExercise(name: string, muscle: Muscle) {
+      if (!isMuscle(muscle)) throw new Error('A Custom Exercise needs a muscle');
       const id = `custom-${crypto.randomUUID()}`;
-      await write({ id: crypto.randomUUID(), kind: 'saveExercise', exercise: { id, name: name.trim() } });
+      await write({ id: crypto.randomUUID(), kind: 'saveExercise', exercise: { id, name: name.trim(), muscle } });
       return { id };
     },
 
