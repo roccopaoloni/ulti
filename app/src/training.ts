@@ -134,6 +134,8 @@ interface Store extends DBSchema {
   routines: { key: string; value: RoutineRecord };
   increments: { key: string; value: IncrementOverride };
   deloads: { key: string; value: DeloadRecord };
+  // Set once the profile history has been downloaded from the server.
+  downloaded: { key: 'profile'; value: true };
 }
 
 // The Session being logged and the Exercises added to it, in order, including any with no Sets yet,
@@ -146,7 +148,7 @@ const DEFAULT_INCREMENT_KG = 2.5;
 export type Training = Awaited<ReturnType<typeof openTraining>>;
 
 export async function openTraining(userId: string, options: Options) {
-  const db = await openDB<Store>(`ulti-${userId}`, 5, {
+  const db = await openDB<Store>(`ulti-${userId}`, 6, {
     upgrade(db, oldVersion) {
       if (oldVersion < 1) {
         db.createObjectStore('sessions', { keyPath: 'id' });
@@ -167,6 +169,9 @@ export async function openTraining(userId: string, options: Options) {
       }
       if (oldVersion < 5) {
         db.createObjectStore('deloads', { keyPath: 'week' });
+      }
+      if (oldVersion < 6) {
+        db.createObjectStore('downloaded');
       }
     },
   });
@@ -328,6 +333,31 @@ export async function openTraining(userId: string, options: Options) {
       return { session, exerciseIds: inProgress.exerciseIds, plan: inProgress.plan ?? [], sets };
     },
 
+    // Keeps the Sessions and Sets the server holds, as on a phone that is new to this user. Anything
+    // still in the outbox is the phone's newer word and stays as it is (a Set deleted here is not
+    // brought back), and so does a copy the phone wrote later. Deleted Sets are never downloaded.
+    // Resolves to whether anything on the phone changed.
+    async saveSessionsFromServer(sessions: SessionRecord[], sets: SetRecord[]) {
+      const tx = db.transaction(['sessions', 'sets', 'outbox'], 'readwrite');
+      const queued = new Set<string>();
+      let changed = false;
+      for (const mutation of await tx.objectStore('outbox').getAll()) {
+        if (mutation.kind === 'saveSession') queued.add(mutation.session.id);
+        else if (mutation.kind === 'saveSet') queued.add(mutation.set.id);
+      }
+      for (const [store, records] of [[tx.objectStore('sessions'), sessions], [tx.objectStore('sets'), sets]] as const) {
+        for (const record of records) {
+          if (queued.has(record.id)) continue;
+          const kept = await store.get(record.id);
+          if (kept && Date.parse(kept.updatedAt) >= Date.parse(record.updatedAt)) continue;
+          await store.put(record as never);
+          changed = true;
+        }
+      }
+      await tx.done;
+      return changed;
+    },
+
     // The Exercise's Sets from the last Session that had it, other than the one in progress: what
     // the next Session's rows are pre-filled with.
     async lastSets(exerciseId: string) {
@@ -372,11 +402,19 @@ export async function openTraining(userId: string, options: Options) {
     // Keeps what the server holds of the profile, as on a phone that is new to this user. Whatever
     // the phone already has, including writes the server hasn't seen yet, stays as it is.
     async saveProfileHistory(entries: Omit<ProfileEntry, 'updatedAt'>[]) {
-      const tx = db.transaction('profile', 'readwrite');
+      const tx = db.transaction(['profile', 'downloaded'], 'readwrite');
+      const store = tx.objectStore('profile');
       for (const entry of entries) {
-        if (!(await tx.store.get([entry.field, entry.effectiveFrom]))) await tx.store.put({ ...entry, updatedAt: '' });
+        if (!(await store.get([entry.field, entry.effectiveFrom]))) await store.put({ ...entry, updatedAt: '' });
       }
+      await tx.objectStore('downloaded').put(true, 'profile');
       await tx.done;
+    },
+
+    // Whether the phone has heard the server's profile history. Until it has, it can't tell a new
+    // user from a returning one, so it must not onboard.
+    async profileDownloaded() {
+      return (await db.get('downloaded', 'profile')) === true;
     },
 
     // Whether it is time to ask for bodyweight again: two weeks after the last time the user gave
