@@ -244,15 +244,30 @@ type Messages = {
     dayName: string;
     removeDay: string;
     addDay: string;
+    // The Train hub's button to the editor, and what it says under it.
+    summary: (days: number) => string;
+    // Tapping an open row's name changes the Exercise.
     exercise: string;
     addExercise: string;
     removeExercise: string;
+    moveDay: string;
+    moveExercise: string;
     sets: string;
     // "Repeticiones objetivo" in Spanish, never "rango".
     repRange: string;
-    from: string;
-    to: string;
-    save: string;
+    repMin: string;
+    repMax: string;
+    more: (what: string) => string;
+    less: (what: string) => string;
+    needsName: string;
+    needsExercises: string;
+    // Under the title: the autosave, and why a Routine isn't syncing yet.
+    synced: string;
+    held: string;
+    removeDayTitle: string;
+    removeDayText: (name: string) => string;
+    removeDayConfirm: string;
+    cancel: string;
     suggestion: (count: number) => string;
     useSuggestion: string;
   };
@@ -586,20 +601,32 @@ const en: Messages = {
     start: 'Start a Deload Week',
   },
   routine: {
-    title: 'Routine',
+    title: 'My routine',
     empty: 'Add the sessions of your week, each with its exercises.',
     day: (number) => `Session ${number}`,
-    dayName: 'Name',
+    dayName: 'Name, like Push',
     removeDay: 'Remove session',
     addDay: 'Add session',
-    exercise: 'Exercise',
-    addExercise: 'Add exercise',
+    summary: (days) => (days === 1 ? '1 session' : `${days} sessions`),
+    exercise: 'Change exercise',
+    addExercise: 'Add exercises',
     removeExercise: 'Remove exercise',
+    moveDay: 'Hold and slide to move the session',
+    moveExercise: 'Hold and slide to move the exercise',
     sets: 'Sets',
     repRange: 'Rep Range',
-    from: 'From',
-    to: 'To',
-    save: 'Save Routine',
+    repMin: 'Min reps',
+    repMax: 'Max reps',
+    more: (what) => `More ${what.toLowerCase()}`,
+    less: (what) => `Fewer ${what.toLowerCase()}`,
+    needsName: 'Give this session a name.',
+    needsExercises: 'Add at least one exercise.',
+    synced: 'Saved. Every change is kept on your phone and syncs by itself.',
+    held: 'Saved on your phone. It syncs once every session has a name and an exercise.',
+    removeDayTitle: 'Remove this session?',
+    removeDayText: (name) => `${name || 'This session'} and its exercises will be removed from your Routine.`,
+    removeDayConfirm: 'Remove session',
+    cancel: 'Cancel',
     suggestion: (count) => `Your Routine suggests a Weekly Target of ${count} per week.`,
     useSuggestion: 'Use it',
   },
@@ -948,20 +975,32 @@ const es: Messages = {
     start: 'Empezar una Semana de descarga',
   },
   routine: {
-    title: 'Rutina',
+    title: 'Mi rutina',
     empty: 'Agregá las sesiones de tu semana, cada una con sus ejercicios.',
     day: (number) => `Sesión ${number}`,
-    dayName: 'Nombre',
+    dayName: 'Nombre, ej. Empuje',
     removeDay: 'Quitar sesión',
     addDay: 'Agregar sesión',
-    exercise: 'Ejercicio',
-    addExercise: 'Agregar ejercicio',
+    summary: (days) => (days === 1 ? '1 sesión' : `${days} sesiones`),
+    exercise: 'Cambiar ejercicio',
+    addExercise: 'Agregar ejercicios',
     removeExercise: 'Quitar ejercicio',
+    moveDay: 'Mantené apretado y deslizá para mover la sesión',
+    moveExercise: 'Mantené apretado y deslizá para mover el ejercicio',
     sets: 'Series',
     repRange: 'Repeticiones objetivo',
-    from: 'Desde',
-    to: 'Hasta',
-    save: 'Guardar rutina',
+    repMin: 'Reps mínimas',
+    repMax: 'Reps máximas',
+    more: (what) => `Más ${what.toLowerCase()}`,
+    less: (what) => `Menos ${what.toLowerCase()}`,
+    needsName: 'Ponele un nombre a esta sesión.',
+    needsExercises: 'Agregá al menos un ejercicio.',
+    synced: 'Guardado. Cada cambio queda en tu celular y se sincroniza solo.',
+    held: 'Guardado en tu celular. Se sincroniza cuando cada sesión tenga nombre y un ejercicio.',
+    removeDayTitle: '¿Quitar esta sesión?',
+    removeDayText: (name) => `${name || 'Esta sesión'} y sus ejercicios se van a quitar de tu rutina.`,
+    removeDayConfirm: 'Quitar sesión',
+    cancel: 'Cancelar',
     suggestion: (count) => `Tu rutina sugiere un objetivo semanal de ${count} por semana.`,
     useSuggestion: 'Usarlo',
   },
