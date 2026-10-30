@@ -77,7 +77,8 @@ test("a Session ending Sunday night in Buenos Aires counts in the week that ends
   expect((await scoringEventsOf(ana)).map(({ id }) => id)).toEqual([`${ana.id}:consistency:2026-10-19`]);
 });
 
-test('a Weekly Target change syncing after the Sessions still applies only from its Monday', async () => {
+// The server only takes a change from next Monday on, so it is dated well ahead of the Sessions below.
+test('a Weekly Target change syncing after the Sessions leaves the weeks already scored alone', async () => {
   const ana = await lifter('ana');
   await sync(ana, [weeklyTarget('2026-10-05', 4), ...utcSession('2026-10-19'), ...utcSession('2026-10-27'), ...utcSession('2026-10-28')]);
   const before = await scoringEventsOf(ana);
@@ -86,12 +87,8 @@ test('a Weekly Target change syncing after the Sessions still applies only from 
     ['2026-10-26', 4],
   ]);
 
-  await sync(ana, [weeklyTarget('2026-10-26', 2)]);
+  await sync(ana, [weeklyTarget('2999-01-04', 2)]);
 
   const after = await scoringEventsOf(ana);
-  expect(after.map(({ event }) => [event.week, event.weeklyTarget])).toEqual([
-    ['2026-10-19', 4],
-    ['2026-10-26', 2],
-  ]);
-  expect(after[0]).toEqual(before[0]);
+  expect(after).toEqual(before);
 });

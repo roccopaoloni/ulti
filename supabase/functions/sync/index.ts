@@ -2,7 +2,7 @@
 // batch of mutations; the endpoint saves them, then recomputes the user's whole history.
 import { Client } from '@db/postgres';
 import { withSupabase } from '@supabase/server';
-import { isMuscle, isProfileValue, weekStart } from '@ulti/rules';
+import { isMuscle, isProfileValue, nextMonday, weekStart } from '@ulti/rules';
 import { lockUser, recompute } from '../_shared/recompute.ts';
 
 // What the phone saves. updatedAt is when the phone made the write: the latest one wins.
@@ -50,6 +50,22 @@ type Mutation =
 // ahead still counts as now.
 const clockAllowanceMs = 5 * 60_000;
 
+// A Weekly Target change applies from the next Monday in the user's time zone, which the endpoint
+// doesn't know. The earliest local date it can be anywhere is the UTC date 12 hours ago (UTC-12),
+// so the Monday after that is the earliest a change can legitimately start. One dated before it
+// is saved from that Monday instead, and the phone is told: at worst a user east of Greenwich can
+// backdate by a day or so, never a week.
+const westmostOffsetMs = 12 * 3_600_000;
+
+// What the rules need to know besides the mutation itself.
+type Context = {
+  receivedAt: number;
+  // The user's first Weekly Target is no change: it starts on the day it was set, or earlier if it
+  // was set offline and synced later. That is the earliest one of the first batch to carry any,
+  // and only if none was saved before.
+  firstTargetFrom?: string;
+};
+
 export default {
   fetch: withSupabase({ auth: 'user' }, async (req, ctx) => {
     const receivedAt = Date.now();
@@ -59,11 +75,12 @@ export default {
     const client = new Client(Deno.env.get('SUPABASE_DB_URL'));
     try {
       await client.connect();
-      const rejected = await save(client, userId, mutations, receivedAt);
+      const { rejected, moved } = await save(client, userId, mutations, receivedAt);
       // The batch is saved whatever happens next. A failed recompute leaves the user marked dirty,
       // and the scheduled retry recomputes them.
       await recompute(client, userId).catch((error) => console.error('Recompute failed', userId, error));
-      return Response.json({ rejected });
+      // Only an entry that moved is reported, so a phone that predates `moved` sees what it always did.
+      return Response.json(moved.length > 0 ? { rejected, moved } : { rejected });
     } finally {
       await client.end();
     }
@@ -99,7 +116,17 @@ function isRejected(mutation: Mutation, receivedAt: number) {
   }
 }
 
-// Saves the mutations it hasn't seen before, and returns the IDs of those it rejected.
+// The date a profile entry is saved from. A Weekly Target change can't start before the earliest
+// Monday it legitimately could, so one that does is moved to it; the first Weekly Target keeps its
+// own date.
+function startOf({ field, effectiveFrom }: ProfileEntry, { receivedAt, firstTargetFrom }: Context) {
+  if (field !== 'weeklyTarget' || (firstTargetFrom !== undefined && effectiveFrom <= firstTargetFrom)) return effectiveFrom;
+  const earliest = nextMonday(new Date(receivedAt - westmostOffsetMs).toISOString().slice(0, 10));
+  return effectiveFrom < earliest ? earliest : effectiveFrom;
+}
+
+// Saves the mutations it hasn't seen before, and returns the IDs of those it rejected and the
+// profile entries it moved to another date.
 async function save(client: Client, userId: string, mutations: Mutation[], receivedAt: number) {
   const transaction = client.createTransaction('save');
   await transaction.begin();
@@ -128,6 +155,19 @@ async function save(client: Client, userId: string, mutations: Mutation[], recei
   const exercises = new Map<string, ExerciseRecord>();
   const entries = new Map<string, ProfileEntry & { id: string }>();
   const rejected: string[] = [];
+  const moved: { id: string; effectiveFrom: string }[] = [];
+  const { rows: saved } = await transaction.queryObject<{ saved: boolean }>`
+    select exists (select 1 from public.profile_history where user_id = ${userId} and field = 'weeklyTarget') as saved`;
+  const context: Context = { receivedAt };
+  if (!saved[0].saved) {
+    context.firstTargetFrom = mutations
+      .flatMap((mutation) =>
+        mutation.kind === 'saveProfileEntry' && mutation.entry.field === 'weeklyTarget' && isProfileValue('weeklyTarget', mutation.entry.value)
+          ? [mutation.entry.effectiveFrom]
+          : [],
+      )
+      .sort()[0];
+  }
   for (const mutation of mutations) {
     if (!unseen.delete(mutation.id)) continue;
     if (isRejected(mutation, receivedAt)) {
@@ -140,8 +180,9 @@ async function save(client: Client, userId: string, mutations: Mutation[], recei
     else if (mutation.kind === 'saveIncrement') keepLatest(increments, { ...mutation.increment, id: mutation.increment.exerciseId });
     else if (mutation.kind === 'saveExercise') exercises.set(mutation.exercise.id, { ...mutation.exercise, muscle: mutation.exercise.muscle ?? 'full-body' });
     else if (mutation.kind === 'saveProfileEntry') {
-      const { entry } = mutation;
-      keepLatest(entries, { ...entry, id: `${entry.field} ${entry.effectiveFrom}` });
+      const effectiveFrom = startOf(mutation.entry, context);
+      if (effectiveFrom !== mutation.entry.effectiveFrom) moved.push({ id: mutation.id, effectiveFrom });
+      keepLatest(entries, { ...mutation.entry, effectiveFrom, id: `${mutation.entry.field} ${effectiveFrom}` });
     } else keepLatest(sets, mutation.set);
   }
 
@@ -229,5 +270,5 @@ async function save(client: Client, userId: string, mutations: Mutation[], recei
   // The user's Scoring Events are out of date until the recompute succeeds.
   await transaction.queryArray`insert into private.dirty_users (user_id) values (${userId}) on conflict do nothing`;
   await transaction.commit();
-  return rejected;
+  return { rejected, moved };
 }

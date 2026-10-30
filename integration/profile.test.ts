@@ -17,7 +17,7 @@ function entry(field: string, effectiveFrom: string, value: unknown, updatedAt =
 async function sync({ client }: Lifter, mutations: unknown[]) {
   const { data, error } = await client.functions.invoke('sync', { body: { mutations } });
   expect(error).toBeNull();
-  return data as { rejected: string[] };
+  return data as { rejected: string[]; moved?: { id: string; effectiveFrom: string }[] };
 }
 
 async function historyOf({ client }: Lifter) {
@@ -73,6 +73,73 @@ test('a value outside what the field allows is rejected, and the rest of the bat
 
   expect(response).toEqual({ rejected: [tooMany.id, unknownSex.id] });
   expect(await historyOf(ana)).toEqual([{ field: 'weeklyTarget', effective_from: '2026-10-26', value: 6 }]);
+});
+
+// Local dates relative to the real clock. The server doesn't know the user's time zone, so
+// yesterday in UTC is before the next Monday wherever she is.
+const day = (daysFromNow: number) => new Date(Date.now() + daysFromNow * 86_400_000).toISOString().slice(0, 10);
+const mondayAfter = (localDate: string) => {
+  const date = new Date(`${localDate}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + (8 - (date.getUTCDay() || 7)));
+  return date.toISOString().slice(0, 10);
+};
+
+// The earliest Monday the server lets a change start on, whatever the user's time zone.
+const earliestMonday = () => mondayAfter(new Date(Date.now() - 12 * 3_600_000).toISOString().slice(0, 10));
+
+test('a Weekly Target change backdated before next Monday is saved from the earliest Monday instead, and reported as moved', async () => {
+  const ana = await lifter('ana');
+  await sync(ana, [entry('weeklyTarget', '2026-10-05', 4)]);
+  const backdated = entry('weeklyTarget', day(-1), 2);
+  const later = entry('weeklyTarget', mondayAfter(day(8)), 5);
+  const bodyweight = entry('bodyweightKg', day(-1), 63);
+
+  const response = await sync(ana, [backdated, later, bodyweight]);
+
+  expect(response).toEqual({ rejected: [], moved: [{ id: backdated.id, effectiveFrom: earliestMonday() }] });
+  expect(await historyOf(ana)).toEqual([
+    { field: 'bodyweightKg', effective_from: day(-1), value: 63 },
+    { field: 'weeklyTarget', effective_from: '2026-10-05', value: 4 },
+    { field: 'weeklyTarget', effective_from: earliestMonday(), value: 2 },
+    { field: 'weeklyTarget', effective_from: mondayAfter(day(8)), value: 5 },
+  ]);
+});
+
+test('a moved Weekly Target change and another for the same Monday: the latest write wins', async () => {
+  const ana = await lifter('ana');
+  await sync(ana, [entry('weeklyTarget', '2026-10-05', 4)]);
+  const backdated = entry('weeklyTarget', day(-1), 2, '2026-10-21T15:00:00.000Z');
+  const onTheMonday = entry('weeklyTarget', earliestMonday(), 6, '2026-10-22T15:00:00.000Z');
+
+  await sync(ana, [backdated, onTheMonday]);
+
+  expect(await historyOf(ana)).toEqual([
+    { field: 'weeklyTarget', effective_from: '2026-10-05', value: 4 },
+    { field: 'weeklyTarget', effective_from: earliestMonday(), value: 6 },
+  ]);
+});
+
+test("a user's first Weekly Target keeps its own date: the day it is set, or earlier if it was set offline", async () => {
+  const ana = await lifter('ana');
+  const bea = await lifter('bea');
+
+  expect(await sync(ana, [entry('weeklyTarget', day(0), 3)])).toEqual({ rejected: [] });
+  expect(await sync(bea, [entry('weeklyTarget', day(-10), 3)])).toEqual({ rejected: [] });
+  expect(await historyOf(ana)).toEqual([{ field: 'weeklyTarget', effective_from: day(0), value: 3 }]);
+});
+
+test('in a first batch, only the earliest Weekly Target keeps its own date', async () => {
+  const ana = await lifter('ana');
+  const first = entry('weeklyTarget', day(-3), 3);
+  const backdatedChange = entry('weeklyTarget', day(-1), 2);
+
+  const response = await sync(ana, [backdatedChange, first]);
+
+  expect(response).toEqual({ rejected: [], moved: [{ id: backdatedChange.id, effectiveFrom: earliestMonday() }] });
+  expect(await historyOf(ana)).toEqual([
+    { field: 'weeklyTarget', effective_from: day(-3), value: 3 },
+    { field: 'weeklyTarget', effective_from: earliestMonday(), value: 2 },
+  ]);
 });
 
 test("Bea can't read Ana's sex or bodyweight, nor write to her history", async () => {
