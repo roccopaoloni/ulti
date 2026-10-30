@@ -2,7 +2,7 @@ import { deloadRows, incrementInUnits, kgToUnits, labelSets, plannedRows, predic
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useI18n } from './i18n.ts';
-import { checkIcon } from './icons.tsx';
+import { checkIcon, undoIcon } from './icons.tsx';
 import { Info } from './Info.tsx';
 import type { SetRecord, Training } from './training.ts';
 
@@ -470,8 +470,8 @@ function FocusSets({
             </div>
           </div>
           {at < current ? (
-            <button type="button" className="btn-primary f-done" onClick={() => onUnlog(at)}>
-              {checkIcon} {s.unlogSet}
+            <button type="button" className="btn-ghost f-done f-unlog" onClick={() => onUnlog(at)}>
+              {undoIcon} {s.unlogSet}
             </button>
           ) : (
             <button type="button" className="btn-primary f-done" disabled>

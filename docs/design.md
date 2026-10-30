@@ -81,7 +81,7 @@ List layout:
 - One tap on ✓ completes a Set exactly as planned. Tapping a number opens a large keypad with ± buttons that step weight by the Exercise's Increment and reps by 1.
 - Rows not logged yet show the Warm-up or Working tag too: what automatic labelling would give the row if the plan were logged, following the weight as it changes. Tapping the tag locks in the lifter's choice, and a Set keeps the label its row showed when ✓ is tapped.
 - RIR is optional, with an ⓘ that explains it: after ✓ on a Working Set, a row of chips (0 · 1 · 2 · 3 · 4+) stays until the lifter answers or logs the next Set. A Warm-up Set never shows it, and flipping a logged Set to Warm-up clears its RIR. Skipping it on the Session's first Working Set hides it for the rest of that Session; it comes back in the next one.
-- Tapping a logged Set's ✓ un-logs it: the Set is deleted and its row comes back editable with the same numbers and label (in Focus, the Done button of a logged Set reads "Un-log set"). Logging it again saves a new Set and asks for RIR as usual; leaving without logging it again leaves no Set.
+- Tapping a logged Set's ✓ un-logs it: the Set is deleted and its row comes back editable with the same numbers and label (in Focus, a logged Set shows an outline "Un-log set" button with an undo arrow in place of the filled Done). Logging it again saves a new Set and asks for RIR as usual; leaving without logging it again leaves no Set.
 - A dumbbell Exercise says its weight is per dumbbell, on its rows and its keypad. The weight is stored and scored per dumbbell, so no numbers change.
 - One-handed use: large tap targets, primary actions within thumb reach, and the screen stays awake during a Session.
 
