@@ -325,6 +325,19 @@ export function predictLabels(logged: { weightKg: number; label?: SetLabel }[], 
   return labelSets([...logged, ...rows]).slice(logged.length);
 }
 
+// Whether to ask for RIR after the logged Set: never after a Warm-up Set, and not for the rest of
+// the Session once the lifter skipped it on the Session's first Working Set (design: Logging a Session).
+// The Sets are the whole Session's, in the order they were logged.
+export function asksRir(sets: { id: string; exercise: string; weightKg: number; label?: SetLabel; rir?: number }[], setId: string): boolean {
+  const labelOf = new Map<string, SetLabel>();
+  for (const exercise of new Map(sets.map((set) => [set.exercise, 0])).keys()) {
+    const own = sets.filter((set) => set.exercise === exercise);
+    labelSets(own).forEach((label, index) => labelOf.set(own[index]!.id, label));
+  }
+  const first = sets.find((set) => labelOf.get(set.id) === 'working');
+  return labelOf.get(setId) === 'working' && (first?.id === setId || first?.rir !== undefined);
+}
+
 // The Session's Working Sets, in the order they were logged.
 export function workingSets(session: Session): Set[] {
   const labels = new Map<string, SetLabel[]>();

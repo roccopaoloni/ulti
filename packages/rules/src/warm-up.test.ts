@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { labelSets, predictLabels, workingSets } from './index.ts';
+import { asksRir, labelSets, predictLabels, workingSets } from './index.ts';
 
 const kg = (...weights: number[]) => weights.map((weightKg) => ({ weightKg }));
 
@@ -55,6 +55,27 @@ test('a row the lifter tapped keeps their choice whatever its weight', () => {
 
 test('an Exercise with no rows has nothing to predict', () => {
   expect(predictLabels([], [])).toEqual([]);
+});
+
+const logged = (id: string, exercise: string, weightKg: number, rir?: number, label?: 'warm-up' | 'working') => ({ id, exercise, weightKg, rir, label });
+
+test('RIR is asked after a Working Set, never after a Warm-up Set', () => {
+  const sets = [logged('a', 'back-squat', 40, undefined, 'warm-up'), logged('b', 'back-squat', 100)];
+  expect(asksRir(sets, 'a')).toBe(false);
+  expect(asksRir(sets, 'b')).toBe(true);
+});
+
+test("skipping RIR on the Session's first Working Set stops it for the rest of the Session, across Exercises", () => {
+  const sets = [logged('a', 'back-squat', 100), logged('b', 'back-squat', 100), logged('c', 'bench-press', 60)];
+  expect(asksRir(sets, 'a')).toBe(true);
+  expect(asksRir(sets, 'b')).toBe(false);
+  expect(asksRir(sets, 'c')).toBe(false);
+});
+
+test('answering RIR on the first Working Set keeps it coming', () => {
+  const sets = [logged('a', 'back-squat', 100, 2), logged('b', 'back-squat', 100), logged('c', 'bench-press', 60)];
+  expect(asksRir(sets, 'b')).toBe(true);
+  expect(asksRir(sets, 'c')).toBe(true);
 });
 
 test('only Working Sets are passed on, Exercise by Exercise', () => {
