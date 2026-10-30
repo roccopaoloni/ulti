@@ -297,6 +297,10 @@ type Messages = {
     empty: string;
     edit: string;
     delete: string;
+    // Confirming before a past Set is deleted: its title, what it says, and the button that deletes it.
+    deleteTitle: string;
+    deleteText: string;
+    deleteConfirm: string;
     save: string;
     cancel: string;
     // The points a past Session earned, under its date.
@@ -652,6 +656,9 @@ const en: Messages = {
     empty: 'Your finished sessions will show up here.',
     edit: 'Edit',
     delete: 'Delete',
+    deleteTitle: 'Delete this Set?',
+    deleteText: "It's removed from this Session's history. It can't be undone.",
+    deleteConfirm: 'Delete set',
     save: 'Save',
     cancel: 'Cancel',
     points: (points) => `${points} pts`,
@@ -1003,6 +1010,9 @@ const es: Messages = {
     empty: 'Acá vas a ver las sesiones que termines.',
     edit: 'Editar',
     delete: 'Borrar',
+    deleteTitle: '¿Borrar esta serie?',
+    deleteText: 'Se quita del historial de esta sesión. No se puede deshacer.',
+    deleteConfirm: 'Borrar serie',
     save: 'Guardar',
     cancel: 'Cancelar',
     points: (points) => `${points} pts`,
