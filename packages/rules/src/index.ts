@@ -400,9 +400,9 @@ const kgPerLb = 0.45359237;
 export const kgToUnits = (kg: number, units: Units) => (units === 'kg' ? kg : kg / kgPerLb);
 export const unitsToKg = (weight: number, units: Units) => (units === 'kg' ? weight : weight * kgPerLb);
 
-// The Increment shown in the user's units: the nearest half, since a plate pair in lb is never finer.
+// The Increment shown in the user's units. In lb it is the nearest 2.5 lb (a plate pair), never less.
 export const incrementInUnits = (incrementKg: number, units: Units) =>
-  units === 'kg' ? incrementKg : Math.round(kgToUnits(incrementKg, units) * 2) / 2;
+  units === 'kg' ? incrementKg : Math.max(2.5, Math.round(kgToUnits(incrementKg, units) / 2.5) * 2.5);
 
 // A Routine: its Sessions (Routine Days), each listing Exercises with a number of Sets and a Rep Range.
 export type RoutineExercise = { exerciseId: string; sets: number; repMin: number; repMax: number };
