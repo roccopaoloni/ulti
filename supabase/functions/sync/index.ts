@@ -2,7 +2,7 @@
 // batch of mutations; the endpoint saves them, then recomputes the user's whole history.
 import { Client } from '@db/postgres';
 import { withSupabase } from '@supabase/server';
-import { isProfileValue, weekStart } from '@ulti/rules';
+import { isProfileValue, nextMonday, weekStart } from '@ulti/rules';
 import { lockUser, recompute } from '../_shared/recompute.ts';
 
 // What the phone saves. updatedAt is when the phone made the write: the latest one wins.
@@ -49,6 +49,21 @@ type Mutation =
 // ahead still counts as now.
 const clockAllowanceMs = 5 * 60_000;
 
+// A Weekly Target change applies from the next Monday in the user's time zone, which the endpoint
+// doesn't know. The earliest local date it can be anywhere is the UTC date 12 hours ago (UTC-12),
+// so the Monday after that is the earliest a change can legitimately start: at worst a user east
+// of Greenwich can backdate by a day or so, never a week.
+const westmostOffsetMs = 12 * 3_600_000;
+
+// What isRejected needs to know besides the mutation itself.
+type Context = {
+  receivedAt: number;
+  // The user's first Weekly Target is no change: it starts on the day it was set, or earlier if it
+  // was set offline and synced later. That is the earliest one of the first batch to carry any,
+  // and only if none was saved before.
+  firstTargetFrom?: string;
+};
+
 export default {
   fetch: withSupabase({ auth: 'user' }, async (req, ctx) => {
     const receivedAt = Date.now();
@@ -72,15 +87,19 @@ export default {
 // The rules a mutation must meet to be saved. One that breaks them is rejected alone: it's never
 // saved, the rest of the batch is, and the phone drops it from its outbox. New rules go here, and
 // any the database would refuse must too, or its error would fail the whole batch for good.
-function isRejected(mutation: Mutation, receivedAt: number) {
+function isRejected(mutation: Mutation, { receivedAt, firstTargetFrom }: Context) {
   switch (mutation.kind) {
     case 'saveDeload': {
       // A Deload Week starts on a Monday, and only a suggestion has a reason to be dismissed.
       const { deload } = mutation;
       return weekStart(deload.week) !== deload.week || (deload.origin === 'self' && deload.status !== 'accepted');
     }
-    case 'saveProfileEntry':
-      return !isProfileValue(mutation.entry.field, mutation.entry.value);
+    case 'saveProfileEntry': {
+      const { field, value, effectiveFrom } = mutation.entry;
+      if (!isProfileValue(field, value)) return true;
+      if (field !== 'weeklyTarget' || (firstTargetFrom !== undefined && effectiveFrom <= firstTargetFrom)) return false;
+      return effectiveFrom < nextMonday(new Date(receivedAt - westmostOffsetMs).toISOString().slice(0, 10));
+    }
     // A Custom Exercise's ID is `custom-` and then its own, so it never stands in for a catalog one.
     case 'saveExercise':
       return !mutation.exercise.id.startsWith('custom-');
@@ -127,9 +146,21 @@ async function save(client: Client, userId: string, mutations: Mutation[], recei
   const exercises = new Map<string, ExerciseRecord>();
   const entries = new Map<string, ProfileEntry & { id: string }>();
   const rejected: string[] = [];
+  const { rows: saved } = await transaction.queryObject<{ saved: boolean }>`
+    select exists (select 1 from public.profile_history where user_id = ${userId} and field = 'weeklyTarget') as saved`;
+  const context: Context = { receivedAt };
+  if (!saved[0].saved) {
+    context.firstTargetFrom = mutations
+      .flatMap((mutation) =>
+        mutation.kind === 'saveProfileEntry' && mutation.entry.field === 'weeklyTarget' && isProfileValue('weeklyTarget', mutation.entry.value)
+          ? [mutation.entry.effectiveFrom]
+          : [],
+      )
+      .sort()[0];
+  }
   for (const mutation of mutations) {
     if (!unseen.delete(mutation.id)) continue;
-    if (isRejected(mutation, receivedAt)) {
+    if (isRejected(mutation, context)) {
       rejected.push(mutation.id);
       continue;
     }
