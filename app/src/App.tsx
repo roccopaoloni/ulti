@@ -9,6 +9,7 @@ import { History } from './HistoryScreen.tsx';
 import { useI18n, type Term } from './i18n.ts';
 import { gearIcon, tabIcons } from './icons.tsx';
 import { Info } from './Info.tsx';
+import { InstallCard } from './InstallApp.tsx';
 import { navigate, paths, settingsPath, tabs, useCurrentTab, usePathname, type Tab } from './navigation.ts';
 import { hasEverything, useBodyProfile, useLayout, useUnits } from './profile.ts';
 import { RankCard } from './RankCard.tsx';
@@ -127,6 +128,7 @@ function Tabs({ userId }: { userId: string }) {
             {current === 'home' && training && <StartSession logging={logging} training={training} />}
             {current === 'home' && <RaceCards userId={userId} />}
             {current === 'home' && <FriendsTrainedToday userId={userId} />}
+            {current === 'home' && <InstallCard />}
             {current === 'train' && training && <RoutineEditor training={training} profile={profile} onProfileSaved={reload} />}
             {current === 'train' && training && <History training={training} units={units} />}
             {current === 'profile' && training && <RankCard training={training} />}

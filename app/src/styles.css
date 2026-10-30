@@ -217,6 +217,18 @@ button {
   width: 24px;
   height: 24px;
 }
+.install-steps {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.install-steps svg {
+  width: 18px;
+  height: 18px;
+  vertical-align: -4px;
+}
 .lead {
   font-size: 17px;
   max-width: 34ch;
@@ -960,6 +972,11 @@ button.cell {
 }
 .pr-points {
   font: 700 12px var(--body);
+}
+.per-dumbbell {
+  margin: 0;
+  font: 700 12px var(--body);
+  color: var(--muted);
 }
 .increment {
   padding: 0;
