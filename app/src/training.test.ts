@@ -967,3 +967,30 @@ test('a phone knows whether it has downloaded the profile history, so an offline
   expect(await reopened.profileDownloaded()).toBe(true);
   reopened.close();
 });
+
+test('timestamps in different formats compare by instant: the same instant changes nothing, a later one wins', async () => {
+  const training = await anasPhone(server()).open();
+  const plus = '2026-10-12T22:00:00+00:00';
+  const zulu = '2026-10-12T22:00:00.000Z';
+  const session = serverSession('s1', '2026-10-12', plus);
+  await training.saveSessionsFromServer([session], [serverSet('a', 's1', 100, '2026-10-12T20:10:00.000Z', plus)]);
+
+  const sameInstant = await training.saveSessionsFromServer([{ ...session, updatedAt: zulu }], [serverSet('a', 's1', 90, '2026-10-12T20:10:00.000Z', zulu)]);
+  expect(sameInstant).toBe(false);
+  expect((await training.pastSessions())[0].sets[0].weightKg).toBe(100);
+
+  await training.saveSessionsFromServer([], [serverSet('a', 's1', 90, '2026-10-12T20:10:00.000Z', '2026-10-12T22:00:00.001Z')]);
+  expect((await training.pastSessions())[0].sets[0].weightKg).toBe(90);
+  training.close();
+});
+
+test("a Session the server holds unfinished is downloaded but is not this phone's Session in progress or in History", async () => {
+  const training = await anasPhone(server()).open();
+  await training.saveSessionsFromServer([{ ...serverSession('s1', '2026-10-19'), finishedAt: null }], [serverSet('a', 's1', 100, '2026-10-19T20:10:00.000Z')]);
+
+  expect(await training.sessionInProgress()).toBeNull();
+  expect(await training.pastSessions()).toEqual([]);
+  expect((await training.scoring()).history.sessions.map((s) => s.localDate)).toEqual(['2026-10-19']);
+  training.close();
+});
+
