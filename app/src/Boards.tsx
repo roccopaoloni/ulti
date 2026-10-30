@@ -106,7 +106,7 @@ function useExerciseName(training: Training | null) {
 // Week / Month / Year switch starts on the Period the board had open. What shows of the member is
 // what their Visibility lets the viewer see; weights are in the viewer's units.
 export function MemberProfileScreen({ userId, training, groupId, memberId }: { userId: string; training: Training | null; groupId: string; memberId: string }) {
-  const { t, formatNumber } = useI18n();
+  const { t, language, formatNumber } = useI18n();
   const g = t.groups;
   const units = useUnits(userId) ?? 'kg';
   const nameOf = useExerciseName(training);
@@ -128,7 +128,8 @@ export function MemberProfileScreen({ userId, training, groupId, memberId }: { u
     setPeriod(next);
   };
   const load = (weight_kg?: number, reps?: number) =>
-    weight_kg === undefined ? '' : ` ${formatNumber(kgToUnits(weight_kg, units), 2)} ${units} × ${reps}`;
+    weight_kg === undefined ? '' : `${formatNumber(kgToUnits(weight_kg, units), 2)} ${units} × ${reps}`;
+  const date = (localDate: string) => new Intl.DateTimeFormat(language, { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(localDate));
   return (
     <SubScreen title={group?.name ?? ''} parent={paths.groups}>
       <section className="card">
@@ -155,36 +156,33 @@ export function MemberProfileScreen({ userId, training, groupId, memberId }: { u
       {profile && profile.records.length > 0 && (
         <section className="card">
           <div className="eyebrow">{g.memberRecords}</div>
-          <ul className="members">
+          <ul className="profile-rows">
             {profile.records.map((record, index) => (
-              <li key={index}>
-                {nameOf(record.exercise)} +{Math.round(record.percent_gain)}% · {g.boardPoints(record.points)}
-                {load(record.weight_kg, record.reps)}
+              <li key={index} className="profile-row">
+                <span className="profile-name">{nameOf(record.exercise)}</span>
+                <span className="profile-end">
+                  <span className="stamp">+{Math.round(record.percent_gain)}%</span>
+                  <span className="disp">{g.boardPoints(record.points)}</span>
+                </span>
+                {record.weight_kg !== undefined && <span className="muted profile-load">{load(record.weight_kg, record.reps)}</span>}
               </li>
             ))}
           </ul>
         </section>
       )}
-      {profile?.sessions && (
-        <section className="card">
-          <div className="eyebrow">{g.memberSessionList}</div>
-          <ul className="members">
-            {profile.sessions.map((session, index) => (
-              <li key={index}>
-                {session.local_date}
-                <ul>
-                  {session.sets.map((set, setIndex) => (
-                    <li key={setIndex}>
-                      {nameOf(set.exercise)}
-                      {load(set.weight_kg, set.reps)}
-                    </li>
-                  ))}
-                </ul>
+      {profile?.sessions?.map((session, index) => (
+        <section key={index} className="card">
+          <strong>{date(session.local_date)}</strong>
+          <ul className="profile-rows">
+            {session.sets.map((set, setIndex) => (
+              <li key={setIndex} className="profile-row">
+                <span className="profile-name">{nameOf(set.exercise)}</span>
+                {set.weight_kg !== undefined && <span className="muted">{load(set.weight_kg, set.reps)}</span>}
               </li>
             ))}
           </ul>
         </section>
-      )}
+      ))}
     </SubScreen>
   );
 }
