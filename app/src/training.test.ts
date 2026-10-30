@@ -265,15 +265,16 @@ test('a Custom Exercise created offline is pickable at once, survives a catalog 
   const phone = anasPhone(network);
   const training = await phone.open();
 
-  const plank = await training.createExercise('Weighted plank');
+  const plank = await training.createExercise('Weighted plank', 'core');
+  await expect(training.createExercise('Mystery', 'abs' as never)).rejects.toThrow('muscle');
   const session = await training.startSession();
   await training.logSet(session.id, plank.id, 10, 1);
   // The catalog comes back from the server without it, as it has not arrived there yet.
-  await training.saveExercises([{ id: 'back-squat', nameEn: 'Back squat', nameEs: 'Sentadilla', equipment: 'barbell', custom: false, incrementKg: 5, bodyweight: false }]);
+  await training.saveExercises([{ id: 'back-squat', nameEn: 'Back squat', nameEs: 'Sentadilla', equipment: 'barbell', custom: false, incrementKg: 5, bodyweight: false, muscle: 'quads' }]);
 
   expect(await training.exercises()).toEqual(
     expect.arrayContaining([
-      { id: plank.id, nameEn: 'Weighted plank', nameEs: 'Weighted plank', equipment: null, custom: true, incrementKg: 2.5, bodyweight: false },
+      { id: plank.id, nameEn: 'Weighted plank', nameEs: 'Weighted plank', equipment: null, custom: true, incrementKg: 2.5, bodyweight: false, muscle: 'core' },
       expect.objectContaining({ id: 'back-squat', custom: false }),
     ]),
   );
@@ -282,7 +283,7 @@ test('a Custom Exercise created offline is pickable at once, survives a catalog 
 
   await vi.waitFor(() => expect(network.batches).toHaveLength(1));
   const [saved, , set] = network.batches[0];
-  expect(saved).toMatchObject({ kind: 'saveExercise', exercise: { id: plank.id, name: 'Weighted plank' } });
+  expect(saved).toMatchObject({ kind: 'saveExercise', exercise: { id: plank.id, name: 'Weighted plank', muscle: 'core' } });
   expect(plank.id).toMatch(/^custom-[0-9a-f-]{36}$/);
   expect(set).toMatchObject({ kind: 'saveSet', set: { exerciseId: plank.id, weightKg: 10, reps: 1 } });
   training.close();
@@ -607,7 +608,7 @@ test('a pull-up Set with added weight logs offline, queues as the added weight, 
   network.offline = true;
   const training = await anasPhone(network).open();
   await training.saveExercises([
-    { id: 'pull-up', nameEn: 'Pull-up', nameEs: 'Dominadas', equipment: 'bodyweight', custom: false, incrementKg: 2.5, bodyweight: true },
+    { id: 'pull-up', nameEn: 'Pull-up', nameEs: 'Dominadas', equipment: 'bodyweight', custom: false, incrementKg: 2.5, bodyweight: true, muscle: 'back' },
   ]);
   await training.setProfile('bodyweightKg', 80);
   const logSession = async (addedKg: number) => {
@@ -627,7 +628,7 @@ test('a pull-up Set with added weight logs offline, queues as the added weight, 
   training.close();
 });
 
-const benchCatalog = [{ id: 'bench-press', nameEn: 'Bench press', nameEs: 'Press banca', equipment: 'barbell', custom: false, incrementKg: 2.5, bodyweight: false }];
+const benchCatalog = [{ id: 'bench-press', nameEn: 'Bench press', nameEs: 'Press banca', equipment: 'barbell', custom: false, incrementKg: 2.5, bodyweight: false, muscle: 'chest' as const }];
 const benchRange = { repMin: 8, repMax: 12 };
 
 // Ana finishes a Bench Press Session of the given Sets, as [weightKg, reps, rir?].
@@ -732,7 +733,7 @@ test('a Custom Exercise at the top of the Rep Range gets no recommendation', asy
   const network = server();
   network.offline = true;
   const training = await anasPhone(network).open();
-  const dip = await training.createExercise('Assisted dip');
+  const dip = await training.createExercise('Assisted dip', 'triceps');
   const session = await training.startSession();
   for (let i = 0; i < 3; i++) await training.logSet(session.id, dip.id, 20, 12);
   await training.finishSession(session.id);
@@ -761,7 +762,7 @@ test('a Custom Exercise never gets a Stall', async () => {
   const network = server();
   network.offline = true;
   const training = await anasPhone(network).open();
-  const dip = await training.createExercise('Assisted dip');
+  const dip = await training.createExercise('Assisted dip', 'triceps');
   for (let i = 0; i < 2; i++) {
     const session = await training.startSession();
     await training.logSet(session.id, dip.id, 20, 3);
@@ -881,7 +882,7 @@ test('erasing the phone leaves no database and sends nothing that was queued', a
   await training.logSet(session.id, 'back-squat', 100, 5);
   await training.setProfile('bodyweightKg', 80);
   await training.saveRoutine([{ id: 'push', name: 'Push', exercises: [] }]);
-  await training.createExercise('Zercher squat');
+  await training.createExercise('Zercher squat', 'quads');
   expect((await indexedDB.databases()).map(({ name }) => name)).toContain(`ulti-${phone.userId}`);
 
   await training.erase();

@@ -1,6 +1,7 @@
 import { suggestedWeeklyTarget, type RoutineDay } from '@ulti/rules';
 import { useEffect, useState } from 'react';
 import { useI18n } from './i18n.ts';
+import { ExercisePicker } from './ExercisePicker.tsx';
 import { Info } from './Info.tsx';
 import type { Exercise, Profile, Training } from './training.ts';
 
@@ -54,6 +55,8 @@ export function RoutineEditor({
   const [draft, setDraft] = useState<DraftDay[] | null>(null);
   const [saved, setSaved] = useState<RoutineDay[]>([]);
   const [catalog, setCatalog] = useState<Exercise[]>([]);
+  // What the picker is for: more Exercises for a Day (no `index`), or a new one for a row.
+  const [picking, setPicking] = useState<{ dayIndex: number; index?: number } | null>(null);
 
   useEffect(() => {
     training.routine().then((routine) => {
@@ -65,8 +68,10 @@ export function RoutineEditor({
 
   if (!draft) return null;
   const nameOf = (exercise: Exercise) => (language === 'es' ? exercise.nameEs : exercise.nameEn);
-  const equipmentOf = (exercise: Exercise) => (exercise.equipment ? ` (${t.session.equipment[exercise.equipment] ?? ''})` : '');
-  const choices = [...catalog].sort((a, b) => nameOf(a).localeCompare(nameOf(b), language));
+  const name = (id: string) => {
+    const exercise = catalog.find((candidate) => candidate.id === id);
+    return exercise ? nameOf(exercise) : id;
+  };
   const routine = toRoutine(draft);
   const suggested = saved.length > 0 ? suggestedWeeklyTarget(saved.length) : null;
   const current = profile?.weeklyTarget.at(-1)?.value;
@@ -96,19 +101,9 @@ export function RoutineEditor({
           </div>
           {day.exercises.map((e, index) => (
             <div key={index} className="routine-ex">
-              <select
-                aria-label={r.exercise}
-                value={e.exerciseId}
-                onChange={(event) => changeExercise(dayIndex, index, { exerciseId: event.target.value })}
-              >
-                <option value="">{r.pickExercise}</option>
-                {choices.map((exercise) => (
-                  <option key={exercise.id} value={exercise.id}>
-                    {nameOf(exercise)}
-                    {equipmentOf(exercise)}
-                  </option>
-                ))}
-              </select>
+              <button type="button" className="btn-ghost" aria-label={r.exercise} onClick={() => setPicking({ dayIndex, index })}>
+                {name(e.exerciseId)}
+              </button>
               <div className="routine-nums">
                 <label>
                   {r.sets}
@@ -136,7 +131,7 @@ export function RoutineEditor({
           <button
             type="button"
             className="btn-ghost"
-            onClick={() => changeDay(dayIndex, { exercises: [...day.exercises, { exerciseId: '', sets: '3', repMin: '8', repMax: '12' }] })}
+            onClick={() => setPicking({ dayIndex })}
           >
             {r.addExercise}
           </button>
@@ -172,6 +167,24 @@ export function RoutineEditor({
           </button>
         </div>
       )}
+      <ExercisePicker
+        open={picking !== null}
+        catalog={catalog}
+        multiple={picking?.index === undefined}
+        onPick={(ids) => {
+          const { dayIndex, index } = picking!;
+          setPicking(null);
+          if (index !== undefined) return changeExercise(dayIndex, index, { exerciseId: ids[0] });
+          const added = ids.map((exerciseId) => ({ exerciseId, sets: '3', repMin: '8', repMax: '12' }));
+          changeDay(dayIndex, { exercises: [...draft[dayIndex].exercises, ...added] });
+        }}
+        onCreate={async (exerciseName, muscle) => {
+          const { id } = await training.createExercise(exerciseName, muscle);
+          setCatalog(await training.exercises());
+          return id;
+        }}
+        onClose={() => setPicking(null)}
+      />
     </section>
   );
 }

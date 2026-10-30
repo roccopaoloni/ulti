@@ -166,13 +166,42 @@ test('the catalog lists each equipment variant as its own Exercise, with a defau
   expect(catalog.get('dumbbell-bench-press')).toMatchObject({ name_en: 'Dumbbell bench press', name_es: 'Press banca con mancuernas' });
 });
 
+test('every catalog Exercise has one main muscle, and the tagging puts the classics where lifters expect them', async () => {
+  const ana = await lifter('ana');
+
+  const { data, error } = await ana.client.from('exercises').select('id, muscle').is('owner_id', null);
+
+  expect(error).toBeNull();
+  const muscles = ['chest', 'back', 'shoulders', 'biceps', 'triceps', 'quads', 'hamstrings', 'glutes', 'calves', 'core', 'full-body'];
+  for (const exercise of data!) expect(muscles, exercise.id).toContain(exercise.muscle);
+  const muscle = new Map(data!.map(({ id, muscle }) => [id, muscle]));
+  expect(['bench-press', 'back-squat', 'pull-up', 'power-clean', 'barbell-curl', 'hanging-leg-raise'].map((id) => muscle.get(id))).toEqual([
+    'chest',
+    'quads',
+    'back',
+    'full-body',
+    'biceps',
+    'core',
+  ]);
+});
+
+test('a Custom Exercise with an unknown muscle is turned away', async () => {
+  const ana = await lifter('ana');
+  const plank = customExercise('Plank', 'tentacles');
+
+  const response = await sync(ana, [plank]);
+
+  expect(response).toEqual({ rejected: [plank.id] });
+  expect((await ana.client.from('exercises').select('id').eq('id', plank.exerciseId)).data).toEqual([]);
+});
+
 // A Custom Exercise as the phone's outbox sends it. Its ID is made on the phone.
-function customExercise(name: string) {
+function customExercise(name: string, muscle = 'core') {
   const exerciseId = `custom-${crypto.randomUUID()}`;
   return {
     id: crypto.randomUUID(),
     kind: 'saveExercise',
-    exercise: { id: exerciseId, name },
+    exercise: { id: exerciseId, name, muscle },
     exerciseId,
   };
 }
@@ -191,9 +220,9 @@ test("Ana's Custom Exercise syncs with her Sets, and only she can see it", async
   const response = await sync(ana, [monday.start, plank, plankSet, monday.finish]);
 
   expect(response).toEqual({ rejected: [] });
-  const mine = await ana.client.from('exercises').select('id, name_en, name_es, type, owner_id').eq('id', plank.exerciseId);
+  const mine = await ana.client.from('exercises').select('id, name_en, name_es, type, muscle, owner_id').eq('id', plank.exerciseId);
   expect(mine.data).toEqual([
-    { id: plank.exerciseId, name_en: 'Plank with a weight', name_es: 'Plank with a weight', type: 'weighted', owner_id: ana.id },
+    { id: plank.exerciseId, name_en: 'Plank with a weight', name_es: 'Plank with a weight', type: 'weighted', muscle: 'core', owner_id: ana.id },
   ]);
   expect((await trainingOf(ana)).sets?.map(({ exercise_id }) => exercise_id)).toEqual([plank.exerciseId]);
   // Bea's catalog is the shared one, without it.
