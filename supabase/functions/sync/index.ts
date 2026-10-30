@@ -69,6 +69,35 @@ export default {
   }),
 };
 
+// The rules a mutation must meet to be saved. One that breaks them is rejected alone: it's never
+// saved, the rest of the batch is, and the phone drops it from its outbox. New rules go here, and
+// any the database would refuse must too, or its error would fail the whole batch for good.
+function isRejected(mutation: Mutation, receivedAt: number) {
+  switch (mutation.kind) {
+    case 'saveDeload': {
+      // A Deload Week starts on a Monday, and only a suggestion has a reason to be dismissed.
+      const { deload } = mutation;
+      return weekStart(deload.week) !== deload.week || (deload.origin === 'self' && deload.status !== 'accepted');
+    }
+    case 'saveProfileEntry':
+      return !isProfileValue(mutation.entry.field, mutation.entry.value);
+    // A Custom Exercise's ID is `custom-` and then its own, so it never stands in for a catalog one.
+    case 'saveExercise':
+      return !mutation.exercise.id.startsWith('custom-');
+    case 'saveIncrement':
+      return !(mutation.increment.incrementKg > 0);
+    case 'saveSet': {
+      const { rir } = mutation.set;
+      return (
+        Date.parse(mutation.set.loggedAt) > receivedAt + clockAllowanceMs ||
+        (rir != null && !(Number.isInteger(rir) && rir >= 0 && rir <= 4))
+      );
+    }
+    default:
+      return false;
+  }
+}
+
 // Saves the mutations it hasn't seen before, and returns the IDs of those it rejected.
 async function save(client: Client, userId: string, mutations: Mutation[], receivedAt: number) {
   const transaction = client.createTransaction('save');
@@ -100,25 +129,19 @@ async function save(client: Client, userId: string, mutations: Mutation[], recei
   const rejected: string[] = [];
   for (const mutation of mutations) {
     if (!unseen.delete(mutation.id)) continue;
+    if (isRejected(mutation, receivedAt)) {
+      rejected.push(mutation.id);
+      continue;
+    }
     if (mutation.kind === 'saveSession') keepLatest(sessions, mutation.session);
     else if (mutation.kind === 'saveRoutine') keepLatest(routines, mutation.routine);
-    else if (mutation.kind === 'saveDeload') {
-      const { deload } = mutation;
-      // A Deload Week starts on a Monday, and only a suggestion has a reason to be dismissed.
-      if (weekStart(deload.week) !== deload.week || (deload.origin === 'self' && deload.status !== 'accepted')) rejected.push(mutation.id);
-      else keepLatest(deloads, { ...deload, id: deload.week });
-    }
-    else if (mutation.kind === 'saveIncrement') {
-      const { increment } = mutation;
-      keepLatest(increments, { ...increment, id: increment.exerciseId });
-    } else if (mutation.kind === 'saveExercise') exercises.set(mutation.exercise.id, mutation.exercise);
+    else if (mutation.kind === 'saveDeload') keepLatest(deloads, { ...mutation.deload, id: mutation.deload.week });
+    else if (mutation.kind === 'saveIncrement') keepLatest(increments, { ...mutation.increment, id: mutation.increment.exerciseId });
+    else if (mutation.kind === 'saveExercise') exercises.set(mutation.exercise.id, mutation.exercise);
     else if (mutation.kind === 'saveProfileEntry') {
       const { entry } = mutation;
-      if (!isProfileValue(entry.field, entry.value)) rejected.push(mutation.id);
-      else keepLatest(entries, { ...entry, id: `${entry.field} ${entry.effectiveFrom}` });
-    }
-    else if (Date.parse(mutation.set.loggedAt) > receivedAt + clockAllowanceMs) rejected.push(mutation.id);
-    else keepLatest(sets, mutation.set);
+      keepLatest(entries, { ...entry, id: `${entry.field} ${entry.effectiveFrom}` });
+    } else keepLatest(sets, mutation.set);
   }
 
   // A Custom Exercise is saved before the Sets that use it. It's named once and never changes, so
