@@ -209,8 +209,7 @@ test("a Custom Exercise can't replace a catalog Exercise or someone else's Custo
   await sync(ana, [plank]);
 
   const overCatalog = { ...plank, id: crypto.randomUUID(), exercise: { ...plank.exercise, id: 'back-squat', name: 'Fake' } };
-  const attempt = await bea.client.functions.invoke('sync', { body: { mutations: [overCatalog] } });
-  expect(attempt.error).not.toBeNull();
+  expect(await sync(bea, [overCatalog])).toEqual({ rejected: [overCatalog.id] });
   const overAna = { ...plank, id: crypto.randomUUID(), exercise: { ...plank.exercise, name: 'Bea was here' } };
   await sync(bea, [overAna]);
 
@@ -443,4 +442,48 @@ test("a Set's label override syncs, the later flip wins whichever arrives first,
     { id: monday.secondSet.set.id, label: null },
   ]);
   expect(sql(`select count(*) from private.dirty_users where user_id = '${ana.id}'`)).toBe('0');
+});
+
+// A tampered client can send what the database would refuse. The bad item is rejected on its own:
+// the rest of the batch is saved, and the phone doesn't send it again.
+test('a Custom Exercise whose ID does not start with custom- is rejected, and the rest of the batch is saved', async () => {
+  const ana = await lifter('ana');
+  const monday = anasMonday();
+  const fake = { ...customExercise('Fake'), exercise: { id: 'plank', name: 'Fake' } };
+
+  const response = await sync(ana, [monday.start, fake, monday.firstSet, monday.secondSet, monday.finish]);
+
+  expect(response).toEqual({ rejected: [fake.id] });
+  expect(await trainingOf(ana)).toEqual(anasMondayOnTheServer(monday));
+  expect((await ana.client.from('exercises').select('id').eq('id', 'plank')).data).toEqual([]);
+});
+
+test('a Set with an RIR outside 0-4 is rejected, and the rest of the batch is saved', async () => {
+  const ana = await lifter('ana');
+  const monday = anasMonday();
+  const tooEasy = { id: crypto.randomUUID(), kind: 'saveSet', set: { ...monday.secondSet.set, id: crypto.randomUUID(), rir: 5 } };
+  const negative = { id: crypto.randomUUID(), kind: 'saveSet', set: { ...monday.secondSet.set, id: crypto.randomUUID(), rir: -1 } };
+
+  const response = await sync(ana, [monday.start, monday.firstSet, tooEasy, monday.secondSet, negative, monday.finish]);
+
+  expect(response).toEqual({ rejected: [tooEasy.id, negative.id] });
+  expect(await trainingOf(ana)).toEqual(anasMondayOnTheServer(monday));
+});
+
+test('an Increment of 0 or less is rejected, and the rest of the batch is saved', async () => {
+  const ana = await lifter('ana');
+  const monday = anasMonday();
+  const increment = (incrementKg: number) => ({
+    id: crypto.randomUUID(),
+    kind: 'saveIncrement',
+    increment: { exerciseId: 'back-squat', incrementKg, updatedAt: '2026-10-20T12:00:00.000Z' },
+  });
+  const zero = increment(0);
+  const negative = increment(-2.5);
+
+  const response = await sync(ana, [monday.start, zero, monday.firstSet, negative, monday.secondSet, monday.finish]);
+
+  expect(response).toEqual({ rejected: [zero.id, negative.id] });
+  expect(await trainingOf(ana)).toEqual(anasMondayOnTheServer(monday));
+  expect((await ana.client.from('increment_overrides').select('exercise_id')).data).toEqual([]);
 });

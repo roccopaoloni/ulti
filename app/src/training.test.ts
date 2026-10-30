@@ -4,7 +4,7 @@ import { openTraining, type Mutation } from './training.ts';
 
 // The sync endpoint, as the phone sees it. Offline, every request fails before it leaves the phone.
 function server() {
-  const state = { offline: false, failuresLeft: 0, batches: [] as Mutation[][] };
+  const state = { offline: false, failuresLeft: 0, batches: [] as Mutation[][], rejectKinds: [] as string[] };
   const send = async (mutations: Mutation[]) => {
     if (state.offline) throw new TypeError('Failed to fetch');
     state.batches.push(mutations);
@@ -12,7 +12,7 @@ function server() {
       state.failuresLeft--;
       throw new Error('503 Service Unavailable');
     }
-    return { rejected: [] };
+    return { rejected: mutations.filter(({ kind }) => state.rejectKinds.includes(kind)).map(({ id }) => id) };
   };
   return Object.assign(state, { send });
 }
@@ -123,6 +123,24 @@ test('every retry resends the same mutation IDs, until the server has them', asy
   expect(ids[0]).toHaveLength(3);
   await new Promise((resolve) => setTimeout(resolve, 50));
   expect(network.batches).toHaveLength(3);
+  training.close();
+});
+
+test('a mutation the server rejects leaves the outbox, and syncing goes on with what comes after', async () => {
+  const network = server();
+  network.rejectKinds = ['saveSet'];
+  const phone = anasPhone(network);
+  const training = await phone.open();
+  const session = await training.startSession();
+  await training.logSet(session.id, 'bench-press', 80, 8);
+  await vi.waitFor(() => expect(network.batches.flat().map(({ kind }) => kind)).toContain('saveSet'));
+
+  await training.finishSession(session.id);
+
+  await vi.waitFor(() => expect(network.batches.at(-1)?.map(({ kind }) => kind)).toEqual(['saveSession']));
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  const sent = network.batches.flat().filter(({ kind }) => kind === 'saveSet');
+  expect(sent).toHaveLength(1);
   training.close();
 });
 
