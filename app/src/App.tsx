@@ -10,14 +10,14 @@ import { useI18n, type Term } from './i18n.ts';
 import { gearIcon, tabIcons } from './icons.tsx';
 import { Info } from './Info.tsx';
 import { InstallCard } from './InstallApp.tsx';
-import { navigate, paths, settingsPath, tabs, useCurrentTab, usePathname, type Tab } from './navigation.ts';
+import { navigate, paths, routinePath, settingsPath, tabs, useCurrentTab, usePathname, type Tab } from './navigation.ts';
 import { hasEverything, useBodyProfile, useLayout, useUnits } from './profile.ts';
 import { RankCard } from './RankCard.tsx';
 import { CrownGate } from './CrownGate.tsx';
 import { RankUpGate } from './RankUpGate.tsx';
 import { BodyweightPrompt, ConnectToFinish, Onboarding } from './ProfileScreens.tsx';
 import { SettingsScreen } from './SettingsScreen.tsx';
-import { RoutineEditor } from './RoutineScreen.tsx';
+import { MyRoutineButton, RoutineSubScreen } from './RoutineScreen.tsx';
 import { SessionInProgressBar, SessionScreen, StartSession, useLogging } from './SessionScreen.tsx';
 import { useTraining } from './useTraining.ts';
 
@@ -49,7 +49,9 @@ export function App() {
 function Tabs({ userId }: { userId: string }) {
   const { t } = useI18n();
   const current = useCurrentTab();
-  const settingsOpen = usePathname() === settingsPath;
+  const pathname = usePathname();
+  const settingsOpen = pathname === settingsPath;
+  const routineOpen = pathname === routinePath;
   const { label, text } = t.screens[current];
   const { training, downloads } = useTraining(userId);
   const logging = useLogging(training);
@@ -78,6 +80,8 @@ function Tabs({ userId }: { userId: string }) {
       <main className="screen" key={downloads}>
         {settingsOpen ? (
           <SettingsScreen userId={userId} training={training} profile={profile} units={units} onSaved={reload} />
+        ) : routineOpen && training ? (
+          <RoutineSubScreen training={training} profile={profile} onProfileSaved={reload} />
         ) : (
           <>
             {current === 'home' ? (
@@ -99,7 +103,7 @@ function Tabs({ userId }: { userId: string }) {
             {current === 'groups' ? (
               <GroupsTab userId={userId} training={training} />
             ) : (
-              current !== 'profile' && (
+              current !== 'profile' && current !== 'train' && (
                 <section className="card">
                   <div className="eyebrow">
                     {label} <Info term={screenTerms[current]} />
@@ -125,7 +129,8 @@ function Tabs({ userId }: { userId: string }) {
             {current === 'home' && <RaceCards userId={userId} />}
             {current === 'home' && <FriendsTrainedToday userId={userId} />}
             {current === 'home' && <InstallCard />}
-            {current === 'train' && training && <RoutineEditor training={training} profile={profile} onProfileSaved={reload} />}
+            {current === 'train' && training && <StartSession logging={logging} training={training} />}
+            {current === 'train' && training && <MyRoutineButton training={training} />}
             {current === 'train' && training && <History training={training} units={units} />}
             {current === 'profile' && training && <RankCard training={training} />}
             {current === 'profile' && training && <StampsCard training={training} />}
