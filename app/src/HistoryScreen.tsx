@@ -1,4 +1,4 @@
-import { kgToUnits, unitsToKg, type PersonalRecord, type Units } from '@ulti/rules';
+import { kgToUnits, labelSets, unitsToKg, type PersonalRecord, type SetLabel, type Units } from '@ulti/rules';
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { Sheet } from './GroupsScreens.tsx';
 import { useI18n } from './i18n.ts';
@@ -41,6 +41,14 @@ export function History({ training, units }: { training: Training; units: Units 
         const open = openId === session.id;
         const exerciseIds = [...new Set(sets.map((set) => set.exerciseId))];
         const points = sets.reduce((sum, set) => sum + (records.get(set.id)?.progressPoints ?? 0), 0);
+        // Each Set's label, worked out per Exercise as the logging screen does.
+        const labels = new Map(
+          exerciseIds.flatMap((exerciseId) => {
+            const exerciseSets = sets.filter((set) => set.exerciseId === exerciseId);
+            const exerciseLabels = labelSets(exerciseSets);
+            return exerciseSets.map((set, index) => [set.id, exerciseLabels[index]] as const);
+          }),
+        );
         return (
           <div key={session.id} className="card">
             <button
@@ -64,6 +72,7 @@ export function History({ training, units }: { training: Training; units: Units 
                       <PastSet
                         key={set.id}
                         set={set}
+                        label={labels.get(set.id)!}
                         exerciseName={name(exerciseId)}
                         units={units}
                         bodyweight={catalog.find(({ id }) => id === exerciseId)?.bodyweight ?? false}
@@ -89,6 +98,7 @@ export function History({ training, units }: { training: Training; units: Units 
 
 function PastSet({
   set,
+  label,
   exerciseName,
   units,
   bodyweight,
@@ -97,6 +107,7 @@ function PastSet({
   onDelete,
 }: {
   set: SetRecord;
+  label: SetLabel;
   exerciseName: string;
   units: Units;
   bodyweight: boolean;
@@ -131,6 +142,9 @@ function PastSet({
     return (
       <>
         <div className="past-set">
+          <span className={`tag past-tag label-${label}`}>
+            <small>{label === 'warm-up' ? t.session.warmUp : t.session.working}</small>
+          </span>
           <span>
             {load}{' '}
             × {set.reps}

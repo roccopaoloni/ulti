@@ -866,8 +866,16 @@ button.cell {
   align-items: center;
   gap: 12px;
 }
-.past-set > span:first-child {
+.past-set > span:not(.past-tag) {
   flex: 1;
+}
+.past-set .past-tag {
+  height: auto;
+  min-width: 5.5em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
 }
 .past-set input {
   width: 6ch;
