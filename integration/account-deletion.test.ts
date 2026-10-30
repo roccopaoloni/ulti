@@ -48,7 +48,7 @@ async function fullLifter(name: string, ...dates: string[]) {
     entry('bodyweightKg', 62.5),
     ...dates.flatMap(session),
     { id: crypto.randomUUID(), kind: 'saveRoutine', routine: { id: crypto.randomUUID(), days: [], updatedAt: '2026-10-20T10:00:00.000Z' } },
-    { id: crypto.randomUUID(), kind: 'saveExercise', exercise: { id: `custom-${crypto.randomUUID()}`, name: 'Zercher squat' } },
+    { id: crypto.randomUUID(), kind: 'saveExercise', exercise: { id: `custom-${crypto.randomUUID()}`, name: 'Zercher squat', muscle: 'quads' } },
     { id: crypto.randomUUID(), kind: 'saveIncrement', increment: { exerciseId: 'bench-press', incrementKg: 1, updatedAt: '2026-10-20T10:00:00.000Z' } },
     { id: crypto.randomUUID(), kind: 'saveDeload', deload: { week: '2026-10-12', origin: 'self', status: 'accepted', updatedAt: '2026-10-12T10:00:00.000Z' } },
   ]);
