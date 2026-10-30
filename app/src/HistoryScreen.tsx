@@ -142,10 +142,10 @@ function PastSet({
     return (
       <>
         <div className="past-set">
-          <span className={`tag past-tag label-${label}`}>
-            <small>{label === 'warm-up' ? t.session.warmUp : t.session.working}</small>
-          </span>
           <span>
+            <span className={`tag past-tag label-${label}`}>
+              <small>{label === 'warm-up' ? t.session.warmUp : t.session.working}</small>
+            </span>
             {load}{' '}
             × {set.reps}
             {record && ` · PR +${record.percentGain}% · ${t.session.points(record.progressPoints)}`}
