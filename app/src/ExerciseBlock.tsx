@@ -1,4 +1,4 @@
-import { deloadRows, incrementInUnits, kgToUnits, labelSets, plannedRows, stepValue, unitsToKg, type Recommendation,type PersonalRecord, type RoutineExercise, type SetLabel, type Units } from '@ulti/rules';
+import { deloadRows, incrementInUnits, kgToUnits, labelSets, plannedRows, predictLabels, stepValue, unitsToKg, type Recommendation,type PersonalRecord, type RoutineExercise, type SetLabel, type Units } from '@ulti/rules';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useI18n } from './i18n.ts';
@@ -8,9 +8,6 @@ import type { SetRecord, Training } from './training.ts';
 
 type Planned = { weightKg: number; reps: number };
 
-// How long the RIR chips stay after ✓ if the lifter ignores them (design: Logging a Session).
-const RIR_CHIPS_MS = 6000;
-
 // One Exercise of the Session: its Sets so far, then the rows still to do, pre-filled with the
 // last Session's numbers for this Exercise (design: Logging a Session, List layout).
 export function ExerciseBlock({
@@ -19,6 +16,7 @@ export function ExerciseBlock({
   exerciseId,
   incrementKg,
   bodyweight,
+  dumbbell,
   units,
   target,
   sets,
@@ -28,6 +26,7 @@ export function ExerciseBlock({
   focus,
   deload,
   onLog,
+  asksRir,
   onSetLabel,
   onRir,
   onIncrement,
@@ -38,6 +37,8 @@ export function ExerciseBlock({
   incrementKg: number;
   // A bodyweight Exercise: its weight is the weight added to the lifter's own, shown as "BW +10 kg".
   bodyweight: boolean;
+  // A dumbbell Exercise: its weight is per dumbbell, as it is stored and scored.
+  dumbbell: boolean;
   units: Units;
   // What the Routine plans for this Exercise, when the Session came from one.
   target?: RoutineExercise;
@@ -52,7 +53,9 @@ export function ExerciseBlock({
   // This week is a Deload Week: about half the Sets, about 10% lighter, and no go heavier or Stall advice.
   deload?: boolean;
   // Logs the Set and returns its ID.
-  onLog: (weightKg: number, reps: number) => Promise<string>;
+  onLog: (weightKg: number, reps: number, label: SetLabel) => Promise<string>;
+  // Whether RIR is asked after this logged Set (design: Logging a Session).
+  asksRir: (setId: string) => boolean;
   onSetLabel: (setId: string, label: SetLabel) => Promise<void>;
   onRir: (setId: string, rir: number) => Promise<void>;
   onIncrement: (incrementKg: number) => Promise<void>;
@@ -75,19 +78,21 @@ export function ExerciseBlock({
   const stall = advice?.kind === 'stall' ? advice : undefined;
   const last = loaded && (advice ? loaded.last.map(() => ({ weightKg: advice.weightKg, reps: advice.reps })) : loaded.last);
 
-  // The chips asking for RIR show for a few seconds after ✓.
+  // The chips asking for RIR stay after ✓ until answered or until the next Set is logged.
   const [askRir, setAskRir] = useState<string | null>(null);
-  useEffect(() => {
-    if (!askRir) return;
-    const timer = setTimeout(() => setAskRir(null), RIR_CHIPS_MS);
-    return () => clearTimeout(timer);
-  }, [askRir]);
   const [editingIncrement, setEditingIncrement] = useState<string | null>(null);
 
   // Past the plan, the next Set repeats the last one logged.
   const regularPlan = last && plannedRows(last, target?.sets);
   const plan = deload && regularPlan ? deloadRows(regularPlan, incrementKg) : regularPlan;
   const next = plan ? (plan[sets.length] ?? sets.at(-1)) : undefined;
+  // The labels the rows still to do would get, from the plan: the next row first, as the lifter edits it.
+  const upcoming = plan?.slice(sets.length + 1) ?? [];
+  const predicted = (nextRow: { weightKg: number; label?: SetLabel } | undefined) =>
+    predictLabels(sets, [...(nextRow ? [nextRow] : []), ...upcoming.flatMap((row) => (row ? [row] : []))]);
+  const labelFor = (weightKg: number, chosen?: SetLabel) => predicted({ weightKg, label: chosen })[0]!;
+  const ahead = predicted(next).slice(next ? 1 : 0);
+  const upcomingLabels = upcoming.map((row) => (row ? ahead.shift() : undefined));
   const weightCell = (weightKg: number) =>
     bodyweight ? (
       <span className="cell">
@@ -107,6 +112,7 @@ export function ExerciseBlock({
           {t.session.calibration} <Info term="calibration" />
         </p>
       )}
+      {dumbbell && <p className="muted">{t.session.perDumbbell}</p>}
       {target && <p className="muted">{t.session.target(target.sets, target.repMin, target.repMax)}</p>}
       {!custom && (
         <button
@@ -154,9 +160,10 @@ export function ExerciseBlock({
           </span>
         </div>
       ))}
-      {askRir && sets.some((set) => set.id === askRir) && (
+      {askRir && sets.some((set) => set.id === askRir) && asksRir(askRir) && (
         <div className="rir" role="group" aria-label={t.session.rir}>
           <span className="muted">RIR</span>
+          <Info term="rir" />
           {[0, 1, 2, 3, 4].map((rir) => (
             <button
               key={rir}
@@ -177,6 +184,7 @@ export function ExerciseBlock({
           count={Math.max(plan.length, sets.length + 1)}
           sets={sets}
           labels={labels}
+          upcomingLabels={upcomingLabels}
           records={records}
           plan={plan}
           next={next}
@@ -190,8 +198,10 @@ export function ExerciseBlock({
               planned={next}
               incrementKg={incrementKg}
               bodyweight={bodyweight}
+              dumbbell={dumbbell}
               units={units}
-              onLog={async (weightKg, reps) => setAskRir(await onLog(weightKg, reps))}
+              labelFor={labelFor}
+              onLog={async (weightKg, reps, label) => setAskRir(await onLog(weightKg, reps, label))}
             />
           }
           onSetLabel={onSetLabel}
@@ -204,8 +214,10 @@ export function ExerciseBlock({
           planned={next}
           incrementKg={incrementKg}
           bodyweight={bodyweight}
+          dumbbell={dumbbell}
           units={units}
-          onLog={async (weightKg, reps) => setAskRir(await onLog(weightKg, reps))}
+          labelFor={labelFor}
+          onLog={async (weightKg, reps, label) => setAskRir(await onLog(weightKg, reps, label))}
         />
       )}
       {editingIncrement !== null && (
@@ -223,9 +235,12 @@ export function ExerciseBlock({
           }}
         />
       )}
-      {!focus && plan?.slice(sets.length + 1).map((set, index) => (
+      {!focus && upcoming.map((set, index) => (
         <div key={index} className="set upcoming" aria-hidden="true">
-          <span className="tag">{sets.length + index + 2}</span>
+          <span className={`tag label-${upcomingLabels[index] ?? 'working'}`}>
+            {sets.length + index + 2}
+            {upcomingLabels[index] && <small>{upcomingLabels[index] === 'warm-up' ? t.session.warmUp : t.session.working}</small>}
+          </span>
           {set ? (
             weightCell(set.weightKg)
           ) : (
@@ -248,8 +263,10 @@ function NextSet({
   planned,
   incrementKg,
   bodyweight,
+  dumbbell,
   units,
   focus,
+  labelFor,
   onLog,
 }: {
   number: number;
@@ -257,8 +274,11 @@ function NextSet({
   planned: Planned | undefined;
   incrementKg: number;
   bodyweight: boolean;
+  dumbbell: boolean;
   units: Units;
-  onLog: (weightKg: number, reps: number) => Promise<void>;
+  // The label this row would get at this weight, unless the lifter chose one.
+  labelFor: (weightKg: number, chosen?: SetLabel) => SetLabel;
+  onLog: (weightKg: number, reps: number, label: SetLabel) => Promise<void>;
 }) {
   const { t, language } = useI18n();
   const s = t.session;
@@ -268,21 +288,24 @@ function NextSet({
   const [reps, setReps] = useState(planned ? String(planned.reps) : '');
   const [editing, setEditing] = useState<'weight' | 'reps' | null>(null);
   const [busy, setBusy] = useState(false);
+  // The lifter's tap on the label: it sticks, and the weight no longer changes it.
+  const [chosen, setChosen] = useState<SetLabel>();
 
   const typedWeight = Number(weight.replace(',', '.'));
   const weightKg = unitsToKg(typedWeight, units);
+  const label = labelFor(Number.isFinite(weightKg) ? weightKg : 0, chosen);
   const valid = weight.trim() !== '' && Number.isFinite(typedWeight) && typedWeight >= 0 && /^[1-9]\d*$/.test(reps);
 
   async function log() {
     if (!valid || busy) return;
     setBusy(true);
-    await onLog(weightKg, Number(reps));
+    await onLog(weightKg, Number(reps), label);
     setBusy(false);
   }
 
   const keypad = editing && (
     <Keypad
-      label={editing === 'weight' ? (bodyweight ? s.addedWeight : s.weight) : s.reps}
+      label={editing === 'weight' ? (bodyweight ? s.addedWeight : dumbbell ? s.perDumbbell : s.weight) : s.reps}
       value={editing === 'weight' ? weight : reps}
       decimal={editing === 'weight' ? decimal : null}
       step={editing === 'weight' ? incrementInUnits(incrementKg, units) : 1}
@@ -291,11 +314,14 @@ function NextSet({
     />
   );
 
+  const flip = () => setChosen(label === 'warm-up' ? 'working' : 'warm-up');
+  const labelText = label === 'warm-up' ? s.warmUp : s.working;
+
   if (focus) {
     return (
       <>
         <div className="f-nums">
-          <button type="button" className="f-num" aria-label={bodyweight ? s.addedWeight : s.weight} onClick={() => setEditing('weight')}>
+          <button type="button" className="f-num" aria-label={bodyweight ? s.addedWeight : dumbbell ? s.perDumbbell : s.weight} onClick={() => setEditing('weight')}>
             <span className="num">
               {bodyweight && 'BW +'}
               {weight || '–'}
@@ -311,6 +337,11 @@ function NextSet({
         <button type="button" className="btn-primary f-done" disabled={!valid || busy} onClick={log}>
           {checkIcon} {s.done}
         </button>
+        <div className="f-label">
+          <button type="button" className={`tag label-${label}`} aria-label={s.flipLabel(labelText)} onClick={flip}>
+            {number} <small>{labelText}</small>
+          </button>
+        </div>
         {keypad}
       </>
     );
@@ -318,8 +349,11 @@ function NextSet({
 
   return (
     <div className="set">
-      <span className="tag">{number}</span>
-      <button type="button" className="cell" aria-label={bodyweight ? s.addedWeight : s.weight} onClick={() => setEditing('weight')}>
+      <button type="button" className={`tag label-${label}`} aria-label={s.flipLabel(labelText)} onClick={flip}>
+        {number}
+        <small>{labelText}</small>
+      </button>
+      <button type="button" className="cell" aria-label={bodyweight ? s.addedWeight : dumbbell ? s.perDumbbell : s.weight} onClick={() => setEditing('weight')}>
         {bodyweight && 'BW +'}
         {weight || '–'}
         <small>{units}</small>
@@ -342,6 +376,7 @@ function FocusSets({
   count,
   sets,
   labels,
+  upcomingLabels,
   records,
   plan,
   next,
@@ -353,6 +388,8 @@ function FocusSets({
   count: number;
   sets: SetRecord[];
   labels: SetLabel[];
+  // The labels of the rows after the next one, as they would be logged.
+  upcomingLabels: (SetLabel | undefined)[];
   records: Map<string, PersonalRecord>;
   plan: (Planned | undefined)[];
   next: Planned | undefined;
@@ -412,6 +449,7 @@ function FocusSets({
           </button>
         </>
       )}
+      {at !== current && (
       <div className="f-label">
         {at < current ? (
           <button
@@ -423,10 +461,13 @@ function FocusSets({
             {at + 1} <small>{labels[at] === 'warm-up' ? s.warmUp : s.working}</small>
           </button>
         ) : (
-          <span>{s.focusSet(at + 1)}</span>
+          <span className={`tag label-${upcomingLabels[at - current - 1] ?? 'working'}`}>
+            {at + 1} {upcomingLabels[at - current - 1] && <small>{upcomingLabels[at - current - 1] === 'warm-up' ? s.warmUp : s.working}</small>}
+          </span>
         )}
         {at < current && records.has(sets[at]!.id) && <small className="pr-points">{s.points(records.get(sets[at]!.id)!.progressPoints)}</small>}
       </div>
+      )}
       <div className="f-nav">
         <button type="button" disabled={at === 0} onClick={() => go(at - 1)}>
           ‹ {s.previous}

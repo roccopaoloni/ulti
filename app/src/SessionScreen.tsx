@@ -1,4 +1,4 @@
-import { inCalibration, type RoutineDay, type Units } from '@ulti/rules';
+import { asksRir, inCalibration, type RoutineDay, type Units } from '@ulti/rules';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useI18n } from './i18n.ts';
@@ -264,14 +264,16 @@ export function SessionScreen({ training, units, layout, onLeave }: { training: 
             exerciseId={exerciseId}
             incrementKg={catalog.find(({ id }) => id === exerciseId)?.incrementKg ?? 2.5}
             bodyweight={catalog.find(({ id }) => id === exerciseId)?.bodyweight ?? false}
+            dumbbell={catalog.find(({ id }) => id === exerciseId)?.equipment === 'dumbbell'}
             units={units}
             target={session.plan.find((planned) => planned.exerciseId === exerciseId)}
             sets={session.sets.filter((set) => set.exerciseId === exerciseId)}
             records={new Map(scoring?.events.map((event) => [event.setId, event]))}
             calibrating={scoring ? inCalibration(scoring.history, exerciseId) : false}
             custom={catalog.find(({ id }) => id === exerciseId)?.custom !== false}
-            onLog={async (weightKg, reps) => {
-              const set = await training.logSet(sessionId, exerciseId, weightKg, reps);
+            asksRir={(setId) => asksRir(session.sets.map((set) => ({ ...set, exercise: set.exerciseId })), setId)}
+            onLog={async (weightKg, reps, label) => {
+              const set = await training.logSet(sessionId, exerciseId, weightKg, reps, label);
               const record = (await training.scoring()).events.find((event) => event.setId === set.id);
               if (record) {
                 setBanner({ key: set.id, text: s.record(name(exerciseId), record.percentGain, record.progressPoints) });
