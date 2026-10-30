@@ -126,6 +126,8 @@ type Messages = {
   body: {
     onboardingTitle: string;
     onboardingText: string;
+    connectTitle: string;
+    connectText: string;
     privacy: string;
     units: string;
     language: string;
@@ -483,6 +485,8 @@ const en: Messages = {
   body: {
     onboardingTitle: 'About you',
     onboardingText: 'A few things so your progress is scored fairly. You can change any of them later in Profile.',
+    connectTitle: 'Connect to finish setting up',
+    connectText: 'We are getting your profile and training history from your account. Connect to the internet and this will finish by itself.',
     privacy: 'Your sex, bodyweight and Strength Level are never shown to anyone, not even your Group.',
     units: 'Units',
     language: 'Language',
@@ -834,6 +838,8 @@ const es: Messages = {
   body: {
     onboardingTitle: 'Sobre vos',
     onboardingText: 'Unos datos para puntuar tu progreso con justicia. Podés cambiarlos después en Perfil.',
+    connectTitle: 'Conectate para terminar la configuración',
+    connectText: 'Estamos trayendo tu perfil y tu historial de entrenamiento desde tu cuenta. Conectate a internet y esto termina solo.',
     privacy: 'Tu sexo, tu peso corporal y tu nivel de fuerza no los ve nadie, ni siquiera tu grupo.',
     units: 'Unidades',
     language: 'Idioma',

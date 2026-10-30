@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from './auth.ts';
+import type { SetLabel } from '@ulti/rules';
 import { openTraining, type Send, type Training } from './training.ts';
 
 const send: Send = async (mutations) => {
@@ -54,9 +55,64 @@ async function refreshDeloads(training: Training) {
   );
 }
 
-// The signed-in user's training on this phone, once its store is open.
-export function useTraining(userId: string): Training | null {
+// The Sessions and Sets the server holds, for a phone that is new to this user. Row-level
+// security returns only this user's; deleted Sets stay on the server and aren't downloaded. The
+// API returns at most 1000 rows a request, so they come page by page.
+const pageSize = 1000;
+async function pageThrough<Row>(page: (from: number, to: number) => PromiseLike<{ data: Row[] | null; error: unknown }>) {
+  const rows: Row[] = [];
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await page(from, from + pageSize - 1);
+    if (error || !data) throw error ?? new Error('No rows');
+    rows.push(...data);
+    if (data.length < pageSize) return rows;
+  }
+}
+
+// Resolves to whether the phone got anything new.
+async function refreshHistory(training: Training) {
+  const sessions = await pageThrough((from, to) =>
+    supabase.from('sessions').select('id, started_at, time_zone, local_date, finished_at, routine_day_id, updated_at').order('id').range(from, to),
+  );
+  const sets = await pageThrough((from, to) =>
+    supabase
+      .from('sets')
+      .select('id, session_id, exercise_id, weight_kg, reps, label, rir, logged_at, updated_at')
+      .eq('deleted', false)
+      .order('id')
+      .range(from, to),
+  );
+  return training.saveSessionsFromServer(
+    sessions.map((row) => ({
+      id: row.id,
+      startedAt: row.started_at,
+      timeZone: row.time_zone,
+      localDate: row.local_date,
+      finishedAt: row.finished_at,
+      ...(row.routine_day_id && { routineDayId: row.routine_day_id }),
+      updatedAt: row.updated_at,
+    })),
+    sets.map((row) => ({
+      id: row.id,
+      sessionId: row.session_id,
+      exerciseId: row.exercise_id,
+      weightKg: Number(row.weight_kg),
+      reps: row.reps,
+      ...(row.label && { label: row.label as SetLabel }),
+      ...(row.rir !== null && { rir: row.rir }),
+      loggedAt: row.logged_at,
+      updatedAt: row.updated_at,
+    })),
+  );
+}
+
+// The signed-in user's training on this phone, once its store is open. `downloads` counts the
+// times the server's Sessions and Sets brought something new, so screens that read them reload.
+export function useTraining(userId: string): { training: Training | null; downloads: number } {
   const [training, setTraining] = useState<Training | null>(null);
+  const [downloads, setDownloads] = useState(0);
+  const download = (store: Training) =>
+    refreshHistory(store).then((changed) => changed && setDownloads((n) => n + 1), () => {});
 
   useEffect(() => {
     // Ask the browser not to evict the user's data when the phone runs low on space.
@@ -64,7 +120,11 @@ export function useTraining(userId: string): Training | null {
 
     let opened: Training | undefined;
     let closed = false;
-    const onOnline = () => opened && refreshCatalog(opened);
+    const onOnline = () => {
+      if (!opened) return;
+      refreshCatalog(opened);
+      download(opened);
+    };
     openTraining(userId, {
       send,
       connectivity: window,
@@ -79,6 +139,7 @@ export function useTraining(userId: string): Training | null {
       refreshRoutine(store).catch(() => {});
       refreshIncrements(store).catch(() => {});
       refreshDeloads(store).catch(() => {});
+      download(store);
       addEventListener('online', onOnline);
     });
     return () => {
@@ -89,5 +150,5 @@ export function useTraining(userId: string): Training | null {
     };
   }, [userId]);
 
-  return training;
+  return { training, downloads };
 }

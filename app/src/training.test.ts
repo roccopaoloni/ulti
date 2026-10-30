@@ -912,7 +912,8 @@ test('downloading again duplicates nothing, and never overwrites or resurrects w
   const sets = [serverSet(kept.id, session.id, 100, older), serverSet(gone.id, session.id, 90, older)];
 
   await training.saveSessionsFromServer(sessions, sets);
-  await training.saveSessionsFromServer(sessions, sets);
+  // Nothing new the second time, which the screens use to know whether to reload.
+  expect(await training.saveSessionsFromServer(sessions, sets)).toBe(false);
 
   const past = await training.pastSessions();
   expect(past.map(({ session: s }) => s.finishedAt !== null)).toEqual([true]);

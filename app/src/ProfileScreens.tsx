@@ -144,6 +144,20 @@ export function Onboarding({ userId, training, onDone }: { userId: string; train
   );
 }
 
+// A new phone that can't reach the server yet: it can't tell a new user from a returning one, so
+// it asks for nothing and writes nothing until the profile history arrives.
+export function ConnectToFinish() {
+  const { t } = useI18n();
+  return (
+    <main className="screen">
+      <h1 className="disp title">{t.body.connectTitle}</h1>
+      <section className="card">
+        <p className="muted">{t.body.connectText}</p>
+      </section>
+    </main>
+  );
+}
+
 // The Profile tab: units and language apply at once; the rest is saved together.
 export function ProfileSettings({
   userId,
