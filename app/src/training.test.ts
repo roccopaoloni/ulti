@@ -852,3 +852,85 @@ test('erasing the phone leaves no database and sends nothing that was queued', a
   expect(network.batches).toEqual([]);
   reopened.close();
 });
+
+const serverSession = (id: string, localDate: string, updatedAt = `${localDate}T22:00:00.000Z`) => ({
+  id,
+  startedAt: `${localDate}T20:00:00.000Z`,
+  timeZone: 'America/Argentina/Buenos_Aires',
+  localDate,
+  finishedAt: `${localDate}T21:00:00.000Z`,
+  updatedAt,
+});
+const serverSet = (id: string, sessionId: string, weightKg: number, loggedAt: string, updatedAt = loggedAt) => ({
+  id,
+  sessionId,
+  exerciseId: 'back-squat',
+  weightKg,
+  reps: 5,
+  loggedAt,
+  updatedAt,
+});
+
+test('the Sessions and Sets the server holds reach a phone that is new to this user, and show in History, pre-filled rows and scoring', async () => {
+  const network = server();
+  const training = await anasPhone(network).open();
+
+  await training.saveSessionsFromServer(
+    [serverSession('s1', '2026-10-12'), serverSession('s2', '2026-10-14')],
+    [
+      serverSet('a', 's1', 100, '2026-10-12T20:10:00.000Z'),
+      serverSet('b', 's2', 105, '2026-10-14T20:10:00.000Z'),
+      serverSet('c', 's2', 105, '2026-10-14T20:15:00.000Z'),
+    ],
+  );
+
+  const past = await training.pastSessions();
+  expect(past.map(({ session, sets }) => [session.id, sets.map((set) => set.id)])).toEqual([
+    ['s2', ['b', 'c']],
+    ['s1', ['a']],
+  ]);
+  expect((await training.lastSets('back-squat')).map((set) => set.weightKg)).toEqual([105, 105]);
+  expect((await training.scoring()).history.sessions.map((s) => s.localDate)).toEqual(['2026-10-12', '2026-10-14']);
+  // What came from the server is not sent back to it.
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  expect(network.batches).toEqual([]);
+  training.close();
+});
+
+test('downloading again duplicates nothing, and never overwrites or resurrects what is still in the outbox', async () => {
+  const network = server();
+  network.offline = true;
+  const training = await anasPhone(network).open();
+  const session = await training.startSession();
+  const kept = await training.logSet(session.id, 'back-squat', 100, 5);
+  const gone = await training.logSet(session.id, 'back-squat', 90, 5);
+  await training.finishSession(session.id);
+  await training.editSet(kept.id, 102.5, 5);
+  await training.deleteSet(gone.id);
+  const older = '2026-10-01T00:00:00.000Z';
+  const sessions = [serverSession(session.id, '2026-10-19', older)];
+  const sets = [serverSet(kept.id, session.id, 100, older), serverSet(gone.id, session.id, 90, older)];
+
+  await training.saveSessionsFromServer(sessions, sets);
+  await training.saveSessionsFromServer(sessions, sets);
+
+  const past = await training.pastSessions();
+  expect(past.map(({ session: s }) => s.finishedAt !== null)).toEqual([true]);
+  expect(past.flatMap((p) => p.sets).map((set) => [set.id, set.weightKg])).toEqual([[kept.id, 102.5]]);
+  training.close();
+});
+
+test('a newer server copy replaces a Set the phone already sent', async () => {
+  const network = server();
+  const training = await anasPhone(network).open();
+  const session = await training.startSession();
+  const set = await training.logSet(session.id, 'back-squat', 100, 5);
+  await training.finishSession(session.id);
+  await vi.waitFor(() => expect(network.batches.flat().length).toBe(3));
+
+  await training.saveSessionsFromServer([], [{ ...serverSet(set.id, session.id, 110, set.loggedAt), updatedAt: '2030-01-01T00:00:00.000Z' }]);
+
+  expect((await training.pastSessions())[0].sets[0].weightKg).toBe(110);
+  training.close();
+});
+
