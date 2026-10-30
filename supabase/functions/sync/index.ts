@@ -2,7 +2,7 @@
 // batch of mutations; the endpoint saves them, then recomputes the user's whole history.
 import { Client } from '@db/postgres';
 import { withSupabase } from '@supabase/server';
-import { isProfileValue, weekStart } from '@ulti/rules';
+import { isMuscle, isProfileValue, weekStart } from '@ulti/rules';
 import { lockUser, recompute } from '../_shared/recompute.ts';
 
 // What the phone saves. updatedAt is when the phone made the write: the latest one wins.
@@ -29,7 +29,8 @@ type SetRecord = {
 };
 // One entry of a dated history: the value in force from a local date on (ADR 0002).
 type ProfileEntry = { field: string; effectiveFrom: string; value: unknown; updatedAt: string };
-type ExerciseRecord = { id: string; name: string };
+// A Custom Exercise queued before muscles existed has none: it is filed under Full body.
+type ExerciseRecord = { id: string; name: string; muscle?: string };
 // The Routine is saved whole: its Sessions are never looked into here.
 type RoutineRecord = { id: string; days: unknown[]; updatedAt: string };
 type IncrementRecord = { exerciseId: string; incrementKg: number; updatedAt: string };
@@ -111,7 +112,11 @@ async function save(client: Client, userId: string, mutations: Mutation[], recei
     else if (mutation.kind === 'saveIncrement') {
       const { increment } = mutation;
       keepLatest(increments, { ...increment, id: increment.exerciseId });
-    } else if (mutation.kind === 'saveExercise') exercises.set(mutation.exercise.id, mutation.exercise);
+    } else if (mutation.kind === 'saveExercise') {
+      const { exercise } = mutation;
+      if (exercise.muscle !== undefined && !isMuscle(exercise.muscle)) rejected.push(mutation.id);
+      else exercises.set(exercise.id, { ...exercise, muscle: exercise.muscle ?? 'full-body' });
+    }
     else if (mutation.kind === 'saveProfileEntry') {
       const { entry } = mutation;
       if (!isProfileValue(entry.field, entry.value)) rejected.push(mutation.id);
@@ -125,9 +130,9 @@ async function save(client: Client, userId: string, mutations: Mutation[], recei
   // an ID that exists already, whoever owns it, is left alone. The one name serves both languages,
   // and the Increment is a placeholder: Custom Exercises never get recommendations.
   await transaction.queryArray`
-    insert into public.exercises (id, name_en, name_es, type, default_increment_kg, owner_id)
-    select e.id, e.name, e.name, 'weighted', 2.5, ${userId}
-    from jsonb_to_recordset(${JSON.stringify([...exercises.values()])}::jsonb) as e(id text, name text)
+    insert into public.exercises (id, name_en, name_es, type, default_increment_kg, muscle, owner_id)
+    select e.id, e.name, e.name, 'weighted', 2.5, e.muscle, ${userId}
+    from jsonb_to_recordset(${JSON.stringify([...exercises.values()])}::jsonb) as e(id text, name text, muscle text)
     on conflict (id) do nothing`;
   await transaction.queryArray`
     insert into public.sessions(user_id, id, started_at, time_zone, local_date, finished_at, routine_day_id, updated_at)
