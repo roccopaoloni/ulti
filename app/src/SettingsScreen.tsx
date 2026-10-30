@@ -3,6 +3,7 @@ import type { Units } from '@ulti/rules';
 import { signOut } from './auth.ts';
 import { DeleteAccount, errorText, useNameForm } from './GroupsScreens.tsx';
 import { GroupsError } from './groups.ts';
+import { InstallSettings } from './InstallApp.tsx';
 import { useI18n } from './i18n.ts';
 import { paths } from './navigation.ts';
 import { AppSettings, useBodyForm, VisibilityCard } from './ProfileScreens.tsx';
@@ -80,6 +81,7 @@ export function SettingsScreen({
       {training && profile && <YouSettings userId={userId} training={training} profile={profile} units={units} onSaved={onSaved} />}
       <h2 className="section-title">{t.settings.app}</h2>
       <AppSettings userId={userId} units={units} />
+      <InstallSettings />
       <h2 className="section-title">{t.settings.privacy}</h2>
       <VisibilityCard userId={userId} />
       <h2 className="section-title">{t.settings.account}</h2>
