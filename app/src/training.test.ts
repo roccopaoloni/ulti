@@ -4,7 +4,7 @@ import { openTraining, type Mutation } from './training.ts';
 
 // The sync endpoint, as the phone sees it. Offline, every request fails before it leaves the phone.
 function server() {
-  const state = { offline: false, failuresLeft: 0, batches: [] as Mutation[][], rejectKinds: [] as string[] };
+  const state = { offline: false, failuresLeft: 0, batches: [] as Mutation[][], rejectKinds: [] as string[], moveTo: undefined as string | undefined };
   const send = async (mutations: Mutation[]) => {
     if (state.offline) throw new TypeError('Failed to fetch');
     state.batches.push(mutations);
@@ -12,7 +12,10 @@ function server() {
       state.failuresLeft--;
       throw new Error('503 Service Unavailable');
     }
-    return { rejected: mutations.filter(({ kind }) => state.rejectKinds.includes(kind)).map(({ id }) => id) };
+    const moved = state.moveTo
+      ? mutations.filter(({ kind }) => kind === 'saveProfileEntry').map(({ id }) => ({ id, effectiveFrom: state.moveTo! }))
+      : [];
+    return { rejected: mutations.filter(({ kind }) => state.rejectKinds.includes(kind)).map(({ id }) => id), moved };
   };
   return Object.assign(state, { send });
 }
@@ -349,6 +352,32 @@ test('a later change to the Weekly Target starts next Monday', async () => {
     { effectiveFrom: '2026-10-21', value: 4 },
     { effectiveFrom: '2026-10-26', value: 2 },
   ]);
+  saturday.close();
+});
+
+test('a Weekly Target change the server moves to a later Monday is rewritten on the phone, and leaves the outbox', async () => {
+  const network = server();
+  const phone = anasPhone(network, { startsAt: Date.UTC(2026, 9, 21, 21, 5) });
+  const training = await phone.open();
+  await training.setProfile('weeklyTarget', 4);
+  await vi.waitFor(() => expect(network.batches).toHaveLength(1));
+  training.close();
+
+  network.moveTo = '2026-11-02';
+  const saturday = await phone.open(Date.UTC(2026, 9, 24, 21, 5));
+  await saturday.setProfile('weeklyTarget', 2);
+
+  await vi.waitFor(async () =>
+    expect((await saturday.profile()).weeklyTarget).toEqual([
+      { effectiveFrom: '2026-10-21', value: 4 },
+      { effectiveFrom: '2026-11-02', value: 2 },
+    ]),
+  );
+  network.batches.length = 0;
+  network.moveTo = undefined;
+  await saturday.setProfile('bodyweightKg', 62);
+  await vi.waitFor(() => expect(network.batches).toHaveLength(1));
+  expect(network.batches[0].map(({ kind }) => kind)).toEqual(['saveProfileEntry']);
   saturday.close();
 });
 
