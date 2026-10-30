@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useUser } from './auth.ts';
 import { AuthScreens, useAuthFlow } from './AuthScreens.tsx';
-import { FriendsTrainedToday, RaceCards, SinceLastVisit } from './Boards.tsx';
-import { newGroupPath, usePendingInvite } from './groups.ts';
+import { FriendsTrainedToday, MemberProfileScreen, RaceCards, SinceLastVisit } from './Boards.tsx';
+import { memberFromPath, newGroupPath, usePendingInvite } from './groups.ts';
 import { CreateGroup, GroupsTab, JoinInvite, ProfileSummary } from './GroupsScreens.tsx';
 import { StampsCard, WeekCard } from './Consistency.tsx';
 import { History } from './HistoryScreen.tsx';
@@ -48,7 +48,9 @@ export function App() {
 function Tabs({ userId }: { userId: string }) {
   const { t } = useI18n();
   const current = useCurrentTab();
-  const settingsOpen = usePathname() === settingsPath;
+  const pathname = usePathname();
+  const settingsOpen = pathname === settingsPath;
+  const member = memberFromPath(pathname);
   const { label, text } = t.screens[current];
   const { training, downloads } = useTraining(userId);
   const logging = useLogging(training);
@@ -75,7 +77,9 @@ function Tabs({ userId }: { userId: string }) {
       {training && <RankUpGate userId={userId} training={training} />}
       {training && <CrownGate />}
       <main className="screen" key={downloads}>
-        {settingsOpen ? (
+        {member ? (
+          <MemberProfileScreen key={member.join()} userId={userId} training={training} groupId={member[0]} memberId={member[1]} />
+        ) : settingsOpen ? (
           <SettingsScreen userId={userId} training={training} profile={profile} units={units} onSaved={reload} />
         ) : (
           <>

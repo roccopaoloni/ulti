@@ -37,6 +37,12 @@ export const backIcon = (
 );
 
 // The ✓ that logs a Set, from the prototype.
+export const chevronIcon = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M9 5l7 7-7 7" />
+  </svg>
+);
+
 export const checkIcon = (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M4.5 12.5 10 18 19.5 6.5" />
