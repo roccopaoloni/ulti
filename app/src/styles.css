@@ -1366,6 +1366,9 @@ prefers-reduced-motion switches every animation off, so it stays off the badge. 
   padding-block: calc(12px + env(safe-area-inset-top, 0px)) 10px;
   border-bottom: 1px solid var(--line);
 }
+.picker:focus {
+  outline: none;
+}
 .picker-chips {
   margin-top: 0;
   flex-shrink: 0;

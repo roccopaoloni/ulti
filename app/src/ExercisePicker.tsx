@@ -44,6 +44,8 @@ export function ExercisePicker({
       setPicked([]);
       setCreating(null);
       dialog.current?.showModal();
+      // Focus starts on the dialog itself: not on the back button, and not on the search box, which would raise the keyboard.
+      dialog.current?.focus();
     } else dialog.current?.close();
   }, [open]);
 
@@ -67,7 +69,7 @@ export function ExercisePicker({
   }
 
   return createPortal(
-    <dialog ref={dialog} className="picker" aria-label={s.chooseExercise} onClose={onClose}>
+    <dialog ref={dialog} className="picker" tabIndex={-1} aria-label={s.chooseExercise} onClose={onClose}>
       <header className="picker-head">
         <button type="button" className="iconbtn" aria-label={t.close} onClick={onClose}>
           {backIcon}
