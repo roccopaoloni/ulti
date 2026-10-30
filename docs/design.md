@@ -79,7 +79,9 @@ List layout:
 
 - The whole Session is one scrolling list: each Exercise is a block of Set rows, **pre-filled** with the target (the last Session's numbers, or the recommended heavier weight with a "↑ +2.5 kg" badge).
 - One tap on ✓ completes a Set exactly as planned. Tapping a number opens a large keypad with ± buttons that step weight by the Exercise's Increment and reps by 1.
-- RIR is optional: after ✓, a row of chips (0 · 1 · 2 · 3 · 4+) appears for a few seconds and disappears if ignored.
+- Rows not logged yet show the Warm-up or Working tag too: what automatic labelling would give the row if the plan were logged, following the weight as it changes. Tapping the tag locks in the lifter's choice, and a Set keeps the label its row showed when ✓ is tapped.
+- RIR is optional, with an ⓘ that explains it: after ✓ on a Working Set, a row of chips (0 · 1 · 2 · 3 · 4+) stays until the lifter answers or logs the next Set. A Warm-up Set never shows it, and flipping a logged Set to Warm-up clears its RIR. Skipping it on the Session's first Working Set hides it for the rest of that Session; it comes back in the next one.
+- A dumbbell Exercise says its weight is per dumbbell, on its rows and its keypad. The weight is stored and scored per dumbbell, so no numbers change.
 - One-handed use: large tap targets, primary actions within thumb reach, and the screen stays awake during a Session.
 
 ## Home

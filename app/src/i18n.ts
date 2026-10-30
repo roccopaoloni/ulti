@@ -6,7 +6,7 @@ import type { Chip, Headline, Kicker, Muscle, Tier } from '@ulti/rules';
 export type Language = 'en' | 'es';
 
 // Glossary terms that appear in the interface, each explained by an ⓘ.
-export type Term = 'weeklyTarget' | 'strengthLevel' | 'routine' | 'group' | 'rank' | 'owner' | 'scoringMode' | 'session' | 'set' | 'exercise' | 'calibration' | 'deload';
+export type Term = 'weeklyTarget' | 'strengthLevel' | 'routine' | 'group' | 'rank' | 'owner' | 'scoringMode' | 'session' | 'set' | 'exercise' | 'calibration' | 'deload' | 'rir';
 
 type Messages = {
   tagline: string;
@@ -221,6 +221,8 @@ type Messages = {
     dismissStall: string;
     // The chips after ✓ asking for RIR (0 to 4+), and the Exercise's Increment that ± step by.
     rir: string;
+    // For a dumbbell Exercise: its weight is per dumbbell. Shown under the name and as the keypad's title.
+    perDumbbell: string;
     increment: (amount: string, units: string) => string;
     incrementLabel: string;
   };
@@ -385,6 +387,11 @@ const en: Messages = {
       term: 'Calibration',
       explanation:
         "Your first two sessions with an exercise only set your starting best, so they can't earn Progress Points. After that, beating your all-time best estimated one-rep max is a Personal Record.",
+    },
+    rir: {
+      term: 'Reps in reserve (RIR)',
+      explanation:
+        'How many more reps you could have done at the end of a set: 0 means you had nothing left, 3 means you could have done three more, and 4+ means four or more. It is optional: skip it whenever you like. Warm-up sets never ask for it.',
     },
     deload: {
       term: 'Deload Week',
@@ -573,6 +580,7 @@ const en: Messages = {
     stall: (weight, units) => `Stalled: drop to ${weight} ${units} and build back up`,
     dismissStall: 'Keep the same weight',
     rir: 'Reps in reserve (RIR)',
+    perDumbbell: 'Weight per dumbbell',
     increment: (amount, units) => `Step ${amount} ${units}`,
     incrementLabel: 'Increment',
   },
@@ -751,6 +759,11 @@ const es: Messages = {
       term: 'Calibración',
       explanation:
         'Tus primeras dos sesiones con un ejercicio solo fijan tu mejor marca de partida, así que no dan Puntos de progreso. Después, superar tu mejor 1RM estimado de siempre es un PR.',
+    },
+    rir: {
+      term: 'Repeticiones en reserva (RIR)',
+      explanation:
+        'Cuántas repeticiones más podrías haber hecho al terminar una serie: 0 es que no te quedaba nada, 3 es que podías hacer tres más, y 4+ es cuatro o más. Es opcional: saltealo cuando quieras. Las series de entrada en calor nunca lo piden.',
     },
     deload: {
       term: 'Semana de descarga',
@@ -935,6 +948,7 @@ const es: Messages = {
     stall: (weight, units) => `Estancado: bajá a ${weight} ${units} y volvé a subir`,
     dismissStall: 'Mantener el mismo peso',
     rir: 'Repeticiones en reserva (RIR)',
+    perDumbbell: 'Peso por mancuerna',
     increment: (amount, units) => `Salto de ${amount} ${units}`,
     incrementLabel: 'Incremento',
   },

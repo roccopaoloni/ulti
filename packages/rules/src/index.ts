@@ -318,6 +318,26 @@ export function labelSets(sets: { weightKg: number; label?: SetLabel }[]): SetLa
   return sets.map((set, index) => set.label ?? (index < firstWorking ? 'warm-up' : 'working'));
 }
 
+// The labels rows not logged yet would get, were they logged after the Sets already logged: each row
+// is labelled against the whole plan, so a light first row of a ramp shows Warm-up before it is
+// logged. A row with a label of its own (the lifter's tap) keeps it.
+export function predictLabels(logged: { weightKg: number; label?: SetLabel }[], rows: { weightKg: number; label?: SetLabel }[]): SetLabel[] {
+  return labelSets([...logged, ...rows]).slice(logged.length);
+}
+
+// Whether to ask for RIR after the logged Set: never after a Warm-up Set, and not for the rest of
+// the Session once the lifter skipped it on the Session's first Working Set (design: Logging a Session).
+// The Sets are the whole Session's, in the order they were logged.
+export function asksRir(sets: { id: string; exercise: string; weightKg: number; label?: SetLabel; rir?: number }[], setId: string): boolean {
+  const labelOf = new Map<string, SetLabel>();
+  for (const exercise of new Map(sets.map((set) => [set.exercise, 0])).keys()) {
+    const own = sets.filter((set) => set.exercise === exercise);
+    labelSets(own).forEach((label, index) => labelOf.set(own[index]!.id, label));
+  }
+  const first = sets.find((set) => labelOf.get(set.id) === 'working');
+  return labelOf.get(setId) === 'working' && (first?.id === setId || first?.rir !== undefined);
+}
+
 // The Session's Working Sets, in the order they were logged.
 export function workingSets(session: Session): Set[] {
   const labels = new Map<string, SetLabel[]>();
