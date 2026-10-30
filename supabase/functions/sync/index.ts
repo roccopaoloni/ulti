@@ -33,7 +33,9 @@ type ProfileEntry = { field: string; effectiveFrom: string; value: unknown; upda
 type ExerciseRecord = { id: string; name: string; muscle?: string };
 // The Routine is saved whole: its Sessions are never looked into here.
 type RoutineRecord = { id: string; days: unknown[]; updatedAt: string };
-type IncrementRecord = { exerciseId: string; incrementKg: number; updatedAt: string };
+// "I don't follow a routine", set or cleared. Saving a Routine clears it too.
+type NoRoutineRecord = { value: boolean; updatedAt: string };
+type IncrementRecord ={ exerciseId: string; incrementKg: number; updatedAt: string };
 // A Deload Week, by the Monday that starts it: suggested or self-started, accepted or dismissed.
 type DeloadRecord = { week: string; origin: 'suggested' | 'self'; reason?: string; status: 'accepted' | 'dismissed'; updatedAt: string };
 type Mutation =
@@ -43,6 +45,7 @@ type Mutation =
   | { id: string; kind: 'saveExercise'; exercise: ExerciseRecord }
   | { id: string; kind: 'saveProfileEntry'; entry: ProfileEntry }
   | { id: string; kind: 'saveRoutine'; routine: RoutineRecord }
+  | { id: string; kind: 'saveNoRoutine'; noRoutine: NoRoutineRecord }
   | { id: string; kind: 'saveIncrement'; increment: IncrementRecord };
 
 // Sets dated after the moment the endpoint received them are rejected. A phone's clock can run a
@@ -102,6 +105,8 @@ function isRejected(mutation: Mutation, receivedAt: number) {
     // A Custom Exercise's ID is `custom-` and then its own, so it never stands in for a catalog one.
     case 'saveExercise':
       return !mutation.exercise.id.startsWith('custom-') || (mutation.exercise.muscle !== undefined && !isMuscle(mutation.exercise.muscle));
+    case 'saveNoRoutine':
+      return typeof mutation.noRoutine.value !== 'boolean';
     case 'saveIncrement':
       return !(mutation.increment.incrementKg > 0);
     case 'saveSet': {
@@ -150,6 +155,7 @@ async function save(client: Client, userId: string, mutations: Mutation[], recei
     if (!kept || Date.parse(kept.updatedAt) <= Date.parse(record.updatedAt)) records.set(record.id, record);
   };
   const routines = new Map<string, RoutineRecord>();
+  const noRoutines = new Map<string, NoRoutineRecord & { id: string }>();
   const increments = new Map<string, IncrementRecord & { id: string }>();
   const deloads = new Map<string, DeloadRecord & { id: string }>();
   const exercises = new Map<string, ExerciseRecord>();
@@ -176,6 +182,7 @@ async function save(client: Client, userId: string, mutations: Mutation[], recei
     }
     if (mutation.kind === 'saveSession') keepLatest(sessions, mutation.session);
     else if (mutation.kind === 'saveRoutine') keepLatest(routines, mutation.routine);
+    else if (mutation.kind === 'saveNoRoutine') keepLatest(noRoutines, { ...mutation.noRoutine, id: 'no-routine' });
     else if (mutation.kind === 'saveDeload') keepLatest(deloads, { ...mutation.deload, id: mutation.deload.week });
     else if (mutation.kind === 'saveIncrement') keepLatest(increments, { ...mutation.increment, id: mutation.increment.exerciseId });
     else if (mutation.kind === 'saveExercise') exercises.set(mutation.exercise.id, { ...mutation.exercise, muscle: mutation.exercise.muscle ?? 'full-body' });
@@ -235,8 +242,25 @@ async function save(client: Client, userId: string, mutations: Mutation[], recei
       days = excluded.days,
       updated_at = excluded.updated_at
     where routines.updated_at < excluded.updated_at`;
+  // The choice is saved before the Routines clear it, so a Routine written after it wins and one
+  // written before it doesn't. Only a Routine with Sessions in it counts.
   await transaction.queryArray`
-    insert into public.increment_overrides (user_id, exercise_id, increment_kg, updated_at)
+    insert into public.profiles (user_id, no_routine, no_routine_at)
+    select ${userId}, n.value, n."updatedAt"
+    from jsonb_to_recordset(${JSON.stringify([...noRoutines.values()])}::jsonb) as n(value boolean, "updatedAt" timestamptz)
+    on conflict (user_id) do update set
+      no_routine = excluded.no_routine,
+      no_routine_at = excluded.no_routine_at
+    where profiles.no_routine_at is null or profiles.no_routine_at < excluded.no_routine_at`;
+  await transaction.queryArray`
+    update public.profiles set no_routine = false, no_routine_at = r."updatedAt"
+    from jsonb_to_recordset(${JSON.stringify([...routines.values()])}::jsonb) as r(days jsonb, "updatedAt" timestamptz)
+    where profiles.user_id = ${userId}
+      and profiles.no_routine
+      and jsonb_array_length(r.days) > 0
+      and profiles.no_routine_at < r."updatedAt"`;
+  await transaction.queryArray`
+    insert into public.increment_overrides(user_id, exercise_id, increment_kg, updated_at)
     select ${userId}, i."exerciseId", i."incrementKg", i."updatedAt"
     from jsonb_to_recordset(${JSON.stringify([...increments.values()])}::jsonb) as i(
       "exerciseId" text, "incrementKg" numeric, "updatedAt" timestamptz
