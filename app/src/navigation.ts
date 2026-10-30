@@ -22,6 +22,7 @@ export function usePathname() {
 // Screens that open on top of a tab (see SubScreen.tsx) live under that tab's path, so the tab
 // stays the current one. Reloading on their URL reopens them.
 export const settingsPath = `${paths.profile}/settings`;
+export const routinePath = `${paths.train}/routine`;
 
 export function useCurrentTab(): Tab {
   const pathname = usePathname();
