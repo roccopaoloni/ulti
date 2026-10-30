@@ -266,9 +266,10 @@ export async function openTraining(userId: string, options: Options) {
       await db.put('state', { sessionId, exerciseIds: [...inProgress.exerciseIds, exerciseId] }, 'sessionInProgress');
     },
 
-    async logSet(sessionId: string, exerciseId: string, weightKg: number, reps: number) {
+    // `label` is the one the row showed, which the Set keeps from then on.
+    async logSet(sessionId: string, exerciseId: string, weightKg: number, reps: number, label?: SetLabel) {
       const loggedAt = stamp();
-      const set: SetRecord = { id: crypto.randomUUID(), sessionId, exerciseId, weightKg, reps, loggedAt, updatedAt: loggedAt };
+      const set: SetRecord = { id: crypto.randomUUID(), sessionId, exerciseId, weightKg, reps, label, loggedAt, updatedAt: loggedAt };
       await write({ id: crypto.randomUUID(), kind: 'saveSet', set });
       return set;
     },
@@ -279,10 +280,12 @@ export async function openTraining(userId: string, options: Options) {
       await write({ id: crypto.randomUUID(), kind: 'saveSet', set: { ...set, weightKg, reps, updatedAt: stamp() } });
     },
 
-    // The lifter's one-tap override of a Set's detected label: written like an edit.
+    // The lifter's one-tap override of a Set's detected label: written like an edit. A Warm-up Set has
+    // no RIR, so flipping to it clears any.
     async setLabel(setId: string, label: SetLabel) {
       const set = (await db.get('sets', setId))!;
-      await write({ id: crypto.randomUUID(), kind: 'saveSet', set: { ...set, label, updatedAt: stamp() } });
+      const { rir, ...rest } = set;
+      await write({ id: crypto.randomUUID(), kind: 'saveSet', set: { ...(label === 'warm-up' ? rest : set), label, updatedAt: stamp() } });
     },
 
     // The Set's RIR, optional: written like an edit.

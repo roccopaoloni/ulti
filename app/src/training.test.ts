@@ -598,6 +598,30 @@ test('a pull-up Set with added weight logs offline, queues as the added weight, 
   training.close();
 });
 
+test('a Set logged with the label its row showed keeps it', async () => {
+  const training = await anasPhone(server()).open();
+  const session = await training.startSession();
+
+  const set = await training.logSet(session.id, 'back-squat', 40, 5, 'warm-up');
+
+  expect((await training.sessionInProgress())?.sets.map(({ id, label }) => ({ id, label }))).toEqual([{ id: set.id, label: 'warm-up' }]);
+  training.close();
+});
+
+test('flipping a Set with RIR to Warm-up clears its RIR, and flipping back does not bring it back', async () => {
+  const training = await anasPhone(server()).open();
+  const session = await training.startSession();
+  const set = await training.logSet(session.id, 'back-squat', 100, 5, 'working');
+  await training.setRir(set.id, 2);
+
+  await training.setLabel(set.id, 'warm-up');
+  expect((await training.sessionInProgress())?.sets.map(({ label, rir }) => ({ label, rir }))).toEqual([{ label: 'warm-up', rir: undefined }]);
+
+  await training.setLabel(set.id, 'working');
+  expect((await training.sessionInProgress())?.sets.map(({ label, rir }) => ({ label, rir }))).toEqual([{ label: 'working', rir: undefined }]);
+  training.close();
+});
+
 const benchCatalog = [{ id: 'bench-press', nameEn: 'Bench press', nameEs: 'Press banca', equipment: 'barbell', custom: false, incrementKg: 2.5, bodyweight: false }];
 const benchRange = { repMin: 8, repMax: 12 };
 
