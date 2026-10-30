@@ -10,8 +10,14 @@ test('weights are stored in kg and shown in the units the user chose', () => {
 
 test("an Exercise's Increment steps by a loadable amount in the user's units", () => {
   expect(incrementInUnits(2.5, 'kg')).toBe(2.5);
-  expect(incrementInUnits(2.5, 'lb')).toBe(5.5);
-  expect(incrementInUnits(5, 'lb')).toBe(11);
+  expect(incrementInUnits(2.5, 'lb')).toBe(5);
+  expect(incrementInUnits(5, 'lb')).toBe(10);
+});
+
+test('in lb the step rounds to the nearest 2.5 lb plate pair, and never goes below 2.5 lb', () => {
+  expect(incrementInUnits(1.25, 'lb')).toBe(2.5);
+  expect(incrementInUnits(0.5, 'lb')).toBe(2.5);
+  expect(incrementInUnits(10, 'lb')).toBe(22.5);
 });
 
 test('a weight typed in lb comes back as the same number of lb', () => {

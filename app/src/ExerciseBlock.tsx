@@ -218,7 +218,8 @@ export function ExerciseBlock({
           onClose={() => {
             const typed = Number(editingIncrement.replace(',', '.'));
             setEditingIncrement(null);
-            if (typed > 0) onIncrement(unitsToKg(typed, units));
+            // Confirming the value the sheet opened with saves nothing, so kg is not rewritten by rounding.
+            if (typed > 0 && typed !== incrementInUnits(incrementKg, units)) onIncrement(unitsToKg(typed, units));
           }}
         />
       )}
