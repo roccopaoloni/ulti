@@ -1,4 +1,5 @@
 import 'fake-indexeddb/auto';
+import { labelSets } from '@ulti/rules';
 import { expect, test, vi } from 'vitest';
 import { openTraining, type Mutation } from './training.ts';
 
@@ -311,6 +312,24 @@ test("a Set's label flipped offline shows at once and goes out as a later write 
   ]);
   expect(Date.parse(writes[1].updatedAt)).toBeGreaterThan(Date.parse(writes[0].updatedAt));
   expect(writes[0].mutation).not.toBe(writes[1].mutation);
+  training.close();
+});
+
+test("a past Session's Sets keep their labels, so History shows the Warm-up and Working Sets as they were saved, including one flipped after the Session finished", async () => {
+  const network = server();
+  const phone = anasPhone(network);
+  const training = await phone.open();
+  const session = await training.startSession();
+  const first = await training.logSet(session.id, 'back-squat', 40, 5);
+  await training.logSet(session.id, 'back-squat', 100, 5);
+  await training.logSet(session.id, 'back-squat', 100, 5);
+  await training.finishSession(session.id);
+
+  await training.setLabel(first.id, 'working');
+
+  const [past] = await training.pastSessions();
+  expect(labelSets(past.sets.filter((set) => set.exerciseId === 'back-squat'))).toEqual(['working', 'working', 'working']);
+  expect(past.sets.map(({ label }) => label)).toEqual(['working', undefined, undefined]);
   training.close();
 });
 
