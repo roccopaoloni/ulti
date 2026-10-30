@@ -1067,3 +1067,47 @@ test("a Session the server holds unfinished is downloaded but is not this phone'
   training.close();
 });
 
+// Un-logging a Set is deleting it; logging the corrected one is a new Set (design: Logging a Session).
+test('a Set un-logged offline and logged again syncs as the deletion plus the corrected Set', async () => {
+  const network = server();
+  network.offline = true;
+  const phone = anasPhone(network);
+  const training = await phone.open();
+  const session = await training.startSession();
+  const mistake = await training.logSet(session.id, 'bench-press', 800, 8, 'working');
+  await training.setRir(mistake.id, 2);
+
+  await training.deleteSet(mistake.id);
+  expect((await training.sessionInProgress())!.sets).toEqual([]);
+  const corrected = await training.logSet(session.id, 'bench-press', 80, 8, 'working');
+
+  expect((await training.sessionInProgress())!.sets.map(({ id }) => id)).toEqual([corrected.id]);
+  network.offline = false;
+  phone.connectivity.dispatchEvent(new Event('online'));
+  await vi.waitFor(() => expect(network.batches).toHaveLength(1));
+  const final = new Map(network.batches[0].flatMap((m) => (m.kind === 'saveSet' ? [[m.set.id, m.set] as const] : [])));
+  expect([...final.values()].filter((set) => !set.deleted).map(({ id, weightKg }) => ({ id, weightKg }))).toEqual([{ id: corrected.id, weightKg: 80 }]);
+  expect(final.get(mistake.id)?.deleted).toBe(true);
+  training.close();
+});
+
+test('a Set un-logged and not logged again leaves nothing behind, locally or after sync', async () => {
+  const network = server();
+  network.offline = true;
+  const phone = anasPhone(network);
+  const training = await phone.open();
+  const session = await training.startSession();
+  const gone = await training.logSet(session.id, 'bench-press', 80, 8);
+  await training.deleteSet(gone.id);
+  await training.finishSession(session.id);
+
+  expect((await training.pastSessions())[0].sets).toEqual([]);
+  expect((await training.scoring()).events).toEqual([]);
+  network.offline = false;
+  phone.connectivity.dispatchEvent(new Event('online'));
+  await vi.waitFor(() => expect(network.batches).toHaveLength(1));
+  const last = network.batches[0].filter((m) => m.kind === 'saveSet').at(-1)!;
+  expect(last.kind === 'saveSet' && last.set.deleted).toBe(true);
+  training.close();
+});
+
