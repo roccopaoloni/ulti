@@ -1335,3 +1335,73 @@ prefers-reduced-motion switches every animation off, so it stays off the badge. 
 @keyframes ru-wing-l{0%{transform:rotate(-60deg) scale(.4);opacity:0}100%{transform:none;opacity:1}}
 @keyframes ru-bray{0%{transform:scale(.2) rotate(-30deg);opacity:0}100%{transform:none;opacity:1}}
 .rank-badge .bw{transform-box:view-box}
+
+/* Screens inside a tab (SubScreen) and Settings. */
+.subhead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.subhead .iconbtn {
+  margin-left: -10px;
+}
+.title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.section-title {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 6px;
+}
+.profile-summary {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.profile-name {
+  font-size: calc(26px * var(--ds));
+  overflow-wrap: anywhere;
+}
+.switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  font-weight: 600;
+  text-align: left;
+}
+.switch {
+  position: relative;
+  flex: none;
+  width: 48px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  transition: background 0.15s;
+}
+.switch::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: transform 0.15s, background 0.15s;
+}
+.switch-row[aria-checked='true'] .switch {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.switch-row[aria-checked='true'] .switch::after {
+  transform: translateX(20px);
+  background: var(--accent-ink);
+}

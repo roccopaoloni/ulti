@@ -1,20 +1,21 @@
 import { useEffect, useState } from 'react';
-import { signOut, useUser } from './auth.ts';
+import { useUser } from './auth.ts';
 import { AuthScreens, useAuthFlow } from './AuthScreens.tsx';
 import { FriendsTrainedToday, RaceCards, SinceLastVisit } from './Boards.tsx';
 import { newGroupPath, usePendingInvite } from './groups.ts';
-import { CreateGroup, DeleteAccount, GroupsTab, JoinInvite, ProfileCard } from './GroupsScreens.tsx';
+import { CreateGroup, GroupsTab, JoinInvite, ProfileSummary } from './GroupsScreens.tsx';
 import { StampsCard, WeekCard } from './Consistency.tsx';
 import { History } from './HistoryScreen.tsx';
 import { useI18n, type Term } from './i18n.ts';
-import { tabIcons } from './icons.tsx';
+import { gearIcon, tabIcons } from './icons.tsx';
 import { Info } from './Info.tsx';
-import { navigate, paths, tabs, useCurrentTab, usePathname, type Tab } from './navigation.ts';
+import { navigate, paths, settingsPath, tabs, useCurrentTab, usePathname, type Tab } from './navigation.ts';
 import { hasEverything, useBodyProfile, useLayout, useUnits } from './profile.ts';
 import { RankCard } from './RankCard.tsx';
 import { CrownGate } from './CrownGate.tsx';
 import { RankUpGate } from './RankUpGate.tsx';
-import { BodyweightPrompt, Onboarding, ProfileSettings, VisibilityCard } from './ProfileScreens.tsx';
+import { BodyweightPrompt, Onboarding } from './ProfileScreens.tsx';
+import { SettingsScreen } from './SettingsScreen.tsx';
 import { RoutineEditor } from './RoutineScreen.tsx';
 import { SessionInProgressBar, SessionScreen, StartSession, useLogging } from './SessionScreen.tsx';
 import { useTraining } from './useTraining.ts';
@@ -47,8 +48,8 @@ export function App() {
 function Tabs({ userId }: { userId: string }) {
   const { t } = useI18n();
   const current = useCurrentTab();
+  const settingsOpen = usePathname() === settingsPath;
   const { label, text } = t.screens[current];
-  const [signOutError, setSignOutError] = useState<string>();
   const training = useTraining(userId);
   const logging = useLogging(training);
   const { profile, ready, reload } = useBodyProfile(userId, training);
@@ -71,77 +72,56 @@ function Tabs({ userId }: { userId: string }) {
       {training && <RankUpGate userId={userId} training={training} />}
       {training && <CrownGate />}
       <main className="screen">
-        {current === 'home' ? (
-          <header className="home-head">
-            <h1 className="wordmark">ULTI</h1>
-            <span className="tagline">{t.tagline}</span>
-          </header>
+        {settingsOpen ? (
+          <SettingsScreen userId={userId} training={training} profile={profile} units={units} onSaved={reload} />
         ) : (
-          <h1 className="disp title">{t.tabs[current]}</h1>
-        )}
-        {current === 'profile' && <ProfileCard userId={userId} />}
-        {current === 'groups' ? (
-          <GroupsTab userId={userId} training={training} />
-        ) : (
-          <section className="card">
-            <div className="eyebrow">
-              {label} <Info term={screenTerms[current]} />
-            </div>
-            <p className="muted">{text}</p>
-          </section>
-        )}
-        {current === 'home' && training && profile && promptDue && (
-          <BodyweightPrompt
-            training={training}
-            profile={profile}
-            units={units}
-            onDone={async () => {
-              await reload();
-              setPromptDue(await training.bodyweightPromptDue());
-            }}
-          />
-        )}
-        {current === 'home' && <SinceLastVisit userId={userId} />}
-        {current === 'home' && training && profile && <WeekCard training={training} profile={profile} />}
-        {current === 'home' && training && <StartSession logging={logging} training={training} />}
-        {current === 'home' && <RaceCards userId={userId} />}
-        {current === 'home' && <FriendsTrainedToday userId={userId} />}
-        {current === 'train' && training && <RoutineEditor training={training} profile={profile} onProfileSaved={reload} />}
-        {current === 'train' && training && <History training={training} units={units} />}
-        {current === 'profile' && training && <RankCard training={training} />}
-        {current === 'profile' && training && <StampsCard training={training} />}
-        {current === 'profile' && training && profile && (
-          <ProfileSettings userId={userId} training={training} profile={profile} units={units} onSaved={reload} />
-        )}
-        {current === 'profile' && <VisibilityCard userId={userId} />}
-        {current === 'profile' && (
           <>
-            <button
-              type="button"
-              className="btn-link"
-              onClick={async () => {
-                // Signing out fails and leaves the user signed in only offline with an expired
-                // token. Otherwise they're signed out and the tabs are gone.
-                if (await signOut()) setSignOutError(t.auth.errors.offline);
-              }}
-            >
-              {t.auth.signOut}
-            </button>
-            {signOutError && (
-              <p className="error" role="alert">
-                {signOutError}
-              </p>
+            {current === 'home' ? (
+              <header className="home-head">
+                <h1 className="wordmark">ULTI</h1>
+                <span className="tagline">{t.tagline}</span>
+              </header>
+            ) : (
+              <div className="title-row">
+                <h1 className="disp title">{t.tabs[current]}</h1>
+                {current === 'profile' && (
+                  <button type="button" className="iconbtn" aria-label={t.settings.open} onClick={() => navigate(settingsPath)}>
+                    {gearIcon}
+                  </button>
+                )}
+              </div>
             )}
-            <DeleteAccount training={training} />
-            <section aria-label={t.about.title}>
-              <h2 className="disp">{t.about.title}</h2>
-              <p>
-                <a href="https://fitnessvolt.com/strength-standards/strength-data/" target="_blank" rel="noreferrer">
-                  {t.about.fitnessVoltLink}
-                </a>
-              </p>
-              <p>{t.about.symmetricStrength}</p>
-            </section>
+            {current === 'profile' && <ProfileSummary userId={userId} />}
+            {current === 'groups' ? (
+              <GroupsTab userId={userId} training={training} />
+            ) : (
+              <section className="card">
+                <div className="eyebrow">
+                  {label} <Info term={screenTerms[current]} />
+                </div>
+                <p className="muted">{text}</p>
+              </section>
+            )}
+            {current === 'home' && training && profile && promptDue && (
+              <BodyweightPrompt
+                training={training}
+                profile={profile}
+                units={units}
+                onDone={async () => {
+                  await reload();
+                  setPromptDue(await training.bodyweightPromptDue());
+                }}
+              />
+            )}
+            {current === 'home' && <SinceLastVisit userId={userId} />}
+            {current === 'home' && training && profile && <WeekCard training={training} profile={profile} />}
+            {current === 'home' && training && <StartSession logging={logging} training={training} />}
+            {current === 'home' && <RaceCards userId={userId} />}
+            {current === 'home' && <FriendsTrainedToday userId={userId} />}
+            {current === 'train' && training && <RoutineEditor training={training} profile={profile} onProfileSaved={reload} />}
+            {current === 'train' && training && <History training={training} units={units} />}
+            {current === 'profile' && training && <RankCard training={training} />}
+            {current === 'profile' && training && <StampsCard training={training} />}
           </>
         )}
       </main>

@@ -59,7 +59,7 @@ function useAction() {
 }
 
 // Initials on the colour the member picked (design: Avatars).
-function Avatar({ name, color, large }: { name: string; color: string; large?: boolean }) {
+export function Avatar({ name, color, large }: { name: string; color: string; large?: boolean }) {
   return (
     <span className={large ? 'avatar large' : 'avatar'} style={{ '--c': color } as CSSProperties} aria-hidden="true">
       {initials(name)}
@@ -515,6 +515,19 @@ function LeaveSheet({ dialog, userId, group }: SheetProps) {
 }
 
 // On Profile: the display name and colour the user's Groups show, which they can change any time.
+// On Profile: who the user is, as friends see it. Editing is in Settings.
+export function ProfileSummary({ userId }: { userId: string }) {
+  const profile = useProfile(userId);
+  if (!profile) return null;
+  return (
+    <div className="profile-summary">
+      <Avatar name={profile.display_name} color={profile.avatar_color} large />
+      <span className="disp profile-name">{profile.display_name}</span>
+    </div>
+  );
+}
+
+// In Settings: the display name and colour friends see.
 export function ProfileCard({ userId }: { userId: string }) {
   const { t } = useI18n();
   const g = t.groups;
@@ -565,7 +578,7 @@ export function ProfileCard({ userId }: { userId: string }) {
   );
 }
 
-// On Profile: deletes the account after a confirmation. On success the user is signed out and the
+// In Settings: deletes the account after a confirmation. On success the user is signed out and the
 // device is cleared, so there is nothing left to close.
 export function DeleteAccount({ training }: { training: Training | null }) {
   const { t } = useI18n();

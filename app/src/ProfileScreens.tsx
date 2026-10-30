@@ -63,6 +63,16 @@ function UnitsChoice({ value, onChange }: { value: Units; onChange: (units: Unit
   );
 }
 
+// An on/off setting, as a labelled switch.
+function Switch({ label, checked, onChange }: { label: string; checked: boolean; onChange: () => void }) {
+  return (
+    <button type="button" role="switch" className="switch-row" aria-checked={checked} onClick={onChange}>
+      <span>{label}</span>
+      <span className="switch" aria-hidden="true" />
+    </button>
+  );
+}
+
 type Draft = { sex: Sex | null; bodyweight: string; target: number };
 
 // Sex, bodyweight and Weekly Target: asked in onboarding and changed in Profile.
@@ -144,15 +154,13 @@ export function Onboarding({ userId, training, onDone }: { userId: string; train
   );
 }
 
-// The Profile tab: units and language apply at once; the rest is saved together.
-export function ProfileSettings({
-  userId,
+// Settings, You: sex, bodyweight and Weekly Target, saved together.
+export function BodySettings({
   training,
   profile,
   units,
   onSaved,
 }: {
-  userId: string;
   training: Training;
   profile: Profile;
   units: Units;
@@ -160,7 +168,6 @@ export function ProfileSettings({
 }) {
   const { t, language } = useI18n();
   const b = t.body;
-  const layout = useLayout(userId);
   const day = today();
   const inForce = {
     sex: valueInForce(profile.sex, day) ?? null,
@@ -188,25 +195,6 @@ export function ProfileSettings({
         onSaved();
       }}
     >
-      <UnitsChoice value={units} onChange={(next) => setUnits(userId, next)} />
-      <Choice<Language>
-        label={b.language}
-        options={[
-          { value: 'en', text: 'English' },
-          { value: 'es', text: 'Español' },
-        ]}
-        value={language}
-        onChange={setLanguage}
-      />
-      <Choice<Layout>
-        label={b.layout}
-        options={[
-          { value: 'list', text: b.layoutList },
-          { value: 'focus', text: b.layoutFocus },
-        ]}
-        value={layout}
-        onChange={(next) => setLayout(userId, next)}
-      />
       <BodyFields units={units} draft={shown} onChange={setDraft} />
       {upcoming && (
         <p className="muted">
@@ -232,6 +220,36 @@ export function ProfileSettings({
   );
 }
 
+// Settings, App: units, language and layout apply at once.
+export function AppSettings({ userId, units }: { userId: string; units: Units }) {
+  const { t, language } = useI18n();
+  const b = t.body;
+  const layout = useLayout(userId);
+  return (
+    <div className="card form">
+      <UnitsChoice value={units} onChange={(next) => setUnits(userId, next)} />
+      <Choice<Language>
+        label={b.language}
+        options={[
+          { value: 'en', text: 'English' },
+          { value: 'es', text: 'Español' },
+        ]}
+        value={language}
+        onChange={setLanguage}
+      />
+      <Choice<Layout>
+        label={b.layout}
+        options={[
+          { value: 'list', text: b.layoutList },
+          { value: 'focus', text: b.layoutFocus },
+        ]}
+        value={layout}
+        onChange={(next) => setLayout(userId, next)}
+      />
+    </div>
+  );
+}
+
 // What Group members may see of the user, one choice for every Group. Saved online and at once.
 export function VisibilityCard({ userId }: { userId: string }) {
   const { t } = useI18n();
@@ -250,14 +268,8 @@ export function VisibilityCard({ userId }: { userId: string }) {
     <section className="card">
       <div className="eyebrow">{g.visibilityTitle}</div>
       <p className="muted">{g.visibilityText}</p>
-      <div className="choices">
-        <button type="button" className="chip" aria-pressed={visibility.share_weights} onClick={() => toggle('share_weights')}>
-          {g.shareWeights}
-        </button>
-        <button type="button" className="chip" aria-pressed={visibility.share_sessions} onClick={() => toggle('share_sessions')}>
-          {g.shareSessions}
-        </button>
-      </div>
+      <Switch label={g.shareWeights} checked={visibility.share_weights} onChange={() => toggle('share_weights')} />
+      <Switch label={g.shareSessions} checked={visibility.share_sessions} onChange={() => toggle('share_sessions')} />
       {error && <p className="error">{g.retry}</p>}
     </section>
   );
