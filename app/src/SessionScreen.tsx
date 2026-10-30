@@ -1,9 +1,9 @@
 import { asksRir, inCalibration, type RoutineDay, type Units } from '@ulti/rules';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useCallback, useEffect, useState } from 'react';
 import { useI18n } from './i18n.ts';
 import { SessionSummary, weekProgress, type WeekProgress } from './Consistency.tsx';
 import { ExerciseBlock } from './ExerciseBlock.tsx';
+import { ExercisePicker } from './ExercisePicker.tsx';
 import { backIcon } from './icons.tsx';
 import { Info } from './Info.tsx';
 import type { Layout } from './profile.ts';
@@ -152,8 +152,7 @@ export function SessionScreen({ training, units, layout, onLeave }: { training: 
   const s = t.session;
   const [session, setSession] = useState<InProgress | null>(null);
   const [catalog, setCatalog] = useState<Exercise[]>([]);
-  const picker = useRef<HTMLDialogElement>(null);
-  const [query, setQuery] = useState('');
+  const [picking, setPicking] = useState(false);
   const [scoring, setScoring] = useState<Awaited<ReturnType<Training['scoring']>> | null>(null);
   // The "PR!" banner: it floats over the Session and never takes a tap, so logging goes on under it.
   const [banner, setBanner] = useState<{ key: string; text: string } | null>(null);
@@ -187,18 +186,8 @@ export function SessionScreen({ training, units, layout, onLeave }: { training: 
     const exercise = catalog.find((candidate) => candidate.id === id);
     return exercise ? nameOf(exercise) : id;
   };
-  const equipmentOf = (exercise: Exercise) => (exercise.equipment ? (s.equipment[exercise.equipment] ?? '') : s.customTag);
-  // Search ignores case and accents, and looks at the equipment too: "mancuernas" finds every dumbbell variant.
-  const plain = (text: string) => text.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
-  const words = plain(query).split(/\s+/).filter(Boolean);
-  const choices = catalog
-    .filter(({ id }) => !session.exerciseIds.includes(id))
-    .filter((exercise) => words.every((word) => plain(`${nameOf(exercise)} ${equipmentOf(exercise)}`).includes(word)))
-    .sort((a, b) => nameOf(a).localeCompare(nameOf(b), language));
-
   async function add(exerciseId: string) {
-    picker.current?.close();
-    setQuery('');
+    setPicking(false);
     await training.addExercise(sessionId, exerciseId);
     setFocusedId(exerciseId);
     setCatalog(await training.exercises());
@@ -300,7 +289,7 @@ export function SessionScreen({ training, units, layout, onLeave }: { training: 
           className="btn-ghost"
           onClick={async () => {
             setCatalog(await training.exercises());
-            picker.current?.showModal();
+            setPicking(true);
           }}
         >
           {s.addExercise}
@@ -309,50 +298,15 @@ export function SessionScreen({ training, units, layout, onLeave }: { training: 
           {s.finish}
         </button>
       </main>
-      {createPortal(
-        <dialog
-          ref={picker}
-          className="sheet"
-          aria-label={s.chooseExercise}
-          onClick={(event) => event.target === event.currentTarget && event.currentTarget.close()}
-        >
-          <div className="sheet-body">
-            <h2 className="disp sheet-title">
-              {s.chooseExercise} <Info term="exercise" />
-            </h2>
-            <div className="field">
-              <input
-                type="search"
-                autoComplete="off"
-                aria-label={s.searchExercise}
-                placeholder={s.searchExercise}
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-              />
-            </div>
-            <div className="picks">
-              {choices.map((exercise) => (
-                <button key={exercise.id} type="button" className="pick" onClick={() => add(exercise.id)}>
-                  {nameOf(exercise)} <small className="muted">{equipmentOf(exercise)}</small>
-                </button>
-              ))}
-              {query.trim() !== '' && (
-                <button
-                  type="button"
-                  className="pick"
-                  onClick={async () => add((await training.createExercise(query)).id)}
-                >
-                  {s.createCustom(query.trim())}
-                </button>
-              )}
-            </div>
-            <form method="dialog">
-              <button className="btn-ghost">{t.close}</button>
-            </form>
-          </div>
-        </dialog>,
-        document.body,
-      )}
+      <ExercisePicker
+        open={picking}
+        catalog={catalog}
+        exclude={session.exerciseIds}
+        multiple={false}
+        onPick={([exerciseId]) => add(exerciseId)}
+        onCreate={async (exerciseName, muscle) => (await training.createExercise(exerciseName, muscle)).id}
+        onClose={() => setPicking(false)}
+      />
     </>
   );
 }
