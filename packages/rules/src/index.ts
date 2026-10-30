@@ -387,6 +387,26 @@ export function isProfileValue(field: string, value: unknown): boolean {
   }
 }
 
+// The muscle groups an Exercise is filed under, one main muscle each (spec: Catalog seed), in the
+// order the picker lists them.
+export const muscles = ['chest', 'back', 'shoulders', 'biceps', 'triceps', 'quads', 'hamstrings', 'glutes', 'calves', 'core', 'full-body'] as const;
+export type Muscle = (typeof muscles)[number];
+
+export function isMuscle(value: unknown): value is Muscle {
+  return muscles.includes(value as Muscle);
+}
+
+// Whether an Exercise's text (its name and equipment) answers a search: case and accents don't
+// matter, and every word typed has to be in it.
+export function matchesSearch(text: string, query: string): boolean {
+  const plain = (value: string) => value.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
+  const haystack = plain(text);
+  return plain(query)
+    .split(/\s+/)
+    .filter(Boolean)
+    .every((word) => haystack.includes(word));
+}
+
 // The app asks for bodyweight every two weeks. A dismissed prompt counts as asking, and the last
 // value carries forward.
 export function bodyweightPromptDue(lastAskedOn: string, today: string): boolean {

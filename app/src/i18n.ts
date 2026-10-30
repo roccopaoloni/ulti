@@ -1,7 +1,7 @@
 import { createContext, useContext } from 'react';
 import type { AvatarColor } from './groups.ts';
 import type { Tab } from './navigation.ts';
-import type { Chip, Headline, Kicker, Tier } from '@ulti/rules';
+import type { Chip, Headline, Kicker, Muscle, Tier } from '@ulti/rules';
 
 export type Language = 'en' | 'es';
 
@@ -171,6 +171,14 @@ type Messages = {
     // The equipment shown beside each Exercise so its variants can be told apart, by equipment ID.
     equipment: Record<string, string>;
     customTag: string;
+    // The muscle groups Exercises are filed under, by muscle ID, as filter chips and when creating a Custom Exercise.
+    muscles: Record<Muscle, string>;
+    allMuscles: string;
+    noMatches: string;
+    // The button of the multi-pick picker: adds the Exercises ticked so far, in the order picked.
+    addPicked: (count: number) => string;
+    // Asks which muscle a new Custom Exercise is for.
+    chooseMuscle: (name: string) => string;
     // Creates a Custom Exercise named as typed in the search, logged as weight × reps.
     createCustom: (name: string) => string;
     weight: string;
@@ -237,7 +245,6 @@ type Messages = {
     removeDay: string;
     addDay: string;
     exercise: string;
-    pickExercise: string;
     addExercise: string;
     removeExercise: string;
     sets: string;
@@ -532,6 +539,11 @@ const en: Messages = {
     searchExercise: 'Search exercises',
     equipment: { barbell: 'Barbell', dumbbell: 'Dumbbell', machine: 'Machine', cable: 'Cable', smith: 'Smith machine', bodyweight: 'Bodyweight' },
     customTag: 'Custom',
+    muscles: { chest: 'Chest', back: 'Back', shoulders: 'Shoulders', biceps: 'Biceps', triceps: 'Triceps', quads: 'Quads', hamstrings: 'Hamstrings', glutes: 'Glutes', calves: 'Calves', core: 'Core', 'full-body': 'Full body' },
+    allMuscles: 'All',
+    noMatches: 'No exercise matches.',
+    addPicked: (count) => `Add ${count}`,
+    chooseMuscle: (name) => `Which muscle is "${name}" for?`,
     createCustom: (name) => `Create custom exercise "${name}"`,
     weight: 'Weight',
     addedWeight: 'Added weight',
@@ -581,7 +593,6 @@ const en: Messages = {
     removeDay: 'Remove session',
     addDay: 'Add session',
     exercise: 'Exercise',
-    pickExercise: 'Choose an exercise',
     addExercise: 'Add exercise',
     removeExercise: 'Remove exercise',
     sets: 'Sets',
@@ -890,6 +901,11 @@ const es: Messages = {
     searchExercise: 'Buscar ejercicios',
     equipment: { barbell: 'Barra', dumbbell: 'Mancuernas', machine: 'Máquina', cable: 'Polea', smith: 'Multipower', bodyweight: 'Peso corporal' },
     customTag: 'Personalizado',
+    muscles: { chest: 'Pecho', back: 'Espalda', shoulders: 'Hombros', biceps: 'Bíceps', triceps: 'Tríceps', quads: 'Cuádriceps', hamstrings: 'Isquiotibiales', glutes: 'Glúteos', calves: 'Gemelos', core: 'Abdominales', 'full-body': 'Cuerpo completo' },
+    allMuscles: 'Todos',
+    noMatches: 'Ningún ejercicio coincide.',
+    addPicked: (count) => `Agregar ${count}`,
+    chooseMuscle: (name) => `¿Para qué músculo es "${name}"?`,
     createCustom: (name) => `Crear ejercicio personalizado "${name}"`,
     weight: 'Peso',
     addedWeight: 'Peso añadido',
@@ -939,7 +955,6 @@ const es: Messages = {
     removeDay: 'Quitar sesión',
     addDay: 'Agregar sesión',
     exercise: 'Ejercicio',
-    pickExercise: 'Elegí un ejercicio',
     addExercise: 'Agregar ejercicio',
     removeExercise: 'Quitar ejercicio',
     sets: 'Series',
