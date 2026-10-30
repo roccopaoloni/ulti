@@ -14,7 +14,7 @@ import { hasEverything, useBodyProfile, useLayout, useUnits } from './profile.ts
 import { RankCard } from './RankCard.tsx';
 import { CrownGate } from './CrownGate.tsx';
 import { RankUpGate } from './RankUpGate.tsx';
-import { BodyweightPrompt, Onboarding, ProfileSettings, VisibilityCard } from './ProfileScreens.tsx';
+import { BodyweightPrompt, ConnectToFinish, Onboarding, ProfileSettings, VisibilityCard } from './ProfileScreens.tsx';
 import { RoutineEditor } from './RoutineScreen.tsx';
 import { SessionInProgressBar, SessionScreen, StartSession, useLogging } from './SessionScreen.tsx';
 import { useTraining } from './useTraining.ts';
@@ -49,9 +49,9 @@ function Tabs({ userId }: { userId: string }) {
   const current = useCurrentTab();
   const { label, text } = t.screens[current];
   const [signOutError, setSignOutError] = useState<string>();
-  const training = useTraining(userId);
+  const { training, downloads } = useTraining(userId);
   const logging = useLogging(training);
-  const { profile, ready, reload } = useBodyProfile(userId, training);
+  const { profile, ready, downloaded, reload } = useBodyProfile(userId, training);
   const storedUnits = useUnits(userId);
   const units = storedUnits ?? 'kg';
   const layout = useLayout(userId);
@@ -62,6 +62,9 @@ function Tabs({ userId }: { userId: string }) {
   }, [training, profile]);
 
   // Until the user has given their units, sex, bodyweight and Weekly Target, nothing else opens.
+  // A phone that hasn't heard the server's profile history can't tell a new user from a returning
+  // one, so it waits for a connection instead of onboarding.
+  if (training && ready && !hasEverything(profile, storedUnits) && !downloaded) return <ConnectToFinish />;
   if (training && ready && !hasEverything(profile, storedUnits)) {
     return <Onboarding userId={userId} training={training} onDone={reload} />;
   }
@@ -70,7 +73,7 @@ function Tabs({ userId }: { userId: string }) {
     <>
       {training && <RankUpGate userId={userId} training={training} />}
       {training && <CrownGate />}
-      <main className="screen">
+      <main className="screen" key={downloads}>
         {current === 'home' ? (
           <header className="home-head">
             <h1 className="wordmark">ULTI</h1>

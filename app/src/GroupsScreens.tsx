@@ -383,7 +383,7 @@ export function GroupsTab({ userId, training }: { userId: string; training: Trai
 }
 
 // A bottom sheet, like the ⓘ explanations. A tap on the backdrop closes it.
-function Sheet({ dialog, label, children }: { dialog: RefObject<HTMLDialogElement | null>; label: string; children: ReactNode }) {
+export function Sheet({ dialog, label, children }: { dialog: RefObject<HTMLDialogElement | null>; label: string; children: ReactNode }) {
   return createPortal(
     <dialog
       ref={dialog}

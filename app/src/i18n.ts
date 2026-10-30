@@ -126,6 +126,8 @@ type Messages = {
   body: {
     onboardingTitle: string;
     onboardingText: string;
+    connectTitle: string;
+    connectText: string;
     privacy: string;
     units: string;
     language: string;
@@ -297,6 +299,10 @@ type Messages = {
     empty: string;
     edit: string;
     delete: string;
+    // Confirming before a past Set is deleted: its title, what it says, and the button that deletes it.
+    deleteTitle: string;
+    deleteText: string;
+    deleteConfirm: string;
     save: string;
     cancel: string;
     // The points a past Session earned, under its date.
@@ -483,6 +489,8 @@ const en: Messages = {
   body: {
     onboardingTitle: 'About you',
     onboardingText: 'A few things so your progress is scored fairly. You can change any of them later in Profile.',
+    connectTitle: 'Connect to finish setting up',
+    connectText: 'We are getting your profile and training history from your account. Connect to the internet and this will finish by itself.',
     privacy: 'Your sex, bodyweight and Strength Level are never shown to anyone, not even your Group.',
     units: 'Units',
     language: 'Language',
@@ -652,6 +660,9 @@ const en: Messages = {
     empty: 'Your finished sessions will show up here.',
     edit: 'Edit',
     delete: 'Delete',
+    deleteTitle: 'Delete this Set?',
+    deleteText: "It's removed from this Session's history. It can't be undone.",
+    deleteConfirm: 'Delete set',
     save: 'Save',
     cancel: 'Cancel',
     points: (points) => `${points} pts`,
@@ -834,6 +845,8 @@ const es: Messages = {
   body: {
     onboardingTitle: 'Sobre vos',
     onboardingText: 'Unos datos para puntuar tu progreso con justicia. Podés cambiarlos después en Perfil.',
+    connectTitle: 'Conectate para terminar la configuración',
+    connectText: 'Estamos trayendo tu perfil y tu historial de entrenamiento desde tu cuenta. Conectate a internet y esto termina solo.',
     privacy: 'Tu sexo, tu peso corporal y tu nivel de fuerza no los ve nadie, ni siquiera tu grupo.',
     units: 'Unidades',
     language: 'Idioma',
@@ -1003,6 +1016,9 @@ const es: Messages = {
     empty: 'Acá vas a ver las sesiones que termines.',
     edit: 'Editar',
     delete: 'Borrar',
+    deleteTitle: '¿Borrar esta serie?',
+    deleteText: 'Se quita del historial de esta sesión. No se puede deshacer.',
+    deleteConfirm: 'Borrar serie',
     save: 'Guardar',
     cancel: 'Cancelar',
     points: (points) => `${points} pts`,
