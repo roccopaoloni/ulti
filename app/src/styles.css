@@ -492,9 +492,51 @@ button {
   display: flex;
   align-items: center;
   gap: 6px;
+  padding-inline: 0;
 }
 .board-points {
   line-height: 32px;
+}
+.chevron {
+  width: 18px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  flex: none;
+  color: var(--muted);
+}
+.profile-rows {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.profile-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2px 12px;
+}
+.profile-name {
+  font-weight: 600;
+}
+.profile-end {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.profile-load {
+  flex-basis: 100%;
+  font-size: 13px;
+}
+.member-top {
+  margin-bottom: 12px;
+}
+.member-top .disp {
+  font-size: calc(28px * var(--ds));
 }
 .crown {
   color: var(--accent);
@@ -1150,10 +1192,6 @@ prefers-reduced-motion switches every animation off, so it stays off the badge. 
 .shelf .locked svg {
   filter: grayscale(1) brightness(0.75);
   opacity: 0.45;
-}
-.member-heading .badge-sm {
-  margin-left: 8px;
-  vertical-align: middle;
 }
 
 /* The Focus layout: one Set at a time (from the prototype's Focus layout). The children of the

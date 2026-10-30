@@ -6,6 +6,8 @@ import {
   fetchMemberProfile,
   initials,
   markVisit,
+  memberPath,
+  periodFromSearch,
   refreshBoard,
   refreshGroups,
   refreshNews,
@@ -22,7 +24,10 @@ import {
 } from './groups.ts';
 import { useI18n, type I18n } from './i18n.ts';
 import { Info } from './Info.tsx';
+import { chevronIcon } from './icons.tsx';
+import { navigate, paths } from './navigation.ts';
 import { useUnits } from './profile.ts';
+import { SubScreen } from './SubScreen.tsx';
 import type { Exercise, Training } from './training.ts';
 
 const periods: Period[] = ['week', 'month', 'year'];
@@ -79,106 +84,121 @@ function BoardRowView({ row, nameOf, onOpen }: { row: BoardRow; nameOf: (exercis
         )}
       </span>
       <span className="disp board-points">{g.boardPoints(row.points)}</span>
+      {!row.former && <span className="chevron">{chevronIcon}</span>}
     </li>
   );
 }
 
-// What a member's Visibility lets the viewer see of them. Weights are shown in the viewer's units.
-function MemberProfileView({
-  userId,
-  groupId,
-  memberId,
-  period,
-  nameOf,
-  onClose,
-}: {
-  userId: string;
-  groupId: string;
-  memberId: string;
-  period: Period;
-  nameOf: (exercise: string) => string;
-  onClose: () => void;
-}) {
-  const { t, formatNumber } = useI18n();
+// Names an Exercise in the user's language, from the catalog on the phone.
+function useExerciseName(training: Training | null) {
+  const { language } = useI18n();
+  const [catalog, setCatalog] = useState<Exercise[]>([]);
+  useEffect(() => {
+    training?.exercises().then(setCatalog);
+  }, [training]);
+  return (id: string) => {
+    const exercise = catalog.find((candidate) => candidate.id === id);
+    return exercise ? (language === 'es' ? exercise.nameEs : exercise.nameEn) : id;
+  };
+}
+
+// A member's profile, a screen of its own (its URL has the Group, the member and the Period). Its
+// Week / Month / Year switch starts on the Period the board had open. What shows of the member is
+// what their Visibility lets the viewer see; weights are in the viewer's units.
+export function MemberProfileScreen({ userId, training, groupId, memberId }: { userId: string; training: Training | null; groupId: string; memberId: string }) {
+  const { t, language, formatNumber } = useI18n();
   const g = t.groups;
   const units = useUnits(userId) ?? 'kg';
+  const nameOf = useExerciseName(training);
+  const group = useGroups(userId)?.find(({ id }) => id === groupId);
+  const [period, setPeriod] = useState<Period>(() => periodFromSearch(location.search));
   const [profile, setProfile] = useState<MemberProfile | null>(null);
   const [failed, setFailed] = useState(false);
   useEffect(() => {
+    refreshGroups(userId).catch(() => {});
+  }, [userId]);
+  useEffect(() => {
+    setProfile(null);
+    setFailed(false);
     fetchMemberProfile(groupId, memberId, period).then(setProfile, () => setFailed(true));
   }, [groupId, memberId, period]);
+  // The URL follows the switch, so a reload reopens the same Period.
+  const choose = (next: Period) => {
+    history.replaceState(history.state, '', memberPath(groupId, memberId, next));
+    setPeriod(next);
+  };
   const load = (weight_kg?: number, reps?: number) =>
-    weight_kg === undefined ? '' : ` ${formatNumber(kgToUnits(weight_kg, units), 2)} ${units} × ${reps}`;
+    weight_kg === undefined ? '' : `${formatNumber(kgToUnits(weight_kg, units), 2)} ${units} × ${reps}`;
+  const date = (localDate: string) => new Intl.DateTimeFormat(language, { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(localDate));
   return (
-    <section className="card">
-      <button type="button" className="btn-link" onClick={onClose}>
-        {t.close}
-      </button>
-      {failed && <p className="error">{g.retry}</p>}
-      {profile && (
-        <>
-          <p className="disp member-heading">
-            {profile.position}. {profile.display_name} · {g.boardPoints(profile.points)}
-            {profile.tier && <Badge rank={{ tier: profile.tier, division: profile.division }} tierName={t.rank.tier[profile.tier]} mode="sm" />}
-          </p>
-          <p className="muted">{g.memberSessions(profile.session_count)}</p>
-          {profile.records.length > 0 && (
-            <>
-              <div className="eyebrow">{g.memberRecords}</div>
-              <ul className="members">
-                {profile.records.map((record, index) => (
-                  <li key={index}>
-                    {nameOf(record.exercise)} +{Math.round(record.percent_gain)}% · {g.boardPoints(record.points)}
-                    {load(record.weight_kg, record.reps)}
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-          {profile.sessions && (
-            <>
-              <div className="eyebrow">{g.memberSessionList}</div>
-              <ul className="members">
-                {profile.sessions.map((session, index) => (
-                  <li key={index}>
-                    {session.local_date}
-                    <ul>
-                      {session.sets.map((set, setIndex) => (
-                        <li key={setIndex}>
-                          {nameOf(set.exercise)}
-                          {load(set.weight_kg, set.reps)}
-                        </li>
-                      ))}
-                    </ul>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-        </>
+    <SubScreen title={group?.name ?? ''} parent={paths.groups}>
+      <section className="card">
+        {failed && <p className="error">{g.retry}</p>}
+        {profile && (
+          <div className="badge-lg member-top">
+            {profile.tier && <Badge rank={{ tier: profile.tier, division: profile.division }} tierName={t.rank.tier[profile.tier]} mode="lg" />}
+            <div>
+              <p className="disp">{profile.display_name}</p>
+              <p className="muted">
+                #{profile.position} · {g.boardPoints(profile.points)} · {g.memberSessions(profile.session_count)}
+              </p>
+            </div>
+          </div>
+        )}
+        <div className="chips">
+          {periods.map((candidate) => (
+            <button key={candidate} type="button" className="chip" aria-pressed={candidate === period} onClick={() => choose(candidate)}>
+              {g.periods[candidate]}
+            </button>
+          ))}
+        </div>
+      </section>
+      {profile && profile.records.length > 0 && (
+        <section className="card">
+          <div className="eyebrow">{g.memberRecords}</div>
+          <ul className="profile-rows">
+            {profile.records.map((record, index) => (
+              <li key={index} className="profile-row">
+                <span className="profile-name">{nameOf(record.exercise)}</span>
+                <span className="profile-end">
+                  <span className="stamp">+{Math.round(record.percent_gain)}%</span>
+                  <span className="disp">{g.boardPoints(record.points)}</span>
+                </span>
+                {record.weight_kg !== undefined && <span className="muted profile-load">{load(record.weight_kg, record.reps)}</span>}
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
-    </section>
+      {profile?.sessions?.map((session, index) => (
+        <section key={index} className="card">
+          <strong>{date(session.local_date)}</strong>
+          <ul className="profile-rows">
+            {session.sets.map((set, setIndex) => (
+              <li key={setIndex} className="profile-row">
+                <span className="profile-name">{nameOf(set.exercise)}</span>
+                {set.weight_kg !== undefined && <span className="muted">{load(set.weight_kg, set.reps)}</span>}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+    </SubScreen>
   );
 }
 
 // The Group's Week / Month / Year boards, ranked by Standard Points. Tapping a member opens their
 // profile.
 export function GroupBoard({ userId, group, training }: { userId: string; group: Group; training: Training | null }) {
-  const { t, language } = useI18n();
-  const [period, setPeriod] = useState<Period>('week');
+  const { t } = useI18n();
+  // The Period is in the URL, so Back from a member's profile returns to the same one.
+  const [period, setPeriod] = useState<Period>(() => periodFromSearch(location.search));
   const board = useFreshBoard(userId, group.id, period);
-  const [open, setOpen] = useState<string | null>(null);
-  const [catalog, setCatalog] = useState<Exercise[]>([]);
-  useEffect(() => {
-    training?.exercises().then(setCatalog);
-  }, [training]);
-  const nameOf = (id: string) => {
-    const exercise = catalog.find((candidate) => candidate.id === id);
-    return exercise ? (language === 'es' ? exercise.nameEs : exercise.nameEn) : id;
+  const nameOf = useExerciseName(training);
+  const choose = (next: Period) => {
+    history.replaceState(history.state, '', `${paths.groups}?period=${next}`);
+    setPeriod(next);
   };
-  if (open) {
-    return <MemberProfileView userId={userId} groupId={group.id} memberId={open} period={period} nameOf={nameOf} onClose={() => setOpen(null)} />;
-  }
   const owner = group.members.some(({ me, owner }) => me && owner);
   const g = t.groups;
   const next = board?.next_scoring_mode;
@@ -186,7 +206,7 @@ export function GroupBoard({ userId, group, training }: { userId: string; group:
     <section className="card">
       <div className="chips">
         {periods.map((candidate) => (
-          <button key={candidate} type="button" className="chip" aria-pressed={candidate === period} onClick={() => setPeriod(candidate)}>
+          <button key={candidate} type="button" className="chip" aria-pressed={candidate === period} onClick={() => choose(candidate)}>
             {t.groups.periods[candidate]}
           </button>
         ))}
@@ -219,7 +239,7 @@ export function GroupBoard({ userId, group, training }: { userId: string; group:
       {board && (
         <ul className="members">
           {board.members.map((row, index) => (
-            <BoardRowView key={index} row={row} nameOf={nameOf} onOpen={() => setOpen(row.user_id)} />
+            <BoardRowView key={index} row={row} nameOf={nameOf} onOpen={() => navigate(memberPath(group.id, row.user_id, period))} />
           ))}
         </ul>
       )}

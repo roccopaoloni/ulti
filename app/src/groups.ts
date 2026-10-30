@@ -75,6 +75,14 @@ export async function saveProfile(userId: string, profile: Profile) {
 // The screen for creating a Group, a path so that Back closes it and a reload keeps it open.
 export const newGroupPath = '/groups/new';
 
+// A member's profile is a screen under the Groups tab; the Period rides in the query.
+export const memberPath = (groupId: string, memberId: string, period: Period) => `/groups/${groupId}/${memberId}?period=${period}`;
+export const memberFromPath = (pathname: string) => /^\/groups\/([^/]+)\/([^/]+)$/.exec(pathname)?.slice(1) as [string, string] | undefined;
+export const periodFromSearch = (search: string): Period => {
+  const period = new URLSearchParams(search).get('period');
+  return period === 'month' || period === 'year' ? period : 'week';
+};
+
 // The Group the Groups tab shows.
 const selectedKey = 'ulti-group';
 export const useSelectedGroup = () => useStored<string>(selectedKey);
