@@ -63,6 +63,16 @@ function UnitsChoice({ value, onChange }: { value: Units; onChange: (units: Unit
   );
 }
 
+// An on/off setting, as a labelled switch.
+function Switch({ label, checked, onChange }: { label: string; checked: boolean; onChange: () => void }) {
+  return (
+    <button type="button" role="switch" className="switch-row" aria-checked={checked} onClick={onChange}>
+      <span>{label}</span>
+      <span className="switch" aria-hidden="true" />
+    </button>
+  );
+}
+
 type Draft = { sex: Sex | null; bodyweight: string; target: number };
 
 // Sex, bodyweight and Weekly Target: asked in onboarding and changed in Profile.
@@ -158,23 +168,11 @@ export function ConnectToFinish() {
   );
 }
 
-// The Profile tab: units and language apply at once; the rest is saved together.
-export function ProfileSettings({
-  userId,
-  training,
-  profile,
-  units,
-  onSaved,
-}: {
-  userId: string;
-  training: Training;
-  profile: Profile;
-  units: Units;
-  onSaved: () => void;
-}) {
+// Settings, You: sex, bodyweight and Weekly Target. The fields to render, whether they were
+// changed and can be saved, and `save`, which goes through the outbox.
+export function useBodyForm(training: Training, profile: Profile, units: Units, onSaved: () => void) {
   const { t, language } = useI18n();
   const b = t.body;
-  const layout = useLayout(userId);
   const day = today();
   const inForce = {
     sex: valueInForce(profile.sex, day) ?? null,
@@ -191,17 +189,47 @@ export function ProfileSettings({
   // A Weekly Target already changed, waiting for its Monday.
   const upcoming = profile.weeklyTarget.find(({ effectiveFrom }) => effectiveFrom > day);
 
+  return {
+    fields: (
+      <>
+        <BodyFields units={units} draft={shown} onChange={setDraft} />
+        {upcoming && (
+          <p className="muted">
+            {b.startsOn(
+              upcoming.value,
+              new Intl.DateTimeFormat(language === 'es' ? 'es-AR' : 'en-US', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                timeZone: 'UTC',
+              }).format(new Date(`${upcoming.effectiveFrom}T00:00:00Z`)),
+            )}
+          </p>
+        )}
+        {draft && bodyweightKg === null && <p className="error">{b.invalid}</p>}
+        <p className="muted">
+          {b.privacy} <Info term="strengthLevel" />
+        </p>
+      </>
+    ),
+    changed: draft !== null,
+    valid: bodyweightKg !== null && shown.sex !== null,
+    save: async () => {
+      if (!draft || bodyweightKg === null) return;
+      await saveBody(training, profile, draft, bodyweightKg);
+      setDraft(null);
+      onSaved();
+    },
+  };
+}
+
+// Settings, App: units, language and layout apply at once.
+export function AppSettings({ userId, units }: { userId: string; units: Units }) {
+  const { t, language } = useI18n();
+  const b = t.body;
+  const layout = useLayout(userId);
   return (
-    <form
-      className="card form"
-      onSubmit={async (event) => {
-        event.preventDefault();
-        if (!draft || bodyweightKg === null) return;
-        await saveBody(training, profile, draft, bodyweightKg);
-        setDraft(null);
-        onSaved();
-      }}
-    >
+    <div className="card form">
       <UnitsChoice value={units} onChange={(next) => setUnits(userId, next)} />
       <Choice<Language>
         label={b.language}
@@ -221,28 +249,7 @@ export function ProfileSettings({
         value={layout}
         onChange={(next) => setLayout(userId, next)}
       />
-      <BodyFields units={units} draft={shown} onChange={setDraft} />
-      {upcoming && (
-        <p className="muted">
-          {b.startsOn(
-            upcoming.value,
-            new Intl.DateTimeFormat(language === 'es' ? 'es-AR' : 'en-US', {
-              weekday: 'long',
-              day: 'numeric',
-              month: 'long',
-              timeZone: 'UTC',
-            }).format(new Date(`${upcoming.effectiveFrom}T00:00:00Z`)),
-          )}
-        </p>
-      )}
-      {draft && bodyweightKg === null && <p className="error">{b.invalid}</p>}
-      <p className="muted">
-        {b.privacy} <Info term="strengthLevel" />
-      </p>
-      <button className="btn-primary" disabled={!draft || bodyweightKg === null || shown.sex === null}>
-        {b.save}
-      </button>
-    </form>
+    </div>
   );
 }
 
@@ -264,14 +271,8 @@ export function VisibilityCard({ userId }: { userId: string }) {
     <section className="card">
       <div className="eyebrow">{g.visibilityTitle}</div>
       <p className="muted">{g.visibilityText}</p>
-      <div className="choices">
-        <button type="button" className="chip" aria-pressed={visibility.share_weights} onClick={() => toggle('share_weights')}>
-          {g.shareWeights}
-        </button>
-        <button type="button" className="chip" aria-pressed={visibility.share_sessions} onClick={() => toggle('share_sessions')}>
-          {g.shareSessions}
-        </button>
-      </div>
+      <Switch label={g.shareWeights} checked={visibility.share_weights} onChange={() => toggle('share_weights')} />
+      <Switch label={g.shareSessions} checked={visibility.share_sessions} onChange={() => toggle('share_sessions')} />
       {error && <p className="error">{g.retry}</p>}
     </section>
   );

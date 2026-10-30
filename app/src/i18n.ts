@@ -13,6 +13,8 @@ type Messages = {
   tabs: Record<Tab, string>;
   screens: Record<Tab, { label: string; text: string }>;
   close: string;
+  back: string;
+  settings: { title: string; open: string; nameOffline: string; you: string; app: string; privacy: string; account: string };
   about: { title: string; fitnessVoltLink: string; symmetricStrength: string };
   glossary: Record<Term, { term: string; explanation: string }>;
   // Groups: creating, inviting, joining and leaving, and the display name and avatar members see.
@@ -327,6 +329,8 @@ const en: Messages = {
     profile: { label: 'Your Rank', text: "How far you've climbed will show up here." },
   },
   close: 'Close',
+  back: 'Back',
+  settings: { title: 'Settings', open: 'Open settings', nameOffline: 'Your name and colour were not saved: they need a connection. Everything else was saved.', you: 'You', app: 'App', privacy: 'Privacy', account: 'Account' },
   about: {
     title: 'About',
     fitnessVoltLink: 'Powered by FitnessVolt',
@@ -691,6 +695,8 @@ const es: Messages = {
     profile: { label: 'Tu rango', text: 'Acá vas a ver hasta dónde llegaste.' },
   },
   close: 'Cerrar',
+  back: 'Volver',
+  settings: { title: 'Ajustes', open: 'Abrir ajustes', nameOffline: 'No se guardaron tu nombre y color: necesitan conexión. Todo lo demás sí se guardó.', you: 'Vos', app: 'App', privacy: 'Privacidad', account: 'Cuenta' },
   about: {
     title: 'Acerca de',
     fitnessVoltLink: 'Powered by FitnessVolt',

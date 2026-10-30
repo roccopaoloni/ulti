@@ -32,7 +32,7 @@ import { navigate, paths } from './navigation.ts';
 import { useStored, write } from './stored.ts';
 import type { Training } from './training.ts';
 
-function errorText(error: unknown, t: I18n['t']) {
+export function errorText(error: unknown, t: I18n['t']) {
   if (!(error instanceof GroupsError)) return t.auth.errors.other;
   if (error.reason === 'offline') return t.auth.errors.offline;
   if (error.reason === 'inviteNotFound') return t.groups.inviteNotFound;
@@ -59,7 +59,7 @@ function useAction() {
 }
 
 // Initials on the colour the member picked (design: Avatars).
-function Avatar({ name, color, large }: { name: string; color: string; large?: boolean }) {
+export function Avatar({ name, color, large }: { name: string; color: string; large?: boolean }) {
   return (
     <span className={large ? 'avatar large' : 'avatar'} style={{ '--c': color } as CSSProperties} aria-hidden="true">
       {initials(name)}
@@ -514,58 +514,39 @@ function LeaveSheet({ dialog, userId, group }: SheetProps) {
   );
 }
 
-// On Profile: the display name and colour the user's Groups show, which they can change any time.
-export function ProfileCard({ userId }: { userId: string }) {
-  const { t } = useI18n();
-  const g = t.groups;
+// On Profile: who the user is, as friends see it. Editing is in Settings.
+export function ProfileSummary({ userId }: { userId: string }) {
+  const profile = useProfile(userId);
+  if (!profile) return null;
+  return (
+    <div className="profile-summary">
+      <Avatar name={profile.display_name} color={profile.avatar_color} large />
+      <span className="disp profile-name">{profile.display_name}</span>
+    </div>
+  );
+}
+
+// In Settings: the display name and colour the user's Groups show. The fields to render, whether
+// they were changed, and `save`, which goes straight to the server and throws if it can't.
+export function useNameForm(userId: string) {
   const profile = useProfile(userId);
   const [draft, setDraft] = useProfileDraft(userId, profile);
-  const [saved, setSaved] = useState(false);
-  const { busy, error, run } = useAction();
-  const changed = draft.display_name !== profile?.display_name || draft.avatar_color !== profile?.avatar_color;
 
   useEffect(() => {
     refreshProfile(userId).catch(() => {});
   }, [userId]);
 
-  return (
-    <form
-      className="card"
-      onSubmit={(event) => {
-        event.preventDefault();
-        run(async () => {
-          await saveProfile(userId, trimmed(draft));
-          setDraft(null);
-          setSaved(true);
-        });
-      }}
-    >
-      <div className="eyebrow">{g.profileTitle}</div>
-      <ProfileFields
-        value={draft}
-        onChange={(next) => {
-          setDraft(next);
-          setSaved(false);
-        }}
-      />
-      {error && (
-        <p className="error" role="alert">
-          {error}
-        </p>
-      )}
-      {saved && (
-        <p className="muted" role="status">
-          {g.saved}
-        </p>
-      )}
-      <button className="btn-ghost" disabled={busy || !changed}>
-        {g.save}
-      </button>
-    </form>
-  );
+  return {
+    fields: <ProfileFields value={draft} onChange={setDraft} />,
+    changed: draft.display_name !== profile?.display_name || draft.avatar_color !== profile?.avatar_color,
+    save: async () => {
+      await saveProfile(userId, trimmed(draft));
+      setDraft(null);
+    },
+  };
 }
 
-// On Profile: deletes the account after a confirmation. On success the user is signed out and the
+// In Settings: deletes the account after a confirmation. On success the user is signed out and the
 // device is cleared, so there is nothing left to close.
 export function DeleteAccount({ training }: { training: Training | null }) {
   const { t } = useI18n();
