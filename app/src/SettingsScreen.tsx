@@ -51,14 +51,12 @@ export function SettingsScreen({
         </p>
       )}
       <DeleteAccount training={training} />
-      <section aria-label={t.about.title}>
-        <h2 className="section-title">{t.about.title}</h2>
-        <p>
-          <a href="https://fitnessvolt.com/strength-standards/strength-data/" target="_blank" rel="noreferrer">
-            {t.about.fitnessVoltLink}
-          </a>
-        </p>
-        <p>{t.about.symmetricStrength}</p>
+      <h2 className="section-title">{t.about.title}</h2>
+      <section className="card about">
+        <a href="https://fitnessvolt.com/strength-standards/strength-data/" target="_blank" rel="noreferrer">
+          {t.about.fitnessVoltLink}
+        </a>
+        <p className="muted">{t.about.symmetricStrength}</p>
       </section>
     </SubScreen>
   );

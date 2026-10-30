@@ -95,12 +95,14 @@ function Tabs({ userId }: { userId: string }) {
             {current === 'groups' ? (
               <GroupsTab userId={userId} training={training} />
             ) : (
-              <section className="card">
-                <div className="eyebrow">
-                  {label} <Info term={screenTerms[current]} />
-                </div>
-                <p className="muted">{text}</p>
-              </section>
+              current !== 'profile' && (
+                <section className="card">
+                  <div className="eyebrow">
+                    {label} <Info term={screenTerms[current]} />
+                  </div>
+                  <p className="muted">{text}</p>
+                </section>
+              )
             )}
             {current === 'home' && training && profile && promptDue && (
               <BodyweightPrompt

@@ -1405,3 +1405,8 @@ prefers-reduced-motion switches every animation off, so it stays off the badge. 
   transform: translateX(20px);
   background: var(--accent-ink);
 }
+.about a {
+  color: var(--accent-text);
+  font-weight: 600;
+  text-decoration: none;
+}
