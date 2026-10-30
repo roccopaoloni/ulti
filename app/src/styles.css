@@ -217,6 +217,18 @@ button {
   width: 24px;
   height: 24px;
 }
+.install-steps {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.install-steps svg {
+  width: 18px;
+  height: 18px;
+  vertical-align: -4px;
+}
 .lead {
   font-size: 17px;
   max-width: 34ch;
@@ -866,8 +878,21 @@ button.cell {
   align-items: center;
   gap: 12px;
 }
+/* The label sits above the Set, so the Set and its Edit and Delete links keep their room. */
 .past-set > span:first-child {
   flex: 1;
+  display: grid;
+  gap: 4px;
+  justify-items: start;
+}
+/* The label sits above the Set, so the Set and its Edit and Delete links keep their room. */
+.past-set .past-tag {
+  height: auto;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  white-space: nowrap;
 }
 .past-set input {
   width: 6ch;
@@ -932,6 +957,11 @@ button.cell {
 }
 .pr-points {
   font: 700 12px var(--body);
+}
+.per-dumbbell {
+  margin: 0;
+  font: 700 12px var(--body);
+  color: var(--muted);
 }
 .increment {
   padding: 0;

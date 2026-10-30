@@ -1,4 +1,5 @@
 import 'fake-indexeddb/auto';
+import { labelSets } from '@ulti/rules';
 import { expect, test, vi } from 'vitest';
 import { openTraining, type Mutation } from './training.ts';
 
@@ -314,6 +315,24 @@ test("a Set's label flipped offline shows at once and goes out as a later write 
   training.close();
 });
 
+test("a past Session's Sets keep their labels, so History shows the Warm-up and Working Sets as they were saved, including one flipped after the Session finished", async () => {
+  const network = server();
+  const phone = anasPhone(network);
+  const training = await phone.open();
+  const session = await training.startSession();
+  const first = await training.logSet(session.id, 'back-squat', 40, 5);
+  await training.logSet(session.id, 'back-squat', 100, 5);
+  await training.logSet(session.id, 'back-squat', 100, 5);
+  await training.finishSession(session.id);
+
+  await training.setLabel(first.id, 'working');
+
+  const [past] = await training.pastSessions();
+  expect(labelSets(past.sets.filter((set) => set.exerciseId === 'back-squat'))).toEqual(['working', 'working', 'working']);
+  expect(past.sets.map(({ label }) => label)).toEqual(['working', undefined, undefined]);
+  training.close();
+});
+
 test("Ana's onboarding is written through the outbox, and her first Weekly Target applies from today", async () => {
   const network = server();
   // Saturday 24 October in Buenos Aires.
@@ -625,6 +644,30 @@ test('a pull-up Set with added weight logs offline, queues as the added weight, 
   // 80 kg × 1.2 = 96, then (80 + 4) kg × 1.2 = 100.8: a 5% gain.
   const { events } = await training.scoring();
   expect(events.map((e) => [e.setId, e.bodyweightKg, e.percentGain, e.progressPoints])).toEqual([[record.id, 80, 5, 110]]);
+  training.close();
+});
+
+test('a Set logged with the label its row showed keeps it', async () => {
+  const training = await anasPhone(server()).open();
+  const session = await training.startSession();
+
+  const set = await training.logSet(session.id, 'back-squat', 40, 5, 'warm-up');
+
+  expect((await training.sessionInProgress())?.sets.map(({ id, label }) => ({ id, label }))).toEqual([{ id: set.id, label: 'warm-up' }]);
+  training.close();
+});
+
+test('flipping a Set with RIR to Warm-up clears its RIR, and flipping back does not bring it back', async () => {
+  const training = await anasPhone(server()).open();
+  const session = await training.startSession();
+  const set = await training.logSet(session.id, 'back-squat', 100, 5, 'working');
+  await training.setRir(set.id, 2);
+
+  await training.setLabel(set.id, 'warm-up');
+  expect((await training.sessionInProgress())?.sets.map(({ label, rir }) => ({ label, rir }))).toEqual([{ label: 'warm-up', rir: undefined }]);
+
+  await training.setLabel(set.id, 'working');
+  expect((await training.sessionInProgress())?.sets.map(({ label, rir }) => ({ label, rir }))).toEqual([{ label: 'working', rir: undefined }]);
   training.close();
 });
 
