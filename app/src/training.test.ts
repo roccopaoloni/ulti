@@ -58,7 +58,7 @@ const kindsAndValues = (batch: Mutation[]) =>
       ? { kind: m.kind, finished: m.session.finishedAt !== null }
       : m.kind === 'saveSet'
         ? { kind: m.kind, exerciseId: m.set.exerciseId, weightKg: m.set.weightKg, reps: m.set.reps }
-        : m.kind === 'saveProfileEntry' || m.kind === 'saveRoutine' || m.kind === 'saveIncrement' || m.kind === 'saveDeload'
+        : m.kind === 'saveProfileEntry' || m.kind === 'saveRoutine' || m.kind === 'saveIncrement' || m.kind === 'saveDeload' || m.kind === 'saveNoRoutine'
           ? { kind: m.kind }
           : { kind: m.kind, exerciseId: m.exercise.id },
   );
@@ -1138,5 +1138,53 @@ test('the next Session and the pre-filled rows follow the order of Days and Exer
   await training.saveRoutineDraft([pullDay, { ...pushDay, exercises: [press, ...pushDay.exercises] }]);
   await training.startSession('push');
   expect((await training.sessionInProgress())?.exerciseIds).toEqual(['overhead-press', 'bench-press']);
+  training.close();
+});
+
+test("\"I don't follow a routine\" is set offline, kept across a reload and synced later", async () => {
+  const network = server();
+  network.offline = true;
+  const phone = anasPhone(network);
+  const training = await phone.open();
+  expect(await training.followsNoRoutine()).toBe(false);
+
+  await training.setFollowsNoRoutine(true);
+  expect(await training.followsNoRoutine()).toBe(true);
+  training.close();
+  const reloaded = await phone.open();
+  expect(await reloaded.followsNoRoutine()).toBe(true);
+  expect(network.batches).toEqual([]);
+
+  network.offline = false;
+  phone.connectivity.dispatchEvent(new Event('online'));
+  await vi.waitFor(() => expect(network.batches).toHaveLength(1));
+  expect(network.batches[0].map((m) => (m.kind === 'saveNoRoutine' ? m.noRoutine.value : m.kind))).toEqual([true]);
+  reloaded.close();
+});
+
+test('saving a Routine clears the choice on the phone, which the server does too, so nothing more is sent', async () => {
+  const network = server();
+  network.offline = true;
+  const phone = anasPhone(network);
+  const training = await phone.open();
+  await training.setFollowsNoRoutine(true);
+
+  await training.saveRoutine([pushDay]);
+
+  expect(await training.followsNoRoutine()).toBe(false);
+  network.offline = false;
+  phone.connectivity.dispatchEvent(new Event('online'));
+  await vi.waitFor(() => expect(network.batches.flat().map((m) => m.kind)).toEqual(['saveNoRoutine', 'saveRoutine']));
+  training.close();
+});
+
+test('the choice the server holds reaches a phone that is new to this user, unless the phone has a later one', async () => {
+  const training = await anasPhone(server()).open();
+  await training.saveNoRoutineFromServer({ value: true, updatedAt: '2026-10-19T10:00:00.000Z' });
+  expect(await training.followsNoRoutine()).toBe(true);
+
+  await training.setFollowsNoRoutine(false);
+  await training.saveNoRoutineFromServer({ value: true, updatedAt: '2026-10-19T10:00:00.000Z' });
+  expect(await training.followsNoRoutine()).toBe(false);
   training.close();
 });
