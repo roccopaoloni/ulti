@@ -480,6 +480,7 @@ button {
   display: flex;
   align-items: center;
   gap: 6px;
+  padding-inline: 0;
 }
 .board-points {
   line-height: 32px;
