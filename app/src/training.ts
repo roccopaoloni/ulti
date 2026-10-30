@@ -346,7 +346,7 @@ export async function openTraining(userId: string, options: Options) {
         for (const record of records) {
           if (queued.has(record.id)) continue;
           const kept = await store.get(record.id);
-          if (kept && kept.updatedAt >= record.updatedAt) continue;
+          if (kept && Date.parse(kept.updatedAt) >= Date.parse(record.updatedAt)) continue;
           await store.put(record as never);
           changed = true;
         }

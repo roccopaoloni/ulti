@@ -69,6 +69,9 @@ async function pageThrough<Row>(page: (from: number, to: number) => PromiseLike<
   }
 }
 
+// The API writes instants as `2026-10-20T12:00:00+00:00`; the phone keeps its own `toISOString()` form.
+const instant = (value: string) => new Date(value).toISOString();
+
 // Resolves to whether the phone got anything new.
 async function refreshHistory(training: Training) {
   const sessions = await pageThrough((from, to) =>
@@ -85,12 +88,12 @@ async function refreshHistory(training: Training) {
   return training.saveSessionsFromServer(
     sessions.map((row) => ({
       id: row.id,
-      startedAt: row.started_at,
+      startedAt: instant(row.started_at),
       timeZone: row.time_zone,
       localDate: row.local_date,
-      finishedAt: row.finished_at,
+      finishedAt: row.finished_at && instant(row.finished_at),
       ...(row.routine_day_id && { routineDayId: row.routine_day_id }),
-      updatedAt: row.updated_at,
+      updatedAt: instant(row.updated_at),
     })),
     sets.map((row) => ({
       id: row.id,
@@ -100,8 +103,8 @@ async function refreshHistory(training: Training) {
       reps: row.reps,
       ...(row.label && { label: row.label as SetLabel }),
       ...(row.rir !== null && { rir: row.rir }),
-      loggedAt: row.logged_at,
-      updatedAt: row.updated_at,
+      loggedAt: instant(row.logged_at),
+      updatedAt: instant(row.updated_at),
     })),
   );
 }
