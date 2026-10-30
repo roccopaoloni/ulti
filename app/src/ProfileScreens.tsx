@@ -154,18 +154,23 @@ export function Onboarding({ userId, training, onDone }: { userId: string; train
   );
 }
 
-// Settings, You: sex, bodyweight and Weekly Target, saved together.
-export function BodySettings({
-  training,
-  profile,
-  units,
-  onSaved,
-}: {
-  training: Training;
-  profile: Profile;
-  units: Units;
-  onSaved: () => void;
-}) {
+// A new phone that can't reach the server yet: it can't tell a new user from a returning one, so
+// it asks for nothing and writes nothing until the profile history arrives.
+export function ConnectToFinish() {
+  const { t } = useI18n();
+  return (
+    <main className="screen">
+      <h1 className="disp title">{t.body.connectTitle}</h1>
+      <section className="card">
+        <p className="muted">{t.body.connectText}</p>
+      </section>
+    </main>
+  );
+}
+
+// Settings, You: sex, bodyweight and Weekly Target. The fields to render, whether they were
+// changed and can be saved, and `save`, which goes through the outbox.
+export function useBodyForm(training: Training, profile: Profile, units: Units, onSaved: () => void) {
   const { t, language } = useI18n();
   const b = t.body;
   const day = today();
@@ -184,40 +189,38 @@ export function BodySettings({
   // A Weekly Target already changed, waiting for its Monday.
   const upcoming = profile.weeklyTarget.find(({ effectiveFrom }) => effectiveFrom > day);
 
-  return (
-    <form
-      className="card form"
-      onSubmit={async (event) => {
-        event.preventDefault();
-        if (!draft || bodyweightKg === null) return;
-        await saveBody(training, profile, draft, bodyweightKg);
-        setDraft(null);
-        onSaved();
-      }}
-    >
-      <BodyFields units={units} draft={shown} onChange={setDraft} />
-      {upcoming && (
+  return {
+    fields: (
+      <>
+        <BodyFields units={units} draft={shown} onChange={setDraft} />
+        {upcoming && (
+          <p className="muted">
+            {b.startsOn(
+              upcoming.value,
+              new Intl.DateTimeFormat(language === 'es' ? 'es-AR' : 'en-US', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                timeZone: 'UTC',
+              }).format(new Date(`${upcoming.effectiveFrom}T00:00:00Z`)),
+            )}
+          </p>
+        )}
+        {draft && bodyweightKg === null && <p className="error">{b.invalid}</p>}
         <p className="muted">
-          {b.startsOn(
-            upcoming.value,
-            new Intl.DateTimeFormat(language === 'es' ? 'es-AR' : 'en-US', {
-              weekday: 'long',
-              day: 'numeric',
-              month: 'long',
-              timeZone: 'UTC',
-            }).format(new Date(`${upcoming.effectiveFrom}T00:00:00Z`)),
-          )}
+          {b.privacy} <Info term="strengthLevel" />
         </p>
-      )}
-      {draft && bodyweightKg === null && <p className="error">{b.invalid}</p>}
-      <p className="muted">
-        {b.privacy} <Info term="strengthLevel" />
-      </p>
-      <button className="btn-primary" disabled={!draft || bodyweightKg === null || shown.sex === null}>
-        {b.save}
-      </button>
-    </form>
-  );
+      </>
+    ),
+    changed: draft !== null,
+    valid: bodyweightKg !== null && shown.sex !== null,
+    save: async () => {
+      if (!draft || bodyweightKg === null) return;
+      await saveBody(training, profile, draft, bodyweightKg);
+      setDraft(null);
+      onSaved();
+    },
+  };
 }
 
 // Settings, App: units, language and layout apply at once.

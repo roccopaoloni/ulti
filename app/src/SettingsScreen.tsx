@@ -1,12 +1,62 @@
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 import type { Units } from '@ulti/rules';
 import { signOut } from './auth.ts';
-import { DeleteAccount, ProfileCard } from './GroupsScreens.tsx';
+import { DeleteAccount, errorText, useNameForm } from './GroupsScreens.tsx';
+import { GroupsError } from './groups.ts';
 import { useI18n } from './i18n.ts';
 import { paths } from './navigation.ts';
-import { AppSettings, BodySettings, VisibilityCard } from './ProfileScreens.tsx';
+import { AppSettings, useBodyForm, VisibilityCard } from './ProfileScreens.tsx';
 import { SubScreen } from './SubScreen.tsx';
 import type { Profile, Training } from './training.ts';
+
+// Settings, You: the name and colour friends see, then sex, bodyweight and Weekly Target, with one
+// Save for whatever changed. The name goes straight to the server and needs a connection; the rest
+// is saved on the phone either way, so when the name can't be saved it says so after saving the rest.
+function YouSettings({ userId, training, profile, units, onSaved }: { userId: string; training: Training; profile: Profile; units: Units; onSaved: () => void }) {
+  const { t } = useI18n();
+  const name = useNameForm(userId);
+  const body = useBodyForm(training, profile, units, onSaved);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string>();
+  const [saved, setSaved] = useState(false);
+  const changed = name.changed || body.changed;
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError(undefined);
+    setSaved(false);
+    await body.save();
+    try {
+      await name.save();
+      setSaved(true);
+    } catch (caught) {
+      setError(caught instanceof GroupsError && caught.reason === 'offline' ? t.settings.nameOffline : errorText(caught, t));
+    }
+    setBusy(false);
+  }
+
+  return (
+    <form className="card form" onSubmit={submit}>
+      <div className="eyebrow">{t.groups.profileTitle}</div>
+      {name.fields}
+      {body.fields}
+      {error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      )}
+      {saved && (
+        <p className="muted" role="status">
+          {t.groups.saved}
+        </p>
+      )}
+      <button className="btn-primary" disabled={busy || !changed || !body.valid}>
+        {t.groups.save}
+      </button>
+    </form>
+  );
+}
 
 // Everything editable about the user, opened from the ⚙ on Profile.
 export function SettingsScreen({
@@ -27,8 +77,7 @@ export function SettingsScreen({
   return (
     <SubScreen title={t.settings.title} parent={paths.profile}>
       <h2 className="section-title">{t.settings.you}</h2>
-      <ProfileCard userId={userId} />
-      {training && profile && <BodySettings training={training} profile={profile} units={units} onSaved={onSaved} />}
+      {training && profile && <YouSettings userId={userId} training={training} profile={profile} units={units} onSaved={onSaved} />}
       <h2 className="section-title">{t.settings.app}</h2>
       <AppSettings userId={userId} units={units} />
       <h2 className="section-title">{t.settings.privacy}</h2>

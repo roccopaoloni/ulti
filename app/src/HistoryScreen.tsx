@@ -1,5 +1,6 @@
 import { kgToUnits, unitsToKg, type PersonalRecord, type Units } from '@ulti/rules';
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
+import { Sheet } from './GroupsScreens.tsx';
 import { useI18n } from './i18n.ts';
 import type { Exercise, SetRecord, Training } from './training.ts';
 
@@ -63,6 +64,7 @@ export function History({ training, units }: { training: Training; units: Units 
                       <PastSet
                         key={set.id}
                         set={set}
+                        exerciseName={name(exerciseId)}
                         units={units}
                         bodyweight={catalog.find(({ id }) => id === exerciseId)?.bodyweight ?? false}
                         record={records.get(set.id)}
@@ -87,6 +89,7 @@ export function History({ training, units }: { training: Training; units: Units 
 
 function PastSet({
   set,
+  exerciseName,
   units,
   bodyweight,
   record,
@@ -94,6 +97,7 @@ function PastSet({
   onDelete,
 }: {
   set: SetRecord;
+  exerciseName: string;
   units: Units;
   bodyweight: boolean;
   record: PersonalRecord | undefined;
@@ -103,6 +107,7 @@ function PastSet({
   const { t, language, formatNumber } = useI18n();
   const h = t.history;
   const [editing, setEditing] = useState(false);
+  const dialog = useRef<HTMLDialogElement>(null);
   const typed = String(Math.round(kgToUnits(set.weightKg, units) * 100) / 100).replace('.', language === 'es' ? ',' : '.');
   const [weight, setWeight] = useState(typed);
   const [reps, setReps] = useState(String(set.reps));
@@ -118,23 +123,47 @@ function PastSet({
     setEditing(false);
   }
 
+  const load = bodyweight
+    ? t.session.bodyweightLoad(set.weightKg ? `${formatNumber(kgToUnits(set.weightKg, units), 2)} ${units}` : '')
+    : `${formatNumber(kgToUnits(set.weightKg, units), 2)} ${units}`;
+
   if (!editing) {
     return (
-      <div className="past-set">
-        <span>
-          {bodyweight
-            ? t.session.bodyweightLoad(set.weightKg ? `${formatNumber(kgToUnits(set.weightKg, units), 2)} ${units}` : '')
-            : `${formatNumber(kgToUnits(set.weightKg, units), 2)} ${units}`}{' '}
-          × {set.reps}
-          {record && ` · PR +${record.percentGain}% · ${t.session.points(record.progressPoints)}`}
-        </span>
-        <button type="button" className="btn-link" onClick={() => setEditing(true)}>
-          {h.edit}
-        </button>
-        <button type="button" className="btn-link" onClick={onDelete}>
-          {h.delete}
-        </button>
-      </div>
+      <>
+        <div className="past-set">
+          <span>
+            {load}{' '}
+            × {set.reps}
+            {record && ` · PR +${record.percentGain}% · ${t.session.points(record.progressPoints)}`}
+          </span>
+          <button type="button" className="btn-link" onClick={() => setEditing(true)}>
+            {h.edit}
+          </button>
+          <button type="button" className="btn-link" onClick={() => dialog.current?.showModal()}>
+            {h.delete}
+          </button>
+        </div>
+        <Sheet dialog={dialog} label={h.deleteTitle}>
+          <h2 className="disp sheet-title">{h.deleteTitle}</h2>
+          <p>
+            <strong>{exerciseName}</strong>: {load} × {set.reps}
+          </p>
+          <p>{h.deleteText}</p>
+          <button
+            type="button"
+            className="btn-danger"
+            onClick={async () => {
+              dialog.current?.close();
+              await onDelete();
+            }}
+          >
+            {h.deleteConfirm}
+          </button>
+          <form method="dialog">
+            <button className="btn-ghost">{h.cancel}</button>
+          </form>
+        </Sheet>
+      </>
     );
   }
   return (

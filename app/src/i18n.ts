@@ -14,7 +14,7 @@ type Messages = {
   screens: Record<Tab, { label: string; text: string }>;
   close: string;
   back: string;
-  settings: { title: string; open: string; you: string; app: string; privacy: string; account: string };
+  settings: { title: string; open: string; nameOffline: string; you: string; app: string; privacy: string; account: string };
   about: { title: string; fitnessVoltLink: string; symmetricStrength: string };
   glossary: Record<Term, { term: string; explanation: string }>;
   // Groups: creating, inviting, joining and leaving, and the display name and avatar members see.
@@ -128,6 +128,8 @@ type Messages = {
   body: {
     onboardingTitle: string;
     onboardingText: string;
+    connectTitle: string;
+    connectText: string;
     privacy: string;
     units: string;
     language: string;
@@ -299,6 +301,10 @@ type Messages = {
     empty: string;
     edit: string;
     delete: string;
+    // Confirming before a past Set is deleted: its title, what it says, and the button that deletes it.
+    deleteTitle: string;
+    deleteText: string;
+    deleteConfirm: string;
     save: string;
     cancel: string;
     // The points a past Session earned, under its date.
@@ -317,7 +323,7 @@ const en: Messages = {
   },
   close: 'Close',
   back: 'Back',
-  settings: { title: 'Settings', open: 'Open settings', you: 'You', app: 'App', privacy: 'Privacy', account: 'Account' },
+  settings: { title: 'Settings', open: 'Open settings', nameOffline: 'Your name and colour were not saved: they need a connection. Everything else was saved.', you: 'You', app: 'App', privacy: 'Privacy', account: 'Account' },
   about: {
     title: 'About',
     fitnessVoltLink: 'Powered by FitnessVolt',
@@ -487,6 +493,8 @@ const en: Messages = {
   body: {
     onboardingTitle: 'About you',
     onboardingText: 'A few things so your progress is scored fairly. You can change any of them later in Profile.',
+    connectTitle: 'Connect to finish setting up',
+    connectText: 'We are getting your profile and training history from your account. Connect to the internet and this will finish by itself.',
     privacy: 'Your sex, bodyweight and Strength Level are never shown to anyone, not even your Group.',
     units: 'Units',
     language: 'Language',
@@ -656,6 +664,9 @@ const en: Messages = {
     empty: 'Your finished sessions will show up here.',
     edit: 'Edit',
     delete: 'Delete',
+    deleteTitle: 'Delete this Set?',
+    deleteText: "It's removed from this Session's history. It can't be undone.",
+    deleteConfirm: 'Delete set',
     save: 'Save',
     cancel: 'Cancel',
     points: (points) => `${points} pts`,
@@ -674,7 +685,7 @@ const es: Messages = {
   },
   close: 'Cerrar',
   back: 'Volver',
-  settings: { title: 'Ajustes', open: 'Abrir ajustes', you: 'Vos', app: 'App', privacy: 'Privacidad', account: 'Cuenta' },
+  settings: { title: 'Ajustes', open: 'Abrir ajustes', nameOffline: 'No se guardaron tu nombre y color: necesitan conexión. Todo lo demás sí se guardó.', you: 'Vos', app: 'App', privacy: 'Privacidad', account: 'Cuenta' },
   about: {
     title: 'Acerca de',
     fitnessVoltLink: 'Powered by FitnessVolt',
@@ -840,6 +851,8 @@ const es: Messages = {
   body: {
     onboardingTitle: 'Sobre vos',
     onboardingText: 'Unos datos para puntuar tu progreso con justicia. Podés cambiarlos después en Perfil.',
+    connectTitle: 'Conectate para terminar la configuración',
+    connectText: 'Estamos trayendo tu perfil y tu historial de entrenamiento desde tu cuenta. Conectate a internet y esto termina solo.',
     privacy: 'Tu sexo, tu peso corporal y tu nivel de fuerza no los ve nadie, ni siquiera tu grupo.',
     units: 'Unidades',
     language: 'Idioma',
@@ -1009,6 +1022,9 @@ const es: Messages = {
     empty: 'Acá vas a ver las sesiones que termines.',
     edit: 'Editar',
     delete: 'Borrar',
+    deleteTitle: '¿Borrar esta serie?',
+    deleteText: 'Se quita del historial de esta sesión. No se puede deshacer.',
+    deleteConfirm: 'Borrar serie',
     save: 'Guardar',
     cancel: 'Cancelar',
     points: (points) => `${points} pts`,
