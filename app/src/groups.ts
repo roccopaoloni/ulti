@@ -6,7 +6,7 @@ import { useStored, write } from './stored.ts';
 import type { Training } from './training.ts';
 
 // What my_groups() returns: of each member, only what the server lets members see of each other.
-export type Member = { display_name: string; avatar_color: string; owner: boolean; me: boolean };
+export type Member = { user_id: string; display_name: string; avatar_color: string; owner: boolean; me: boolean };
 export type Group = { id: string; name: string; invite_code: string; members: Member[] };
 
 // The display name and avatar colour a user's Groups show (design: Avatars).
@@ -122,6 +122,12 @@ export async function deleteAccount(training: Training | null) {
 
 export async function setScoringMode(groupId: string, mode: ScoringMode) {
   await call(supabase.rpc('set_scoring_mode', { group_id: groupId, mode, on_date: today() }));
+}
+
+export async function removeMember(userId: string, groupId: string, memberId: string, reset: boolean) {
+  await call(supabase.rpc('remove_member', { group_id: groupId, user_id: memberId }));
+  if (reset) await call(supabase.rpc('reset_invite', { group_id: groupId }));
+  await refreshGroups(userId);
 }
 
 export async function renameGroup(userId: string, groupId: string, name: string) {

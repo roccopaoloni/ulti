@@ -24,6 +24,12 @@ export function usePathname() {
 export const settingsPath = `${paths.profile}/settings`;
 export const routinePath = `${paths.train}/routine`;
 
+export const historyPath = `${paths.train}/history`;
+export const sessionPath = (id: string) => `${historyPath}/${id}`;
+// The Session whose detail screen the path is, if any.
+export const sessionFromPath = (pathname: string) =>
+  pathname.startsWith(`${historyPath}/`) ? pathname.slice(historyPath.length + 1) : null;
+
 export function useCurrentTab(): Tab {
   const pathname = usePathname();
   return tabs.find((tab) => paths[tab] === pathname || (tab !== 'home' && pathname.startsWith(`${paths[tab]}/`))) ?? 'home';

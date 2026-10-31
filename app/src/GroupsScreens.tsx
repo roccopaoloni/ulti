@@ -17,6 +17,7 @@ import {
   newGroupPath,
   refreshGroups,
   refreshProfile,
+  removeMember,
   renameGroup,
   resetInvite,
   saveProfile,
@@ -26,6 +27,7 @@ import {
   useSelectedGroup,
   type AvatarColor,
   type Group,
+  type Member,
   type Profile,
 } from './groups.ts';
 import { useI18n, type I18n } from './i18n.ts';
@@ -372,9 +374,20 @@ export function GroupSettingsScreen({ userId, groupId }: { userId: string; group
   const group = useGroups(userId)?.find(({ id }) => id === groupId);
   const leave = useRef<HTMLDialogElement>(null);
   const remove = useRef<HTMLDialogElement>(null);
+  const del = useRef<HTMLDialogElement>(null);
+  const [removing, setRemoving] = useState<Member>();
   useEffect(() => {
     refreshGroups(userId).catch(() => {});
   }, [userId]);
+  // The sheet only exists while someone is being removed, so it opens once it has mounted.
+  useEffect(() => {
+    const sheet = remove.current;
+    if (!removing || !sheet) return;
+    const forget = () => setRemoving(undefined);
+    sheet.showModal();
+    sheet.addEventListener('close', forget);
+    return () => sheet.removeEventListener('close', forget);
+  }, [removing]);
   if (!group) return <SubScreen title={g.settings} parent={paths.groups}>{null}</SubScreen>;
   const owner = group.members.some(({ me, owner }) => me && owner);
   return (
@@ -393,6 +406,15 @@ export function GroupSettingsScreen({ userId, groupId }: { userId: string; group
                 {member.me && <span className="tagpill you">{g.you}</span>}
                 {member.owner && <span className="tagpill">{t.glossary.owner.term}</span>}
               </span>
+              {owner && !member.me && (
+                <button
+                  type="button"
+                  className="btn-link"
+                  onClick={() => setRemoving(member)}
+                >
+                  {g.removeMember}
+                </button>
+              )}
             </li>
           ))}
         </ul>
@@ -403,12 +425,13 @@ export function GroupSettingsScreen({ userId, groupId }: { userId: string; group
       <LeaveSheet dialog={leave} userId={userId} group={group} />
       {owner && (
         <>
-          <button type="button" className="btn-link danger" onClick={() => remove.current?.showModal()}>
+          <button type="button" className="btn-link danger" onClick={() => del.current?.showModal()}>
             {g.deleteGroup}
           </button>
-          <DeleteGroupSheet dialog={remove} userId={userId} group={group} />
+          <DeleteGroupSheet dialog={del} userId={userId} group={group} />
         </>
       )}
+      {removing && <RemoveSheet key={removing.user_id} dialog={remove} userId={userId} group={group} member={removing} />}
     </SubScreen>
   );
 }
@@ -590,6 +613,38 @@ function InviteSheet({ dialog, userId, group }: SheetProps) {
       )}
       <form method="dialog">
         <button className="btn-ghost">{t.close}</button>
+      </form>
+    </Sheet>
+  );
+}
+
+function RemoveSheet({ dialog, userId, group, member }: SheetProps & { member: Member }) {
+  const { t } = useI18n();
+  const g = t.groups;
+  const { busy, error, run } = useAction();
+  const remove = (reset: boolean) =>
+    run(async () => {
+      await removeMember(userId, group.id, member.user_id, reset);
+      dialog.current?.close();
+    });
+
+  return (
+    <Sheet dialog={dialog} label={g.removeTitle(member.display_name, group.name)}>
+      <h2 className="disp sheet-title">{g.removeTitle(member.display_name, group.name)}</h2>
+      <p>{g.removeText}</p>
+      {error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      )}
+      <button type="button" className="btn-danger" disabled={busy} onClick={() => remove(false)}>
+        {g.removeConfirm}
+      </button>
+      <button type="button" className="btn-ghost danger" disabled={busy} onClick={() => remove(true)}>
+        {g.removeAndReset}
+      </button>
+      <form method="dialog">
+        <button className="btn-ghost">{g.cancel}</button>
       </form>
     </Sheet>
   );

@@ -309,6 +309,52 @@ function weekEnd(week: string): string {
   return day.toISOString().slice(0, 10);
 }
 
+// One week of the History screen: its Sessions (as given, newest first) against the Weekly Target,
+// whether it earned its Week Stamp, and its points (Consistency Points plus Progress Points).
+export type HistoryWeek<S> = {
+  // The Monday and the Sunday of the week, as local dates.
+  week: string;
+  end: string;
+  sessions: S[];
+  done: number;
+  target: number;
+  stamped: boolean;
+  points: number;
+};
+
+// The weeks from `today`'s back to the oldest Session's, newest first, empty ones between included.
+export function historyWeeks<S extends { localDate: string }>(input: {
+  sessions: readonly S[];
+  consistency: readonly ConsistencyWeek[];
+  records: readonly Pick<PersonalRecord, 'localDate' | 'progressPoints'>[];
+  weeklyTargets: Dated<number>[];
+  today: string;
+}): HistoryWeek<S>[] {
+  const current = weekStart(input.today);
+  const oldest = input.sessions.reduce((min, { localDate }) => (localDate < min ? localDate : min), input.today);
+  const first = weekStart(oldest);
+  const weeks: HistoryWeek<S>[] = [];
+  for (let week = current; week >= first; week = previousMonday(week)) {
+    const end = weekEnd(week);
+    const scored = input.consistency.find((event) => event.week === week);
+    const done = scored?.sessionDates.length ?? 0;
+    const target = scored?.weeklyTarget ?? weeklyTargetOf(input.weeklyTargets, week) ?? 0;
+    const progress = input.records
+      .filter(({ localDate }) => localDate >= week && localDate <= end)
+      .reduce((sum, record) => sum + record.progressPoints, 0);
+    weeks.push({
+      week,
+      end,
+      sessions: input.sessions.filter(({ localDate }) => localDate >= week && localDate <= end),
+      done,
+      target,
+      stamped: scored !== undefined && done === target,
+      points: (scored?.consistencyPoints ?? 0) + progress,
+    });
+  }
+  return weeks;
+}
+
 // Labels one Exercise's Sets of one Session, in the order they were logged: a Set is a Warm-up Set
 // when it comes before the first Set within 10% of the heaviest weight, so back-off Sets after the
 // top Set stay Working Sets. A lifter's override wins over the detected label.
