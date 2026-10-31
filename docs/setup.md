@@ -2,7 +2,7 @@
 
 The steps only the project owner can do: creating accounts, choosing names and handing keys to the pipeline. Everything here is free. [ADR 0006](./adr/0006-test-phase-runs-on-free-tiers.md) explains why these services and not others.
 
-Steps 0–7 are ticket #2 and come before any code; close that issue when they're done, which lets the walking skeleton (#3) start. Step 8 comes after #3 ships, step 9 with sign-up (#4), step 10 after Groups (#20), and step 11 after offline logging (#5).
+Steps 0–7 are ticket #2 and come before any code; close that issue when they're done, which lets the walking skeleton (#3) start. Step 8 comes after #3 ships, step 9 with sign-up (#4), step 10 after Groups (#20), step 11 after offline logging (#5), and step 15 with the captcha (#91).
 
 Dashboards change their menus from time to time. If a menu named here has moved, search the dashboard for the setting's name.
 
@@ -243,6 +243,28 @@ Nothing needs setting up. The deploy job applies the migration that creates `sea
 
 - [ ] The Q4 2026 results are in `season_results` and the Past Seasons stamp shows on Profile
 - [ ] No drop to Bronze when reopening offline
+
+## 15. With the captcha (#91): turn on bot protection
+
+Sign-up, sign-in and "forgot password" are protected by Cloudflare Turnstile (free, usually invisible). The app shows the widget when it has a site key; Supabase checks the token with the secret key. Do the three parts in this order. If you turn Supabase's protection on before the app has the site key, nobody can sign in.
+
+1. Create the Turnstile site: sign up at [cloudflare.com](https://dash.cloudflare.com/sign-up) (free), then **Turnstile → Add widget**:
+   - Widget name: `ULTI`
+   - Hostnames: the production address from step 4 (`ulti-app.vercel.app`), `localhost` for development, and any Vercel preview hostname you want to test on (a preview's address is `*.vercel.app`; add each one you use)
+   - Widget mode: **Managed**
+   - Pre-clearance: no
+
+   Create it, then copy the **Site key** (public) and the **Secret key** (**secret**: it only goes to Supabase).
+2. Give the app the site key: in Vercel, **Settings → Environment Variables**, add `VITE_TURNSTILE_SITE_KEY` = the site key, for all environments, and redeploy `main` (**Deployments → ⋯ → Redeploy**). To try it on this computer, add the same line to `.env`.
+3. Turn it on in Supabase: **Authentication → Attack Protection** (or **Bot and Abuse Protection**), turn on **Enable Captcha protection**, choose **Turnstile**, paste the secret key and save.
+4. Open the app, once on the deployed address and once on a phone: **Create account**, **Sign in** and **Forgot your password?** should each work, usually without a visible challenge, and a sign-in with a never-verified account should send its fresh code.
+
+The local stack and CI keep captcha off (`supabase/config.toml`), so the integration tests are unaffected.
+
+- [ ] The Turnstile widget exists with the production and local hostnames
+- [ ] `VITE_TURNSTILE_SITE_KEY` is in Vercel and `main` was redeployed
+- [ ] Supabase's captcha protection is on with the Turnstile secret key
+- [ ] Sign-up, sign-in and password reset all worked on the deployed app
 
 ## Later: moving to a real domain
 
