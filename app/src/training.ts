@@ -91,6 +91,10 @@ export type IncrementOverride = { exerciseId: string; incrementKg: number; updat
 // made one, the latest write is the Routine.
 export type RoutineRecord = { id: string; days: RoutineDay[]; updatedAt: string };
 
+// "I don't follow a routine": a yes or no that holds until changed, and that saving a Routine
+// clears. The latest write wins.
+export type NoRoutineRecord = { value: boolean; updatedAt: string };
+
 // A Deload Week the lifter started themselves, or answered a suggestion for (spec: Deload Weeks,
 // suggested or self-started, accepted or dismissed). It is the week starting on `week` (a Monday);
 // the latest write for a week wins.
@@ -110,6 +114,7 @@ export type Mutation =
   | { id: string; kind: 'saveExercise'; exercise: { id: string; name: string; muscle: Muscle } }
   | { id: string; kind: 'saveProfileEntry'; entry: ProfileEntry }
   | { id: string; kind: 'saveRoutine'; routine: RoutineRecord }
+  | { id: string; kind: 'saveNoRoutine'; noRoutine: NoRoutineRecord }
   | { id: string; kind: 'saveIncrement'; increment: IncrementOverride };
 
 // The sync endpoint: it resolves once the server has the batch, and throws otherwise.
@@ -145,6 +150,7 @@ interface Store extends DBSchema {
   downloaded: { key: 'profile'; value: true };
   // The Routine as the lifter is editing it, kept only while it is not whole (so not the Routine yet).
   routineDraft: { key: 'days'; value: RoutineDay[] };
+  noRoutine: { key: 'choice'; value: NoRoutineRecord };
 }
 
 // The Session being logged and the Exercises added to it, in order, including any with no Sets yet,
@@ -157,7 +163,7 @@ const DEFAULT_INCREMENT_KG = 2.5;
 export type Training = Awaited<ReturnType<typeof openTraining>>;
 
 export async function openTraining(userId: string, options: Options) {
-  const db = await openDB<Store>(`ulti-${userId}`, 7, {
+  const db = await openDB<Store>(`ulti-${userId}`, 8, {
     upgrade(db, oldVersion) {
       if (oldVersion < 1) {
         db.createObjectStore('sessions', { keyPath: 'id' });
@@ -185,17 +191,25 @@ export async function openTraining(userId: string, options: Options) {
       if (oldVersion < 7) {
         db.createObjectStore('routineDraft');
       }
+      if (oldVersion < 8) {
+        db.createObjectStore('noRoutine');
+      }
     },
   });
 
   // Saves a record and queues its mutation in one transaction, with the Session in progress when
   // it changes: none of them exists without the others.
   async function write(mutation: Mutation, inProgress?: InProgress | null) {
-    const tx = db.transaction(['sessions', 'sets', 'exercises', 'outbox', 'state', 'profile', 'routines', 'increments', 'deloads'], 'readwrite');
+    const tx = db.transaction(['sessions', 'sets', 'exercises', 'outbox', 'state', 'profile', 'routines', 'increments', 'deloads', 'noRoutine'], 'readwrite');
     if (mutation.kind === 'saveDeload') await tx.objectStore('deloads').put(mutation.deload);
+    else if (mutation.kind === 'saveNoRoutine') await tx.objectStore('noRoutine').put(mutation.noRoutine, 'choice');
     else if (mutation.kind === 'saveSession') await tx.objectStore('sessions').put(mutation.session);
     else if (mutation.kind === 'saveProfileEntry') await tx.objectStore('profile').put(mutation.entry);
-    else if (mutation.kind === 'saveRoutine') await tx.objectStore('routines').put(mutation.routine);
+    else if (mutation.kind === 'saveRoutine') {
+      await tx.objectStore('routines').put(mutation.routine);
+      // The server clears the choice on a Routine too, so no mutation is queued for it.
+      if (mutation.routine.days.length > 0) await tx.objectStore('noRoutine').put({ value: false, updatedAt: mutation.routine.updatedAt }, 'choice');
+    }
     else if (mutation.kind === 'saveIncrement') await tx.objectStore('increments').put(mutation.increment);
     else if (mutation.kind === 'saveSet') {
       if (mutation.set.deleted) await tx.objectStore('sets').delete(mutation.set.id);
@@ -516,6 +530,22 @@ export async function openTraining(userId: string, options: Options) {
     async saveRoutine(days: RoutineDay[]) {
       const id = (await this.routine())?.id ?? crypto.randomUUID();
       await write({ id: crypto.randomUUID(), kind: 'saveRoutine', routine: { id, days, updatedAt: stamp() } });
+    },
+
+    // Whether the lifter said they don't follow a routine. Saving a Routine clears it.
+    async followsNoRoutine() {
+      return (await db.get('noRoutine', 'choice'))?.value ?? false;
+    },
+
+    async setFollowsNoRoutine(value: boolean) {
+      await write({ id: crypto.randomUUID(), kind: 'saveNoRoutine', noRoutine: { value, updatedAt: stamp() } });
+    },
+
+    // Keeps the choice the server holds, as on a phone that is new to this user, unless the phone
+    // has a later write of it.
+    async saveNoRoutineFromServer(choice: NoRoutineRecord) {
+      const kept = await db.get('noRoutine', 'choice');
+      if (!kept || Date.parse(kept.updatedAt) < Date.parse(choice.updatedAt)) await db.put('noRoutine', choice, 'choice');
     },
 
     // What the Routine editor shows: the draft the lifter left unfinished, else the Routine.

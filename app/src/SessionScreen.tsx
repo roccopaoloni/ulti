@@ -1,6 +1,8 @@
 import { asksRir, inCalibration, type RoutineDay, type Units } from '@ulti/rules';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Sheet } from './GroupsScreens.tsx';
 import { useI18n } from './i18n.ts';
+import { navigate, routinePath } from './navigation.ts';
 import { SessionSummary, weekProgress, type WeekProgress } from './Consistency.tsx';
 import { ExerciseBlock } from './ExerciseBlock.tsx';
 import { ExercisePicker } from './ExercisePicker.tsx';
@@ -94,6 +96,13 @@ export function StartSession({ logging, training }: { logging: ReturnType<typeof
     training.deload().then(setDeload);
   }, [training, inProgress]);
   const d = t.deload;
+  const noRoutine = useRef<HTMLDialogElement>(null);
+  // With no Routine, Start asks first, unless the lifter said they don't follow one. Read when
+  // tapped, so a choice that just arrived from the server counts.
+  const start = async () => {
+    if (inProgress || next || (await training.followsNoRoutine()) || (await training.nextRoutineDay())) logging.start(next?.id);
+    else noRoutine.current?.showModal();
+  };
   const answer = async (accept: boolean) => {
     await training.answerDeload(accept);
     setDeload(await training.deload());
@@ -120,7 +129,42 @@ export function StartSession({ logging, training }: { logging: ReturnType<typeof
           </p>
         </section>
       )}
-      <button type="button" className="btn-start" onClick={() => logging.start(next?.id)}>
+      <Sheet dialog={noRoutine} label={s.noRoutineTitle}>
+        <h2 className="disp sheet-title">{s.noRoutineTitle}</h2>
+        <p className="muted">{s.noRoutineText}</p>
+        <button
+          type="button"
+          className="btn-primary"
+          onClick={() => {
+            noRoutine.current?.close();
+            navigate(routinePath);
+          }}
+        >
+          {s.noRoutineSetUp}
+        </button>
+        <button
+          type="button"
+          className="btn-ghost"
+          onClick={() => {
+            noRoutine.current?.close();
+            logging.start();
+          }}
+        >
+          {s.noRoutineLog}
+        </button>
+        <button
+          type="button"
+          className="btn-link"
+          onClick={async () => {
+            await training.setFollowsNoRoutine(true);
+            noRoutine.current?.close();
+            logging.start();
+          }}
+        >
+          {s.noRoutineNever}
+        </button>
+      </Sheet>
+      <button type="button" className="btn-start" onClick={start}>
         <span className="disp">{inProgress ? s.resume : s.start}</span>
         <small>{inProgress ? s.logged(inProgress.sets.length) : next ? s.startNext(next.name) : s.startHint}</small>
       </button>
