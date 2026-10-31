@@ -209,3 +209,47 @@ test('members see each other only as a display name, an avatar colour and who th
   expect(renamed.data).toEqual([]);
   expect((await groupsOf(bea))[0].members[0]).toEqual({ user_id: expect.any(String), display_name: 'Ana', avatar_color: coral, owner: true, me: false });
 });
+
+test('the Owner renames the Group and every member reads the new name', async () => {
+  const ana = await lifter('Ana', coral);
+  const bea = await lifter('Bea', sky);
+  const { data: gymCrew } = await ana.rpc('create_group', { name: 'Gym crew' });
+  const [{ invite_code }] = await groupsOf(ana);
+  await bea.rpc('join_group', { invite_code });
+
+  const renamed = await ana.rpc('rename_group', { group_id: gymCrew, name: '  Iron club ' });
+
+  expect(renamed.error).toBeNull();
+  expect((await groupsOf(ana))[0].name).toBe('Iron club');
+  expect((await groupsOf(bea))[0].name).toBe('Iron club');
+});
+
+test("a member who isn't the Owner can't rename the Group, and neither can a non-member", async () => {
+  const ana = await lifter('Ana', coral);
+  const bea = await lifter('Bea', sky);
+  const cy = await lifter('Cy', teal);
+  const { data: gymCrew } = await ana.rpc('create_group', { name: 'Gym crew' });
+  const [{ invite_code }] = await groupsOf(ana);
+  await bea.rpc('join_group', { invite_code });
+
+  const byMember = await bea.rpc('rename_group', { group_id: gymCrew, name: 'Mine now' });
+  const byOutsider = await cy.rpc('rename_group', { group_id: gymCrew, name: 'Mine now' });
+
+  expect(byMember.error?.message).toBe('not_owner');
+  expect(byOutsider.error?.message).toBe('not_owner');
+  expect((await groupsOf(ana))[0].name).toBe('Gym crew');
+});
+
+test('an empty or too-long Group name is rejected when renaming', async () => {
+  const ana = await lifter('Ana', coral);
+  const { data: gymCrew } = await ana.rpc('create_group', { name: 'Gym crew' });
+
+  const empty = await ana.rpc('rename_group', { group_id: gymCrew, name: '   ' });
+  const tooLong = await ana.rpc('rename_group', { group_id: gymCrew, name: 'x'.repeat(41) });
+  const longest = await ana.rpc('rename_group', { group_id: gymCrew, name: 'x'.repeat(40) });
+
+  expect(empty.error).not.toBeNull();
+  expect(tooLong.error).not.toBeNull();
+  expect(longest.error).toBeNull();
+  expect((await groupsOf(ana))[0].name).toBe('x'.repeat(40));
+});

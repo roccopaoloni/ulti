@@ -125,6 +125,11 @@ export async function removeMember(userId: string, groupId: string, memberId: st
   await refreshGroups(userId);
 }
 
+export async function renameGroup(userId: string, groupId: string, name: string) {
+  await call(supabase.rpc('rename_group', { group_id: groupId, name }));
+  await refreshGroups(userId);
+}
+
 export async function resetInvite(userId: string, groupId: string) {
   await call(supabase.rpc('reset_invite', { group_id: groupId }));
   await refreshGroups(userId);

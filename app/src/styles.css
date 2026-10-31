@@ -1863,3 +1863,20 @@ prefers-reduced-motion switches every animation off, so it stays off the badge. 
   font: 800 22px var(--body);
   font-variant-numeric: tabular-nums;
 }
+.name-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+.name-form .field {
+  flex: 1;
+}
+.name-form .field {
+  min-width: 0;
+}
+.name-form .btn-ghost {
+  width: auto;
+  flex: none;
+  height: 54px;
+  padding: 0 20px;
+}
