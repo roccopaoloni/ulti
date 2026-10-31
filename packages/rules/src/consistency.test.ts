@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { deriveScoringEvents, streak, weekStamps, type Dated, type TrainingHistory } from './index.ts';
+import { deriveScoringEvents, sessionConsistencyPoints, streak, weekStamps, type Dated, type TrainingHistory } from './index.ts';
 
 // A Session of `workingSets` equal-weight Sets of one Exercise, so every Set is a Working Set.
 function session(localDate: string, workingSets = 6) {
@@ -21,6 +21,12 @@ function ana(sessions: ReturnType<typeof session>[], weeklyTargets: Dated<number
 
 const consistencyOf = (history: TrainingHistory) =>
   deriveScoringEvents(history).filter((event) => event.kind === 'consistency');
+
+test('each qualifying Session is worth its share of the weekly amount, and Sessions beyond the Weekly Target nothing', () => {
+  const history = ana([session('2026-10-19'), session('2026-10-20', 2), session('2026-10-21'), session('2026-10-22'), session('2026-10-23')]);
+
+  expect(sessionConsistencyPoints(history)).toEqual([40, 0, 40, 40, 0]);
+});
 
 // The weekly amount is 120 (tuned in #31), so a Weekly Target of 3 pays 40 a Session.
 test('with a Weekly Target of 3, two qualifying Sessions in a week earn two thirds of the weekly amount', () => {
