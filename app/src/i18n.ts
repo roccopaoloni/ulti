@@ -347,11 +347,31 @@ type Messages = {
     points: (points: number) => string;
     shared: (sharedWith: number) => string;
   };
-  // The Train tab's history of past Sessions.
+  // The Train tab's recent Sessions, the History screen and the Session detail screen.
   history: {
     title: string;
+    recent: string;
+    seeAll: string;
     empty: string;
-    edit: string;
+    // A week with no Sessions, a week's Sessions against its Weekly Target ("1 of 3"), and the way to load older weeks.
+    noSessions: string;
+    weekProgress: (done: number, target: number) => string;
+    showEarlier: string;
+    weekStamp: string;
+    // A row's second line: no Routine Day, and how many Exercises.
+    noRoutine: string;
+    exercises: (count: number) => string;
+    // A Personal Record on a row: "Bench +3%".
+    recordChip: (exercise: string, percentGain: number) => string;
+    // The detail screen's three figures, and its hint.
+    routineLabel: string;
+    setsLabel: string;
+    progressLabel: string;
+    tapHint: string;
+    // A Warm-up Set's mark in place of its number.
+    warmUpShort: string;
+    // The sheet opened by tapping a Set.
+    setTitle: string;
     delete: string;
     // Confirming before a past Set is deleted: its title, what it says, and the button that deletes it.
     deleteTitle: string;
@@ -359,7 +379,7 @@ type Messages = {
     deleteConfirm: string;
     save: string;
     cancel: string;
-    // The points a past Session earned, under its date.
+    // A week's points, on its header.
     points: (points: number) => string;
   };
 };
@@ -759,9 +779,23 @@ const en: Messages = {
     shared: (sharedWith) => (sharedWith === 1 ? 'Tied with 1 other' : `Tied with ${sharedWith} others`),
   },
   history: {
-    title: 'Past sessions',
+    title: 'History',
+    recent: 'Recent sessions',
+    seeAll: 'See all',
     empty: 'Your finished sessions will show up here.',
-    edit: 'Edit',
+    noSessions: 'No sessions',
+    weekProgress: (done, target) => `${done} of ${target}`,
+    showEarlier: 'Show earlier weeks',
+    weekStamp: 'Week Stamp',
+    noRoutine: 'No routine',
+    exercises: (count) => (count === 1 ? '1 exercise' : `${count} exercises`),
+    recordChip: (exercise, percentGain) => `${exercise} +${percentGain}%`,
+    routineLabel: 'Routine',
+    setsLabel: 'sets',
+    progressLabel: 'progress pts',
+    tapHint: 'Tap a set to fix or delete it.',
+    warmUpShort: 'WU',
+    setTitle: 'Edit set',
     delete: 'Delete',
     deleteTitle: 'Delete this Set?',
     deleteText: "It's removed from this Session's history. It can't be undone.",
@@ -1164,9 +1198,23 @@ const es: Messages = {
     shared: (sharedWith) => (sharedWith === 1 ? 'Empatado con 1 más' : `Empatado con ${sharedWith} más`),
   },
   history: {
-    title: 'Sesiones anteriores',
+    title: 'Historial',
+    recent: 'Últimas sesiones',
+    seeAll: 'Ver todas',
     empty: 'Acá vas a ver las sesiones que termines.',
-    edit: 'Editar',
+    noSessions: 'Sin sesiones',
+    weekProgress: (done, target) => `${done} de ${target}`,
+    showEarlier: 'Ver semanas anteriores',
+    weekStamp: 'Sello semanal',
+    noRoutine: 'Sin rutina',
+    exercises: (count) => (count === 1 ? '1 ejercicio' : `${count} ejercicios`),
+    recordChip: (exercise, percentGain) => `${exercise} +${percentGain}%`,
+    routineLabel: 'Rutina',
+    setsLabel: 'series',
+    progressLabel: 'pts de progreso',
+    tapHint: 'Tocá una serie para corregirla o borrarla.',
+    warmUpShort: 'ENT',
+    setTitle: 'Editar serie',
     delete: 'Borrar',
     deleteTitle: '¿Borrar esta serie?',
     deleteText: 'Se quita del historial de esta sesión. No se puede deshacer.',

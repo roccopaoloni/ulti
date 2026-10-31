@@ -929,43 +929,249 @@ button.cell {
   }
 }
 
-/* The Train tab's history of past Sessions. */
+/* The Train tab's recent Sessions, the History screen and a Session's detail screen. */
 .history {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
-.history-head {
+.row-head {
   display: flex;
   justify-content: space-between;
-  width: 100%;
+  align-items: center;
+}
+.see-all {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--accent-text);
+}
+.see-all svg {
+  width: 15px;
+  height: 15px;
+}
+.card.list {
   padding: 0;
+  gap: 0;
+  overflow: hidden;
+}
+/* A past Session: one tappable line. The dot is the Routine Day's colour, hollow when it has none. */
+.sess {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 16px;
   text-align: left;
 }
-.history-ex {
-  margin: 8px 0 0;
-  font-size: 16px;
+.sess + .sess {
+  border-top: 1px solid var(--line);
+}
+.sess svg {
+  width: 18px;
+  height: 18px;
+  color: var(--muted);
+}
+.sess-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--c, var(--line));
+}
+.sess-dot.none {
+  background: none;
+  border: 2px solid var(--line);
+}
+.sess-main {
+  min-width: 0;
+}
+.sess strong {
+  display: block;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.sess small {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sess-prs {
+  display: flex;
+  gap: 4px;
+  min-width: 0;
+  max-width: 170px;
+}
+.sess-prs .pr:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pr {
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 700;
+  font-size: 12px;
+  border-radius: 999px;
+  padding: 3px 9px;
+  white-space: nowrap;
+}
+.pr.more {
+  background: none;
+  color: var(--accent-text);
+  border: 1px solid var(--accent);
+}
+/* A week of history: its header says how the week went. */
+.week {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.week-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 4px;
+}
+.week-head .when {
+  flex: 1;
+  min-width: 0;
+}
+.week-head .when b {
+  display: block;
+  font-weight: 800;
+}
+.week-head .when small {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+.tally {
+  display: flex;
+  gap: 4px;
+}
+.tally i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+}
+.tally i.f {
+  background: var(--accent);
+}
+.wk-pts {
+  font: 800 13px/1 var(--display);
+  min-width: 64px;
+  text-align: right;
+}
+.wk-stamp {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex: none;
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.wk-stamp svg {
+  width: 15px;
+  height: 15px;
+}
+.wk-stamp.no {
+  background: none;
+  border: 1.5px dashed var(--line);
+  color: var(--muted);
+}
+.empty-week {
+  margin: 0;
+  padding: 2px 4px;
+  color: var(--muted);
+  font-size: 13.5px;
+}
+.summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.stat {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 10px 12px;
+  min-width: 0;
+}
+.stat b {
+  display: block;
+  font: 800 17px/1.1 var(--display);
+  overflow-wrap: anywhere;
+}
+.stat small {
+  color: var(--muted);
+  font-size: 12px;
+}
+.ex-name {
+  font-weight: 800;
+}
+.hset {
+  display: grid;
+  grid-template-columns: 30px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  padding: 9px 0;
+  border-top: 1px solid var(--line);
+  text-align: left;
+}
+.hset .n {
+  color: var(--muted);
+  font-weight: 700;
+  text-align: center;
+  font-size: 13px;
+}
+.hset .n.label-warm-up {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+.hset .v {
+  font-weight: 700;
+}
+.hset .v small {
+  color: var(--muted);
+  font-weight: 600;
+}
+.hset.is-pr {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-radius: 10px;
+  border-top-color: transparent;
+  padding-inline: 6px;
+  margin-inline: -6px;
+  width: calc(100% + 12px);
+}
+.hset .pr-tag {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent-text);
+}
+.history-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+}
+.set-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 .past-set {
   display: flex;
   align-items: center;
   gap: 12px;
-}
-/* The label sits above the Set, so the Set and its Edit and Delete links keep their room. */
-.past-set > span:first-child {
-  flex: 1;
-  display: grid;
-  gap: 4px;
-  justify-items: start;
-}
-/* The label sits above the Set, so the Set and its Edit and Delete links keep their room. */
-.past-set .past-tag {
-  height: auto;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--surface-2);
-  color: var(--muted);
-  white-space: nowrap;
 }
 .past-set input {
   width: 6ch;

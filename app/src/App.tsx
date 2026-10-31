@@ -5,12 +5,12 @@ import { FriendsTrainedToday, MemberProfileScreen, RaceCards, SinceLastVisit } f
 import { memberFromPath, newGroupPath, usePendingInvite } from './groups.ts';
 import { CreateGroup, GroupsTab, JoinInvite, ProfileSummary } from './GroupsScreens.tsx';
 import { StampsCard, WeekCard } from './Consistency.tsx';
-import { History } from './HistoryScreen.tsx';
+import { HistoryScreen, RecentSessions, SessionDetailScreen } from './HistoryScreen.tsx';
 import { useI18n, type Term } from './i18n.ts';
 import { gearIcon, tabIcons } from './icons.tsx';
 import { Info } from './Info.tsx';
 import { InstallCard } from './InstallApp.tsx';
-import { navigate, paths, routinePath, settingsPath, tabs, useCurrentTab, usePathname, type Tab } from './navigation.ts';
+import { historyPath, navigate, paths, routinePath, sessionFromPath, settingsPath, tabs, useCurrentTab, usePathname, type Tab } from './navigation.ts';
 import { hasEverything, useBodyProfile, useLayout, useUnits } from './profile.ts';
 import { RankCard } from './RankCard.tsx';
 import { CrownGate } from './CrownGate.tsx';
@@ -53,6 +53,8 @@ function Tabs({ userId }: { userId: string }) {
   const settingsOpen = pathname === settingsPath;
   const member = memberFromPath(pathname);
   const routineOpen = pathname === routinePath;
+  const historyOpen = pathname === historyPath;
+  const sessionId = sessionFromPath(pathname);
   const { label, text } = t.screens[current];
   const { training, downloads } = useTraining(userId);
   const logging = useLogging(training);
@@ -83,6 +85,10 @@ function Tabs({ userId }: { userId: string }) {
           <MemberProfileScreen key={member.join()} userId={userId} training={training} groupId={member[0]} memberId={member[1]} />
         ) : settingsOpen ? (
           <SettingsScreen userId={userId} training={training} profile={profile} units={units} onSaved={reload} />
+        ) : historyOpen && training ? (
+          <HistoryScreen training={training} />
+        ) : sessionId && training ? (
+          <SessionDetailScreen training={training} units={units} sessionId={sessionId} />
         ) : routineOpen && training ? (
           <RoutineSubScreen training={training} profile={profile} onProfileSaved={reload} />
         ) : (
@@ -134,7 +140,7 @@ function Tabs({ userId }: { userId: string }) {
             {current === 'home' && <InstallCard />}
             {current === 'train' && training && <StartSession logging={logging} training={training} />}
             {current === 'train' && training && <MyRoutineButton training={training} />}
-            {current === 'train' && training && <History training={training} units={units} />}
+            {current === 'train' && training && <RecentSessions training={training} />}
             {current === 'profile' && training && <RankCard training={training} />}
             {current === 'profile' && training && <StampsCard training={training} />}
           </>
