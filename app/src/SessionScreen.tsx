@@ -91,16 +91,22 @@ export function StartSession({ logging, training }: { logging: ReturnType<typeof
   const { inProgress } = logging;
   const [next, setNext] = useState<RoutineDay | null>(null);
   const [deload, setDeload] = useState<Awaited<ReturnType<Training['deload']>> | null>(null);
+  const [met, setMet] = useState(false);
   useEffect(() => {
     training.nextRoutineDay().then(setNext);
+    training.weeklyTargetMet().then(setMet);
     training.deload().then(setDeload);
   }, [training, inProgress]);
   const d = t.deload;
   const noRoutine = useRef<HTMLDialogElement>(null);
+  const extra = useRef<HTMLDialogElement>(null);
+  // With the Weekly Target met, a new Session is an extra one: it never moves the Routine's next
+  // Day, so it starts unplanned, after the lifter confirms.
   // With no Routine, Start asks first, unless the lifter said they don't follow one. Read when
   // tapped, so a choice that just arrived from the server counts.
   const start = async () => {
-    if (inProgress || next || (await training.followsNoRoutine()) || (await training.nextRoutineDay())) logging.start(next?.id);
+    if (met && !inProgress) extra.current?.showModal();
+    else if (inProgress || next || (await training.followsNoRoutine()) || (await training.nextRoutineDay())) logging.start(next?.id);
     else noRoutine.current?.showModal();
   };
   const answer = async (accept: boolean) => {
@@ -164,11 +170,28 @@ export function StartSession({ logging, training }: { logging: ReturnType<typeof
           {s.noRoutineNever}
         </button>
       </Sheet>
+      <Sheet dialog={extra} label={s.extraTitle}>
+        <h2 className="disp sheet-title">{s.extraTitle}</h2>
+        <p className="muted">{s.extraText}</p>
+        <button
+          type="button"
+          className="btn-primary"
+          onClick={() => {
+            extra.current?.close();
+            logging.start();
+          }}
+        >
+          {s.extraConfirm}
+        </button>
+        <button type="button" className="btn-ghost" onClick={() => extra.current?.close()}>
+          {s.extraCancel}
+        </button>
+      </Sheet>
       <button type="button" className="btn-start" onClick={start}>
-        <span className="disp">{inProgress ? s.resume : s.start}</span>
-        <small>{inProgress ? s.logged(inProgress.sets.length) : next ? s.startNext(next.name) : s.startHint}</small>
+        <span className="disp">{inProgress ? s.resume : met ? s.startExtra : s.start}</span>
+        <small>{inProgress ? s.logged(inProgress.sets.length) : met ? s.extraHint : next ? s.startNext(next.name) : s.startHint}</small>
       </button>
-      {next && !inProgress && (
+      {next && !met && !inProgress && (
         <button type="button" className="btn-link" onClick={() => logging.start()}>
           {s.startUnplanned}
         </button>

@@ -69,7 +69,16 @@ export function ExercisePicker({
   }
 
   return createPortal(
-    <dialog ref={dialog} className="picker" tabIndex={-1} aria-label={s.chooseExercise} onClose={onClose}>
+    <dialog
+      ref={dialog}
+      className="picker"
+      tabIndex={-1}
+      aria-label={s.chooseExercise}
+      onClose={onClose}
+      // React passes portal events up the component tree; keep clicks and submits away from the parent.
+      onClick={(event) => event.stopPropagation()}
+      onSubmit={(event) => event.stopPropagation()}
+    >
       <header className="picker-head">
         <button type="button" className="iconbtn" aria-label={t.close} onClick={onClose}>
           {backIcon}
