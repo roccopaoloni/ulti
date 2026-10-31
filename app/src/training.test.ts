@@ -218,13 +218,67 @@ test('a deleted Set disappears from the history and is sent as a deletion', asyn
   training.close();
 });
 
+test('a Session discarded offline is gone from the phone, and reaches the server once online', async () => {
+  const network = server();
+  network.offline = true;
+  const phone = anasPhone(network);
+  const training = await phone.open();
+  const session = await training.startSession();
+
+  await training.discardSession(session.id);
+
+  expect(await training.sessionInProgress()).toBeNull();
+  expect(await training.pastSessions()).toEqual([]);
+  network.offline = false;
+  phone.connectivity.dispatchEvent(new Event('online'));
+  await vi.waitFor(() => expect(network.batches).toHaveLength(1));
+  const last = network.batches[0].at(-1)!;
+  expect(last.kind === 'saveSession' && { id: last.session.id, deleted: last.session.deleted }).toEqual({ id: session.id, deleted: true });
+  training.close();
+});
+
+test('a Session discarded does not move the Routine to its next Day', async () => {
+  const network = server();
+  network.offline = true;
+  const phone = anasPhone(network);
+  const training = await phone.open();
+  await training.saveRoutine([pushDay, pullDay]);
+  const push = await training.startSession('push');
+  await training.logSet(push.id, 'back-squat', 100, 5);
+  await training.finishSession(push.id);
+  expect((await training.nextRoutineDay())?.id).toBe('pull');
+
+  const pull = await training.startSession('pull');
+  await training.discardSession(pull.id);
+
+  expect((await training.nextRoutineDay())?.id).toBe('pull');
+  training.close();
+});
+
+test('History hides a Session finished with no Sets, but shows one with Sets however few points', async () => {
+  const network = server();
+  network.offline = true;
+  const phone = anasPhone(network);
+  const training = await phone.open();
+  const empty = await training.startSession();
+  await training.finishSession(empty.id);
+  const light = await training.startSession();
+  await training.logSet(light.id, 'back-squat', 1, 1);
+  await training.finishSession(light.id);
+
+  expect((await training.pastSessions()).map(({ session }) => session.id)).toEqual([light.id]);
+  training.close();
+});
+
 test('past Sessions list newest first, and leave out the one in progress', async () => {
   const network = server();
   const phone = anasPhone(network);
   const training = await phone.open();
   const monday = await training.startSession();
+  await training.logSet(monday.id, 'back-squat', 100, 5);
   await training.finishSession(monday.id);
   const tuesday = await training.startSession();
+  await training.logSet(tuesday.id, 'back-squat', 100, 5);
   await training.finishSession(tuesday.id);
   const wednesday = await training.startSession();
 
@@ -1175,7 +1229,7 @@ test('a Set un-logged and not logged again leaves nothing behind, locally or aft
   await training.deleteSet(gone.id);
   await training.finishSession(session.id);
 
-  expect((await training.pastSessions())[0].sets).toEqual([]);
+  expect(await training.pastSessions()).toEqual([]);
   expect((await training.scoring()).events).toEqual([]);
   network.offline = false;
   phone.connectivity.dispatchEvent(new Event('online'));

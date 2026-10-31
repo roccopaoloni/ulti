@@ -122,6 +122,7 @@ type Messages = {
       tooMany: string;
       samePassword: string;
       alreadyRegistered: string;
+      captcha: string;
       other: string;
     };
   };
@@ -171,6 +172,9 @@ type Messages = {
     legend: string;
     leave: string;
     finish: string;
+    discardTitle: string;
+    discardConfirm: string;
+    discardKeep: string;
     empty: string;
     addExercise: string;
     chooseExercise: string;
@@ -535,6 +539,7 @@ const en: Messages = {
       tooMany: 'Too many tries. Wait a minute and try again.',
       samePassword: "That's your current password. Choose a new one.",
       alreadyRegistered: 'This email already has an account. Sign in instead.',
+      captcha: "We couldn't check that you're not a robot. Try again.",
       other: 'Something went wrong. Try again.',
     },
   },
@@ -579,6 +584,9 @@ const en: Messages = {
     legend: 'Sets: weight × reps',
     leave: 'Back',
     finish: 'Finish',
+    discardTitle: 'Nothing logged. Discard this session?',
+    discardConfirm: 'Discard session',
+    discardKeep: 'Keep logging',
     empty: 'Add an exercise to start logging sets.',
     addExercise: 'Add exercise',
     chooseExercise: 'Choose an exercise',
@@ -930,6 +938,7 @@ const es: Messages = {
       tooMany: 'Demasiados intentos. Esperá un minuto y probá de nuevo.',
       samePassword: 'Esa es tu contraseña actual. Elegí una nueva.',
       alreadyRegistered: 'Ya hay una cuenta con este email. Entrá con tu contraseña.',
+      captcha: 'No pudimos comprobar que no sos un robot. Probá de nuevo.',
       other: 'Algo salió mal. Probá de nuevo.',
     },
   },
@@ -974,6 +983,9 @@ const es: Messages = {
     legend: 'Series: peso × repeticiones',
     leave: 'Volver',
     finish: 'Terminar',
+    discardTitle: 'No registraste nada. ¿Descartar la sesión?',
+    discardConfirm: 'Descartar sesión',
+    discardKeep: 'Seguir registrando',
     empty: 'Agregá un ejercicio para empezar a registrar series.',
     addExercise: 'Agregar ejercicio',
     chooseExercise: 'Elegí un ejercicio',
