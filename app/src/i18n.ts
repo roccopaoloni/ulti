@@ -278,6 +278,10 @@ type Messages = {
     removeExercise: string;
     moveDay: string;
     moveExercise: string;
+    // A Day folded to one line: how many Exercises it holds.
+    exerciseCount: (count: number) => string;
+    collapseDay: string;
+    expandDay: string;
     sets: string;
     // "Repeticiones objetivo" in Spanish, never "rango".
     repRange: string;
@@ -667,6 +671,9 @@ const en: Messages = {
     removeExercise: 'Remove exercise',
     moveDay: 'Hold and slide to move the session',
     moveExercise: 'Hold and slide to move the exercise',
+    exerciseCount: (count) => (count === 1 ? '1 exercise' : `${count} exercises`),
+    collapseDay: 'Fold session',
+    expandDay: 'Open session',
     sets: 'Sets',
     repRange: 'Rep Range',
     repMin: 'Min reps',
@@ -1069,6 +1076,9 @@ const es: Messages = {
     removeExercise: 'Quitar ejercicio',
     moveDay: 'Mantené apretado y deslizá para mover la sesión',
     moveExercise: 'Mantené apretado y deslizá para mover el ejercicio',
+    exerciseCount: (count) => (count === 1 ? '1 ejercicio' : `${count} ejercicios`),
+    collapseDay: 'Plegar sesión',
+    expandDay: 'Abrir sesión',
     sets: 'Series',
     repRange: 'Repeticiones objetivo',
     repMin: 'Reps mínimas',

@@ -31,6 +31,12 @@
   --diamond: #7be7ff;
   --elite: #a98bff;
   --error: #ff6b5e;
+  /* Routine Day accents, in rotation order (pink, cyan, lime, coral, violet). */
+  --day-1: #ff4d9d;
+  --day-2: #7be7ff;
+  --day-3: #c5e46a;
+  --day-4: #ff8f6b;
+  --day-5: #a98bff;
   --scrim: rgba(6, 4, 18, 0.66);
 
   --display: 'Unbounded', 'Arial Black', sans-serif;
@@ -56,6 +62,11 @@
     --diamond: #0f8fae;
     --elite: #6a3fe0;
     --error: #c62828;
+    --day-1: #e0337f;
+    --day-2: #0f8fae;
+    --day-3: #5f8a00;
+    --day-4: #d2582f;
+    --day-5: #6a3fe0;
     --scrim: rgba(26, 20, 51, 0.45);
     color-scheme: light;
   }
@@ -1621,6 +1632,60 @@ prefers-reduced-motion switches every animation off, so it stays off the badge. 
   display: flex;
   align-items: center;
   gap: 2px;
+}
+/* A Day carries its own colour (--c): a left stripe and a tinted header. */
+.routine-day {
+  position: relative;
+  overflow: hidden;
+  padding: 0;
+  gap: 0;
+}
+.routine-day::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+  background: var(--c);
+}
+.routine-day-head {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 12px 8px 12px 18px;
+  background: color-mix(in srgb, var(--c) 13%, transparent);
+}
+.routine-day-head .eyebrow {
+  color: var(--c);
+}
+.routine-day-title {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.routine-day-title small {
+  font-size: 13px;
+}
+.routine-day-body {
+  padding: 12px 14px 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.quiet.routine-fold svg {
+  width: 22px;
+  height: 22px;
+  transform: rotate(90deg);
+  transition: transform 0.2s ease;
+}
+.quiet.routine-fold[aria-expanded='true'] svg {
+  transform: rotate(-90deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .quiet.routine-fold svg {
+    transition: none;
+  }
 }
 .routine-name {
   flex: 1;
