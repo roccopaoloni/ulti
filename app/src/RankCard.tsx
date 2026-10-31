@@ -4,6 +4,7 @@ import { supabase } from './auth.ts';
 import { Badge } from './Badge.tsx';
 import { useI18n } from './i18n.ts';
 import { useSeasonStanding } from './season.ts';
+import { Skeleton } from './Skeleton.tsx';
 import type { Training } from './training.ts';
 
 const roman = ['', 'I', 'II', 'III', 'IV', 'V'];
@@ -28,7 +29,7 @@ export function RankCard({ training }: { training: Training }) {
       () => {},
     );
   }, []);
-  if (seasonPoints === null) return null;
+  if (seasonPoints === null) return <Skeleton card bars={['30%', '100%']} />;
   const name = (rank: Rank) => (rank.division === null ? r.tier[rank.tier] : `${r.tier[rank.tier]} ${roman[rank.division]}`);
   const rank = rankOf(seasonPoints);
   const progress = rankProgress(seasonPoints);

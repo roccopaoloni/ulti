@@ -18,6 +18,7 @@ import { useI18n } from './i18n.ts';
 import { chevronIcon, checkIcon } from './icons.tsx';
 import { historyPath, navigate, paths, sessionPath } from './navigation.ts';
 import { today } from './profile.ts';
+import { Skeleton } from './Skeleton.tsx';
 import { SubScreen } from './SubScreen.tsx';
 import type { Exercise, SetRecord, Training } from './training.ts';
 
@@ -118,7 +119,7 @@ export function RecentSessions({ training }: { training: Training }) {
   const { t } = useI18n();
   const h = t.history;
   const data = useHistory(training);
-  if (!data.sessions) return null;
+  if (!data.sessions) return <Skeleton card bars={['30%', '100%', '100%']} />;
   if (data.sessions.length === 0) return <p className="muted">{h.empty}</p>;
   return (
     <section className="history">
@@ -177,7 +178,9 @@ export function HistoryScreen({ training }: { training: Training }) {
 
   return (
     <SubScreen title={h.title} parent={paths.train}>
-      {sessions && sessions.length === 0 ? (
+      {!sessions ? (
+        <Skeleton card bars={['30%', '100%', '100%', '100%']} />
+      ) : sessions.length === 0 ? (
         <p className="muted">{h.empty}</p>
       ) : (
         weeks.slice(0, shown).map((week) =>

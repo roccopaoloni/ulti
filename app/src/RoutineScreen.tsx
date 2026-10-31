@@ -7,6 +7,7 @@ import { Sheet } from './GroupsScreens.tsx';
 import { chevronIcon, closeIcon, gripIcon } from './icons.tsx';
 import { Info } from './Info.tsx';
 import { navigate, paths, routinePath } from './navigation.ts';
+import { Skeleton } from './Skeleton.tsx';
 import { SubScreen } from './SubScreen.tsx';
 import type { Exercise, Profile, Training } from './training.ts';
 import { useSortable } from './useSortable.ts';
@@ -150,7 +151,7 @@ export function RoutineScreen({ training, profile, onProfileSaved }: { training:
     training.exercises().then(setCatalog);
   }, [training]);
 
-  if (!draft) return null;
+  if (!draft) return <Skeleton card bars={['30%', '100%', '60%']} />;
   const nameOf = (exercise: Exercise) => (language === 'es' ? exercise.nameEs : exercise.nameEn);
   const exerciseOf = (id: string) => catalog.find((candidate) => candidate.id === id);
   const whole = completeRoutine(draft);
@@ -231,7 +232,8 @@ export function RoutineScreen({ training, profile, onProfileSaved }: { training:
                 {chevronIcon}
               </button>
             </div>
-            {unfolded.has(day.id) && (
+            <div className="routine-day-fold" data-open={unfolded.has(day.id)} inert={!unfolded.has(day.id)}>
+              <div className="routine-day-clip">
               <div className="routine-day-body">
             {day.name.trim() === '' && <p className="routine-hint">{r.needsName}</p>}
             {day.exercises.length === 0 && <p className="routine-hint">{r.needsExercises}</p>}
@@ -250,7 +252,8 @@ export function RoutineScreen({ training, profile, onProfileSaved }: { training:
               {r.addExercise}
             </button>
               </div>
-            )}
+              </div>
+            </div>
           </div>
         ))}
       </div>

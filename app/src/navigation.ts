@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import { flushSync } from 'react-dom';
 
 export const tabs = ['home', 'train', 'groups', 'profile'] as const;
 export type Tab = (typeof tabs)[number];
@@ -10,9 +11,21 @@ export const paths: Record<Tab, string> = {
   profile: '/profile',
 };
 
+const listeners = new Set<() => void>();
+
+// A screen change fades and rises where the browser has View Transitions, and is instant where it
+// doesn't or where the user asked for reduced motion. `flushSync` makes React render the new screen
+// inside the transition, so the browser snapshots it.
+function changeScreen() {
+  const run = () => listeners.forEach((listener) => listener());
+  if (!document.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches) return run();
+  document.startViewTransition(() => flushSync(run));
+}
+if (typeof addEventListener === 'function') addEventListener('popstate', changeScreen);
+
 function subscribe(onChange: () => void) {
-  addEventListener('popstate', onChange);
-  return () => removeEventListener('popstate', onChange);
+  listeners.add(onChange);
+  return () => void listeners.delete(onChange);
 }
 
 export function usePathname() {
