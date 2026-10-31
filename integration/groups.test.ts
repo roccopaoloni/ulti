@@ -35,7 +35,7 @@ test('Ana creates a Group and becomes its Owner', async () => {
       id: created.data,
       name: 'Gym crew',
       invite_code: expect.any(String),
-      members: [{ display_name: 'Ana', avatar_color: coral, owner: true, me: true }],
+      members: [{ user_id: expect.any(String), display_name: 'Ana', avatar_color: coral, owner: true, me: true }],
     },
   ]);
 });
@@ -68,21 +68,21 @@ test("Bea joins Ana's Group with its invite link, and each sees the other's disp
       id: work,
       name: 'Work',
       invite_code: expect.any(String),
-      members: [{ display_name: 'Bea', avatar_color: sky, owner: true, me: true }],
+      members: [{ user_id: expect.any(String), display_name: 'Bea', avatar_color: sky, owner: true, me: true }],
     },
     {
       id: gymCrew,
       name: 'Gym crew',
       invite_code,
       members: [
-        { display_name: 'Ana', avatar_color: coral, owner: true, me: false },
-        { display_name: 'Bea', avatar_color: sky, owner: false, me: true },
+        { user_id: expect.any(String), display_name: 'Ana', avatar_color: coral, owner: true, me: false },
+        { user_id: expect.any(String), display_name: 'Bea', avatar_color: sky, owner: false, me: true },
       ],
     },
   ]);
   expect((await groupsOf(ana))[0].members).toEqual([
-    { display_name: 'Ana', avatar_color: coral, owner: true, me: true },
-    { display_name: 'Bea', avatar_color: sky, owner: false, me: false },
+    { user_id: expect.any(String), display_name: 'Ana', avatar_color: coral, owner: true, me: true },
+    { user_id: expect.any(String), display_name: 'Bea', avatar_color: sky, owner: false, me: false },
   ]);
 });
 
@@ -157,8 +157,8 @@ test('when the Owner leaves, the longest-standing member becomes the Owner and t
   expect(left.error).toBeNull();
   expect(await groupsOf(ana)).toEqual([]);
   expect((await groupsOf(bea))[0].members).toEqual([
-    { display_name: 'Cy', avatar_color: teal, owner: true, me: false },
-    { display_name: 'Bea', avatar_color: sky, owner: false, me: true },
+    { user_id: expect.any(String), display_name: 'Cy', avatar_color: teal, owner: true, me: false },
+    { user_id: expect.any(String), display_name: 'Bea', avatar_color: sky, owner: false, me: true },
   ]);
   // As the Owner, Cy can now reset the link, and Bea still can't.
   expect((await bea.rpc('reset_invite', { group_id: gymCrew })).error?.message).toBe('not_owner');
@@ -207,5 +207,5 @@ test('members see each other only as a display name, an avatar colour and who th
   ]);
   const renamed = await bea.from('profiles').update({ display_name: 'Not Ana' }).neq('display_name', 'Bea').select();
   expect(renamed.data).toEqual([]);
-  expect((await groupsOf(bea))[0].members[0]).toEqual({ display_name: 'Ana', avatar_color: coral, owner: true, me: false });
+  expect((await groupsOf(bea))[0].members[0]).toEqual({ user_id: expect.any(String), display_name: 'Ana', avatar_color: coral, owner: true, me: false });
 });
