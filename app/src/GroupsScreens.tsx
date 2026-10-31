@@ -376,6 +376,15 @@ export function GroupSettingsScreen({ userId, groupId }: { userId: string; group
   useEffect(() => {
     refreshGroups(userId).catch(() => {});
   }, [userId]);
+  // The sheet only exists while someone is being removed, so it opens once it has mounted.
+  useEffect(() => {
+    const sheet = remove.current;
+    if (!removing || !sheet) return;
+    const forget = () => setRemoving(undefined);
+    sheet.showModal();
+    sheet.addEventListener('close', forget);
+    return () => sheet.removeEventListener('close', forget);
+  }, [removing]);
   if (!group) return <SubScreen title={g.settings} parent={paths.groups}>{null}</SubScreen>;
   const owner = group.members.some(({ me, owner }) => me && owner);
   return (
@@ -397,10 +406,7 @@ export function GroupSettingsScreen({ userId, groupId }: { userId: string; group
                 <button
                   type="button"
                   className="btn-link"
-                  onClick={() => {
-                    setRemoving(member);
-                    remove.current?.showModal();
-                  }}
+                  onClick={() => setRemoving(member)}
                 >
                   {g.removeMember}
                 </button>
