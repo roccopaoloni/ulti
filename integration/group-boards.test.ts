@@ -63,6 +63,19 @@ async function board(who: Lifter, groupId: string, period: 'week' | 'month' | 'y
 const standings = async (...args: Parameters<typeof board>) =>
   (await board(...args)).members.map(({ position, display_name, points }) => [position, display_name, points]);
 
+test("the board marks the Group's Owner, and only them", async () => {
+  const ana = await lifter('Ana');
+  const bea = await lifter('Bea');
+  const gymCrew = await groupOf(ana, bea);
+
+  const { members } = await board(bea, gymCrew, 'week', '2026-10-21');
+
+  expect(members.map(({ display_name, owner }) => [display_name, owner])).toEqual([
+    ['Ana', true],
+    ['Bea', false],
+  ]);
+});
+
 // Wednesday 21 October 2026, in the week that starts Monday the 19th.
 const wednesday = '2026-10-21';
 
@@ -145,6 +158,7 @@ test("the board shows a member's points, Session dots and Personal Records, and 
     display_name: 'Ana',
     avatar_color: '#6fb6f7',
     former: false,
+    owner: true,
     me: false,
     points: 150,
     tier: 'bronze',
