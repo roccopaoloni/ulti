@@ -122,6 +122,7 @@ type Messages = {
       tooMany: string;
       samePassword: string;
       alreadyRegistered: string;
+      captcha: string;
       other: string;
     };
   };
@@ -534,6 +535,7 @@ const en: Messages = {
       tooMany: 'Too many tries. Wait a minute and try again.',
       samePassword: "That's your current password. Choose a new one.",
       alreadyRegistered: 'This email already has an account. Sign in instead.',
+      captcha: "We couldn't check that you're not a robot. Try again.",
       other: 'Something went wrong. Try again.',
     },
   },
@@ -929,6 +931,7 @@ const es: Messages = {
       tooMany: 'Demasiados intentos. Esperá un minuto y probá de nuevo.',
       samePassword: 'Esa es tu contraseña actual. Elegí una nueva.',
       alreadyRegistered: 'Ya hay una cuenta con este email. Entrá con tu contraseña.',
+      captcha: 'No pudimos comprobar que no sos un robot. Probá de nuevo.',
       other: 'Algo salió mal. Probá de nuevo.',
     },
   },
