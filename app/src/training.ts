@@ -34,6 +34,8 @@ export type SessionRecord = {
   timeZone: string;
   localDate: string;
   finishedAt: string | null;
+  // A Session finished with no Sets is discarded: sent once more marked deleted, so the server forgets it too.
+  deleted?: boolean;
   // The Routine Day it was started from; none for an unplanned Session.
   routineDayId?: string;
   // When this phone last changed it: the server keeps the latest write.
@@ -204,7 +206,10 @@ export async function openTraining(userId: string, options: Options) {
     const tx = db.transaction(['sessions', 'sets', 'exercises', 'outbox', 'state', 'profile', 'routines', 'increments', 'deloads', 'noRoutine'], 'readwrite');
     if (mutation.kind === 'saveDeload') await tx.objectStore('deloads').put(mutation.deload);
     else if (mutation.kind === 'saveNoRoutine') await tx.objectStore('noRoutine').put(mutation.noRoutine, 'choice');
-    else if (mutation.kind === 'saveSession') await tx.objectStore('sessions').put(mutation.session);
+    else if (mutation.kind === 'saveSession') {
+      if (mutation.session.deleted) await tx.objectStore('sessions').delete(mutation.session.id);
+      else await tx.objectStore('sessions').put(mutation.session);
+    }
     else if (mutation.kind === 'saveProfileEntry') await tx.objectStore('profile').put(mutation.entry);
     else if (mutation.kind === 'saveRoutine') {
       await tx.objectStore('routines').put(mutation.routine);
@@ -343,17 +348,25 @@ export async function openTraining(userId: string, options: Options) {
       await write({ id: crypto.randomUUID(), kind: 'saveSet', set: { ...set, deleted: true, updatedAt: stamp() } });
     },
 
-    // The finished Sessions, newest first, each with its Sets in the order they were logged.
+    // The finished Sessions with Sets, newest first, each with its Sets in the order they were logged.
     async pastSessions() {
       const finished = (await db.getAll('sessions')).filter((session) => session.finishedAt !== null);
       finished.sort((a, b) => b.startedAt.localeCompare(a.startedAt));
-      return Promise.all(
+      const past = await Promise.all(
         finished.map(async (session) => {
           const sets = await db.getAllFromIndex('sets', 'bySession', session.id);
           sets.sort((a, b) => a.loggedAt.localeCompare(b.loggedAt));
           return { session, sets };
         }),
       );
+      return past.filter(({ sets }) => sets.length > 0);
+    },
+
+    // Finishing a Session with no Sets throws it away: the same Session written again marked
+    // deleted, so it never shows in History or counts as a Routine Day, here or on the server.
+    async discardSession(sessionId: string) {
+      const session = (await db.get('sessions', sessionId))!;
+      await write({ id: crypto.randomUUID(), kind: 'saveSession', session: { ...session, deleted: true, updatedAt: stamp() } }, null);
     },
 
     async finishSession(sessionId: string) {
