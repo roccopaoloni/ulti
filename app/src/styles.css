@@ -2224,12 +2224,16 @@ prefers-reduced-motion switches every animation off, so it stays off the badge. 
 /* A past Session carries its Routine Day's colour (--c): a tinted header band and tiles, a stripe on
    each Exercise card and on its row in History. A Session with no Day keeps the neutral look. */
 .subhead.tinted {
-  background: color-mix(in srgb, var(--c) 13%, transparent);
+  background: color-mix(in srgb, var(--c) 24%, var(--surface));
   border-radius: 18px;
   padding: 6px 12px 6px 4px;
 }
 .summary[style*='--c'] .stat {
-  background: color-mix(in srgb, var(--c) 13%, var(--surface));
+  background: color-mix(in srgb, var(--c) 22%, var(--surface));
+  border-top: 3px solid var(--c);
+}
+.summary[style*='--c'] .stat.day-name b {
+  color: var(--c);
 }
 .day-card {
   position: relative;
