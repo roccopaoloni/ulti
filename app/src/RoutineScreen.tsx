@@ -1,5 +1,6 @@
-import { completeRoutine, moveItem, suggestedWeeklyTarget, type RoutineDay } from '@ulti/rules';
-import { useEffect, useRef, useState } from 'react';
+import { completeRoutine, dayColour, moveItem, nextDayColour, suggestedWeeklyTarget, withDayColours, type RoutineDay } from '@ulti/rules';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { dayColourVar } from './dayColour.ts';
 import { useI18n } from './i18n.ts';
 import { ExercisePicker } from './ExercisePicker.tsx';
 import { Sheet } from './GroupsScreens.tsx';
@@ -129,6 +130,8 @@ export function RoutineScreen({ training, profile, onProfileSaved }: { training:
   // The row open for editing its Sets and Rep Range.
   const [open, setOpen] = useState<{ dayId: string; index: number } | null>(null);
   const [removing, setRemoving] = useState<RoutineDay | null>(null);
+  // The Days shown open: those added this visit and those that needed fixing when it began.
+  const [unfolded, setUnfolded] = useState<ReadonlySet<string>>(new Set());
   const removeDialog = useRef<HTMLDialogElement>(null);
   // Saves go one after another, so the last edit is the one that stays.
   const writing = useRef<Promise<unknown>>(Promise.resolve());
@@ -139,7 +142,10 @@ export function RoutineScreen({ training, profile, onProfileSaved }: { training:
   });
 
   useEffect(() => {
-    training.routineDraft().then(setDraft);
+    training.routineDraft().then((days) => {
+      setDraft(withDayColours(days));
+      setUnfolded(new Set(days.filter((day) => day.name.trim() === '' || day.exercises.length === 0).map((day) => day.id)));
+    });
     training.routine().then((routine) => setSavedDays(routine?.days.length ?? 0));
     training.exercises().then(setCatalog);
   }, [training]);
@@ -172,33 +178,61 @@ export function RoutineScreen({ training, profile, onProfileSaved }: { training:
       )}
       <div className="routine" ref={days.list}>
         {draft.map((day, dayIndex) => (
-          <div key={day.id} className="card routine-day" {...days.item(dayIndex)}>
-            <div className="eyebrow">
-              {r.day(dayIndex + 1)} {dayIndex === 0 && <Info term="routine" />}
-            </div>
-            <div className="routine-head">
-              <input
-                className="routine-name"
-                aria-label={r.dayName}
-                placeholder={r.dayName}
-                value={day.name}
-                onChange={(event) => changeDay(dayIndex, { name: event.target.value })}
-              />
-              <button
-                type="button"
-                className="quiet"
-                aria-label={r.removeDay}
-                onClick={() => {
-                  setRemoving(day);
-                  removeDialog.current?.showModal();
-                }}
-              >
-                {closeIcon}
-              </button>
+          <div
+            key={day.id}
+            className="card routine-day"
+            {...days.item(dayIndex)}
+            style={{ ...days.item(dayIndex).style, '--c': dayColourVar(dayColour(draft, dayIndex)) } as CSSProperties}
+          >
+            <div className="routine-day-head">
+              <div className="routine-day-title">
+                <div className="eyebrow">
+                  {r.day(dayIndex + 1)} {dayIndex === 0 && <Info term="routine" />}
+                </div>
+                <input
+                  className="routine-name"
+                  aria-label={r.dayName}
+                  placeholder={r.dayName}
+                  value={day.name}
+                  onChange={(event) => changeDay(dayIndex, { name: event.target.value })}
+                />
+                {!unfolded.has(day.id) && <small className="muted">{r.exerciseCount(day.exercises.length)}</small>}
+              </div>
+              {unfolded.has(day.id) && (
+                <button
+                  type="button"
+                  className="quiet"
+                  aria-label={r.removeDay}
+                  onClick={() => {
+                    setRemoving(day);
+                    removeDialog.current?.showModal();
+                  }}
+                >
+                  {closeIcon}
+                </button>
+              )}
               <span className="grip" role="button" aria-label={r.moveDay} {...days.handle(dayIndex)}>
                 {gripIcon}
               </span>
+              <button
+                type="button"
+                className="quiet routine-fold"
+                aria-label={unfolded.has(day.id) ? r.collapseDay : r.expandDay}
+                aria-expanded={unfolded.has(day.id)}
+                onClick={() => {
+                  setOpen(null);
+                  setUnfolded((was) => {
+                    const next = new Set(was);
+                    if (!next.delete(day.id)) next.add(day.id);
+                    return next;
+                  });
+                }}
+              >
+                {chevronIcon}
+              </button>
             </div>
+            {unfolded.has(day.id) && (
+              <div className="routine-day-body">
             {day.name.trim() === '' && <p className="routine-hint">{r.needsName}</p>}
             {day.exercises.length === 0 && <p className="routine-hint">{r.needsExercises}</p>}
             <ExerciseRows
@@ -215,10 +249,16 @@ export function RoutineScreen({ training, profile, onProfileSaved }: { training:
             <button type="button" className="btn-ghost" onClick={() => setPicking({ dayIndex })}>
               {r.addExercise}
             </button>
+              </div>
+            )}
           </div>
         ))}
       </div>
-      <button type="button" className="btn-ghost" onClick={() => edit([...draft, { id: crypto.randomUUID(), name: '', exercises: [] }])}>
+      <button type="button" className="btn-ghost" onClick={() => {
+          const id = crypto.randomUUID();
+          setUnfolded((was) => new Set(was).add(id));
+          edit([...draft, { id, name: '', colour: nextDayColour(draft), exercises: [] }]);
+        }}>
         {r.addDay}
       </button>
       {suggested !== null && suggested !== current && (

@@ -1232,3 +1232,21 @@ test('the choice the server holds reaches a phone that is new to this user, unle
   expect(await training.followsNoRoutine()).toBe(false);
   training.close();
 });
+
+test("a Routine Day's colour is saved with the Routine, sent to the server, and comes back on a new phone", async () => {
+  const network = server();
+  const phone = anasPhone(network);
+  const training = await phone.open();
+  const violet = { ...pullDay, colour: 4 };
+
+  await training.saveRoutineDraft([pushDay, violet]);
+  expect((await training.routine())?.days[1].colour).toBe(4);
+  await vi.waitFor(() => expect(routines(network.batches.flat()).at(-1)?.days[1]).toEqual(violet));
+
+  const fetched = { id: 'r1', days: [violet], updatedAt: '2026-10-01T00:00:00.000Z' };
+  const newPhone = await anasPhone(server()).open();
+  await newPhone.saveRoutineFromServer(fetched);
+  expect((await newPhone.routine())?.days[0].colour).toBe(4);
+  training.close();
+  newPhone.close();
+});

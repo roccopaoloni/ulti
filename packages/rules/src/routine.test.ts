@@ -1,5 +1,36 @@
 import { expect, test } from 'vitest';
-import { completeRoutine, moveItem, nextRoutineDay, plannedRows, suggestedWeeklyTarget } from './index.ts';
+import { completeRoutine, dayColour, moveItem, nextDayColour, nextRoutineDay, plannedRows, suggestedWeeklyTarget, withDayColours } from './index.ts';
+
+const blank = (ids: string[]) => ids.map((id) => ({ id, name: id, exercises: [] }));
+
+test('Routine Days made without colours get the rotation in order, repeating after five', () => {
+  expect(withDayColours(blank(['a', 'b', 'c', 'd', 'e', 'f'])).map((day) => day.colour)).toEqual([0, 1, 2, 3, 4, 0]);
+});
+
+test("a Day's colour follows it when Days are reordered", () => {
+  const moved = moveItem(withDayColours(blank(['push', 'pull', 'legs'])), 0, 2);
+  expect(moved.map((day, i) => [day.id, dayColour(moved, i)])).toEqual([['pull', 1], ['legs', 2], ['push', 0]]);
+});
+
+test('an old Routine with no colours still gives each Day a distinct one, by position', () => {
+  const old = blank(['push', 'pull']);
+  expect([dayColour(old, 0), dayColour(old, 1)]).toEqual([0, 1]);
+});
+
+test('a new Day takes the first colour no Day has, so removing one frees its colour', () => {
+  const four = withDayColours(blank(['a', 'b', 'c', 'd']));
+  expect(nextDayColour(four)).toBe(4);
+  expect(nextDayColour(four.filter((day) => day.id !== 'b'))).toBe(1);
+});
+
+test('with every colour taken, a new Day repeats the rotation', () => {
+  expect(nextDayColour(withDayColours(blank(['a', 'b', 'c', 'd', 'e'])))).toBe(0);
+});
+
+test('saving a whole Routine keeps the Days colours', () => {
+  const day = { id: 'a', name: ' Push ', colour: 3, exercises: [{ exerciseId: 'bench', sets: 3, repMin: 8, repMax: 12 }] };
+  expect(completeRoutine([day])).toEqual([{ ...day, name: 'Push' }]);
+});
 
 test('a Routine of three Sessions suggests a Weekly Target of 3', () => {
   expect(suggestedWeeklyTarget(3)).toBe(3);

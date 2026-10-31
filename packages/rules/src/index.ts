@@ -446,7 +446,30 @@ export const incrementInUnits = (incrementKg: number, units: Units) =>
 
 // A Routine: its Sessions (Routine Days), each listing Exercises with a number of Sets and a Rep Range.
 export type RoutineExercise = { exerciseId: string; sets: number; repMin: number; repMax: number };
-export type RoutineDay = { id: string; name: string; exercises: RoutineExercise[] };
+// `colour` is the Day's slot in the accent rotation. It is stored on the Day so it stays with the
+// Day when Days are reordered and syncs with the Routine; Routines saved before it lack it.
+export type RoutineDay = { id: string; name: string; colour?: number; exercises: RoutineExercise[] };
+
+// How many accents the rotation has (pink, cyan, lime, coral, violet).
+export const DAY_COLOURS = 5;
+
+// The accent slot (0 to 4) of the Day at `index`: the Day's own, else the one its position gives.
+// History uses this too, to dot a Session with the colour of the Day it was started from.
+export function dayColour(days: readonly RoutineDay[], index: number): number {
+  return days[index].colour ?? index % DAY_COLOURS;
+}
+
+// The same Days, each carrying its colour, so a reorder cannot change what position gave it.
+export function withDayColours(days: readonly RoutineDay[]): RoutineDay[] {
+  return days.map((day, index) => ({ ...day, colour: dayColour(days, index) }));
+}
+
+// The colour for a Day added to these: the first no Day has, else the rotation starts over.
+export function nextDayColour(days: readonly RoutineDay[]): number {
+  const taken = new Set(days.map((_, index) => dayColour(days, index)));
+  for (let colour = 0; colour < DAY_COLOURS; colour++) if (!taken.has(colour)) return colour;
+  return days.length % DAY_COLOURS;
+}
 
 // The list with the item at `from` moved to place `to` (the end, if past it), as when a Routine Day
 // or Exercise is dragged to a new place.
