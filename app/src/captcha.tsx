@@ -58,6 +58,8 @@ export function useCaptcha() {
           state.id = turnstile.render(container.current, {
             sitekey: siteKey,
             theme: 'auto', // follows the phone's dark or light, like the rest of the app
+            appearance: 'interaction-only', // hidden unless Cloudflare needs a tap
+            size: 'flexible', // fills the container, so it lines up with the fields
             language,
             callback: (token: string) => {
               state.token = token;
