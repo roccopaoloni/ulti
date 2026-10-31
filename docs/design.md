@@ -18,7 +18,7 @@ Light and dark themes that follow the phone's setting. Dark is designed first, b
 
 ## Colour
 
-The trademark colour is **hot pink** on deep indigo. Pink is used for primary buttons, ✓ and the "↑ go heavier" badge. Tier colours are reserved for Rank badges, Rank-up screens and crowns and are never UI accents. Red is only for errors and destructive actions.
+The trademark colour is **hot pink** on deep indigo. Pink is used for primary buttons, ✓ and the "↑ go heavier" badge. Tier colours are reserved for Rank badges, Rank-up screens and crowns and are never UI accents. Red is only for errors and destructive actions: a clear red (hue 0, between the pink accent and the orange the app avoids), never coral. It is filled only on the final "are you sure?" button of a destructive sheet (leave or delete a Group, delete the account, remove a member, discard an empty Session, delete a Set); every other destructive action, such as the links that open those sheets or "Remove and reset link", is red text with no fill, and error messages are red text too.
 
 | Token | Dark | Light |
 |---|---|---|
@@ -31,7 +31,8 @@ The trademark colour is **hot pink** on deep indigo. Pink is used for primary bu
 | Accent (fills) | #FF4D9D | #FF4D9D |
 | Text on accent | #1A0614 | #1A0614 |
 | Accent as text | #FF4D9D | #C2185F |
-| Error | #FF6B5E | #C62828 |
+| Danger (text and fill, errors too) | #FF4D4D | #C4161C |
+| Text on danger fill | #1A0614 | #FFFFFF |
 | Bronze | #D9894F | #A8602A |
 | Silver | #C3CAD6 | #7A8497 |
 | Gold | #FFC83D | #A87900 |
