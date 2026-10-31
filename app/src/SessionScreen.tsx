@@ -102,7 +102,6 @@ export function StartSession({ logging, training }: { logging: ReturnType<typeof
   const extra = useRef<HTMLDialogElement>(null);
   // With the Weekly Target met, a new Session is an extra one: it never moves the Routine's next
   // Day, so it starts unplanned, after the lifter confirms.
-  const startExtra = () => (met && !inProgress ? extra.current?.showModal() : logging.start());
   // With no Routine, Start asks first, unless the lifter said they don't follow one. Read when
   // tapped, so a choice that just arrived from the server counts.
   const start = async () => {
@@ -190,10 +189,10 @@ export function StartSession({ logging, training }: { logging: ReturnType<typeof
       </Sheet>
       <button type="button" className="btn-start" onClick={start}>
         <span className="disp">{inProgress ? s.resume : met ? s.startExtra : s.start}</span>
-        <small>{inProgress ? s.logged(inProgress.sets.length) : next ? s.startNext(next.name) : s.startHint}</small>
+        <small>{inProgress ? s.logged(inProgress.sets.length) : met ? s.extraHint : next ? s.startNext(next.name) : s.startHint}</small>
       </button>
-      {next && !inProgress && (
-        <button type="button" className="btn-link" onClick={startExtra}>
+      {next && !met && !inProgress && (
+        <button type="button" className="btn-link" onClick={() => logging.start()}>
           {s.startUnplanned}
         </button>
       )}

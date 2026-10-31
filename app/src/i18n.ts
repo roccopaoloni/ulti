@@ -229,6 +229,7 @@ type Messages = {
     extraText: string;
     extraConfirm: string;
     extraCancel: string;
+    extraHint: string;
     // The sheet shown when starting a Session with no Routine.
     noRoutineTitle: string;
     noRoutineText: string;
@@ -629,6 +630,7 @@ const en: Messages = {
     extraText: "You've hit your weekly target. An extra session earns no consistency points, but personal records still count. Log it anyway?",
     extraConfirm: 'Log it anyway',
     extraCancel: 'Cancel',
+    extraHint: 'No consistency points, PRs still count',
     noRoutineTitle: 'No routine logged yet',
     noRoutineText: 'Log your routine so we can recommend weights and track your progress.',
     noRoutineSetUp: 'Set up my routine',
@@ -1030,6 +1032,7 @@ const es: Messages = {
     extraText: 'Ya cumpliste tu objetivo semanal. Una sesión extra no suma puntos de constancia, pero los PR siguen contando. ¿La registrás igual?',
     extraConfirm: 'Registrarla igual',
     extraCancel: 'Cancelar',
+    extraHint: 'No suma constancia, los PR sí',
     noRoutineTitle: 'Todavía no cargaste tu rutina',
     noRoutineText: 'Cargá tu rutina para que te recomendemos pesos y sigamos tu progreso.',
     noRoutineSetUp: 'Armar mi rutina',
