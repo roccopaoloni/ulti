@@ -25,7 +25,12 @@ export function Info({ term }: { term: Term }) {
           className="sheet"
           aria-label={name}
           // A tap on the backdrop lands on the dialog itself and closes it.
-          onClick={(event) => event.target === event.currentTarget && event.currentTarget.close()}
+          onClick={(event) => {
+            // React passes portal events up the component tree; keep clicks and submits away from the parent.
+            event.stopPropagation();
+            if (event.target === event.currentTarget) event.currentTarget.close();
+          }}
+          onSubmit={(event) => event.stopPropagation()}
         >
           <div className="sheet-body">
             <h2 className="disp sheet-title">{name}</h2>

@@ -552,7 +552,12 @@ function Keypad({
       className="sheet"
       aria-label={label}
       onClose={onClose}
-      onClick={(event) => event.target === event.currentTarget && event.currentTarget.close()}
+      onClick={(event) => {
+        // React passes portal events up the component tree; keep clicks and submits away from the parent.
+        event.stopPropagation();
+        if (event.target === event.currentTarget) event.currentTarget.close();
+      }}
+      onSubmit={(event) => event.stopPropagation()}
     >
       <div className="sheet-body keypad">
         <div className="pad-label">{label}</div>
