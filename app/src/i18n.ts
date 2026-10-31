@@ -220,6 +220,11 @@ type Messages = {
     // Home's button, when the Routine suggests the next Session, and the way to log without it.
     startNext: (day: string) => string;
     startUnplanned: string;
+    startExtra: string;
+    extraTitle: string;
+    extraText: string;
+    extraConfirm: string;
+    extraCancel: string;
     // The sheet shown when starting a Session with no Routine.
     noRoutineTitle: string;
     noRoutineText: string;
@@ -611,6 +616,11 @@ const en: Messages = {
     calibration: 'Your first sessions set your baseline',
     startNext: (day) => `Next: ${day}`,
     startUnplanned: 'Log an unplanned session',
+    startExtra: 'Week done ✓ · Extra session',
+    extraTitle: 'Extra session',
+    extraText: "You've hit your weekly target. An extra session earns no consistency points, but personal records still count. Log it anyway?",
+    extraConfirm: 'Log it anyway',
+    extraCancel: 'Cancel',
     noRoutineTitle: 'No routine logged yet',
     noRoutineText: 'Log your routine so we can recommend weights and track your progress.',
     noRoutineSetUp: 'Set up my routine',
@@ -1003,6 +1013,11 @@ const es: Messages = {
     calibration: 'Tus primeras sesiones fijan tu base',
     startNext: (day) => `Sigue: ${day}`,
     startUnplanned: 'Registrar una sesión sin rutina',
+    startExtra: 'Semana cumplida ✓ · Sesión extra',
+    extraTitle: 'Sesión extra',
+    extraText: 'Ya cumpliste tu objetivo semanal. Una sesión extra no suma puntos de constancia, pero los PR siguen contando. ¿La registrás igual?',
+    extraConfirm: 'Registrarla igual',
+    extraCancel: 'Cancelar',
     noRoutineTitle: 'Todavía no cargaste tu rutina',
     noRoutineText: 'Cargá tu rutina para que te recomendemos pesos y sigamos tu progreso.',
     noRoutineSetUp: 'Armar mi rutina',
