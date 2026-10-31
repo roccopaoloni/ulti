@@ -261,30 +261,49 @@ export function SessionDetailScreen({ training, units, sessionId }: { training: 
   const progress =
     sets.reduce((sum, set) => sum + (data.records.get(set.id)?.progressPoints ?? 0), 0) + (data.sessionPoints.get(sets[0]!.id) ?? 0);
   const exerciseIds = [...new Set(sets.map((set) => set.exerciseId))];
+  // The one muted line under the title: the numbers bold, the words muted. PRs and points only when there are some.
+  const prs = sets.filter((set) => data.records.has(set.id)).length;
+  const points = Math.round(progress);
+  const summary = [
+    h.exercises(exerciseIds.length),
+    t.session.sets(sets.length),
+    ...(prs > 0 ? [h.prCount(prs)] : []),
+    ...(points > 0 ? [t.session.points(points)] : []),
+  ].map((text) => {
+    const [, number, words] = /^(\+?[\d.,]+)(.*)$/.exec(text)!;
+    return (
+      <>
+        <b>{number}</b>
+        {words}
+      </>
+    );
+  });
 
   return (
-    <SubScreen title={formatDay(language, session.localDate, { weekday: 'short', day: 'numeric', month: 'short' })} parent={historyPath} colour={day?.colour}>
-      <div className="summary" style={{ '--c': day?.colour } as CSSProperties}>
-        <div className="stat day-name">
-          <b>{day?.name ?? h.noRoutine}</b>
-          <small>{h.routineLabel}</small>
-        </div>
-        <div className="stat">
-          <b>{sets.length}</b>
-          <small>{h.setsLabel}</small>
-        </div>
-        <div className="stat">
-          <b>+{Math.round(progress)}</b>
-          <small>{h.progressLabel}</small>
-        </div>
-      </div>
-      {exerciseIds.map((exerciseId) => {
-        const exerciseSets = sets.filter((set) => set.exerciseId === exerciseId);
-        let working = 0;
-        return (
-          <section key={exerciseId} className={`card${day ? ' day-card' : ''}`} style={{ '--c': day?.colour } as CSSProperties}>
-            <div className="ex-name">{name(exerciseId)}</div>
-            <div>
+    <SubScreen
+      title={day?.name ?? h.noRoutine}
+      subtitle={formatDay(language, session.localDate, { weekday: 'short', day: 'numeric', month: 'short' })}
+      parent={historyPath}
+      colour={day?.colour}
+    >
+      <p className="summary-line">
+        {summary.map((part, index) => (
+          <span key={index}>
+            {index > 0 && <span className="sep"> · </span>}
+            {part}
+          </span>
+        ))}
+      </p>
+      <div className="log">
+        {exerciseIds.map((exerciseId) => {
+          const exerciseSets = sets.filter((set) => set.exerciseId === exerciseId);
+          let working = 0;
+          return (
+            <section key={exerciseId} className="group">
+              <div className="ex-head">
+                <h2>{name(exerciseId)}</h2>
+                <small>{t.session.sets(exerciseSets.length)}</small>
+              </div>
               {exerciseSets.map((set) => {
                 const label = labels.get(set.id)!;
                 if (label !== 'warm-up') working++;
@@ -310,11 +329,10 @@ export function SessionDetailScreen({ training, units, sessionId }: { training: 
                   />
                 );
               })}
-            </div>
-          </section>
-        );
-      })}
-      <p className="history-hint">{h.tapHint}</p>
+            </section>
+          );
+        })}
+      </div>
     </SubScreen>
   );
 }
@@ -372,7 +390,7 @@ function PastSet({
     <>
       <button
         type="button"
-        className={`hset${record ? ' is-pr' : ''}`}
+        className={`hset${record ? ' is-pr' : ''}${label === 'warm-up' ? ' wu' : ''}`}
         onClick={() => {
           setConfirming(false);
           setWeight(typed);
@@ -386,6 +404,7 @@ function PastSet({
           {set.rir !== undefined && <small> · RIR {set.rir}</small>}
         </span>
         {record ? <span className="pr-tag">{`PR +${percent(record.percentGain)}% · ${t.session.points(Math.round(record.progressPoints))}`}</span> : <span />}
+        <span className="chev">{chevronIcon}</span>
       </button>
       <Sheet dialog={dialog} label={confirming ? h.deleteTitle : h.setTitle}>
         {confirming ? (
