@@ -1304,3 +1304,44 @@ test("a Routine Day's colour is saved with the Routine, sent to the server, and 
   training.close();
   newPhone.close();
 });
+
+test("the Weekly Target counts as met once enough qualifying Sessions finish this week, and an extra Session leaves the Routine's next Day alone", async () => {
+  const network = server();
+  network.offline = true;
+  const training = await anasPhone(network).open();
+  expect(await training.weeklyTargetMet()).toBe(false);
+  await training.setProfile('weeklyTarget', 2);
+  await training.saveRoutine([pushDay, pullDay]);
+  const trainSession = async (routineDayId: string | undefined, sets: number) => {
+    const session = await training.startSession(routineDayId);
+    for (let i = 0; i < sets; i++) await training.logSet(session.id, 'back-squat', 100, 5);
+    await training.finishSession(session.id);
+  };
+
+  await trainSession('push', 6);
+  expect(await training.weeklyTargetMet()).toBe(false);
+  // A Session too short to qualify does not count towards the target.
+  await trainSession('pull', 2);
+  expect(await training.weeklyTargetMet()).toBe(false);
+  await trainSession('pull', 6);
+  expect(await training.weeklyTargetMet()).toBe(true);
+
+  const before = (await training.nextRoutineDay())?.id;
+  await trainSession(undefined, 6);
+  expect(await training.weeklyTargetMet()).toBe(true);
+  expect((await training.nextRoutineDay())?.id).toBe(before);
+  training.close();
+});
+
+test('the Weekly Target is met by lighter Sessions in a Deload Week', async () => {
+  const network = server();
+  network.offline = true;
+  const training = await anasPhone(network).open();
+  await training.setProfile('weeklyTarget', 1);
+  expect(await training.startDeload()).toBe(true);
+  const session = await training.startSession();
+  for (let i = 0; i < 3; i++) await training.logSet(session.id, 'back-squat', 60, 5);
+  await training.finishSession(session.id);
+  expect(await training.weeklyTargetMet()).toBe(true);
+  training.close();
+});
