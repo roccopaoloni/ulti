@@ -376,11 +376,8 @@ type Messages = {
     exercises: (count: number) => string;
     // A Personal Record on a row: "Bench +3%".
     recordChip: (exercise: string, percentGain: number) => string;
-    // The detail screen's three figures, and its hint.
-    routineLabel: string;
-    setsLabel: string;
-    progressLabel: string;
-    tapHint: string;
+    // The detail screen's summary line: how many Personal Records.
+    prCount: (count: number) => string;
     // A Warm-up Set's mark in place of its number.
     warmUpShort: string;
     // The sheet opened by tapping a Set.
@@ -817,10 +814,7 @@ const en: Messages = {
     noRoutine: 'No routine',
     exercises: (count) => (count === 1 ? '1 exercise' : `${count} exercises`),
     recordChip: (exercise, percentGain) => `${exercise} +${percentGain}%`,
-    routineLabel: 'Routine',
-    setsLabel: 'sets',
-    progressLabel: 'pts',
-    tapHint: 'Tap a set to fix or delete it.',
+    prCount: (count) => (count === 1 ? '1 PR' : `${count} PRs`),
     warmUpShort: 'WU',
     setTitle: 'Edit set',
     delete: 'Delete',
@@ -1250,10 +1244,7 @@ const es: Messages = {
     noRoutine: 'Sin rutina',
     exercises: (count) => (count === 1 ? '1 ejercicio' : `${count} ejercicios`),
     recordChip: (exercise, percentGain) => `${exercise} +${percentGain}%`,
-    routineLabel: 'Rutina',
-    setsLabel: 'series',
-    progressLabel: 'pts',
-    tapHint: 'Tocá una serie para corregirla o borrarla.',
+    prCount: (count) => `${count} PR`,
     warmUpShort: 'ENT',
     setTitle: 'Editar serie',
     delete: 'Borrar',

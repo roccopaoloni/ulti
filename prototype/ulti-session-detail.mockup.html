@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ULTI Session detail mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@700;800;900&display=swap" rel="stylesheet">
+<style>
+/* The app's own tokens. Two phones side by side: the flat list (the pick) and cards per Exercise (the runner-up). */
+:root {
+  --bg: #0e0b1f; --surface: #17132f; --surface-2: #211c42; --line: #2f2a58; --fg: #f4f1ff; --muted: #a49fc7;
+  --accent: #ff4d9d; --accent-ink: #1a0614; --accent-text: #ff4d9d; --error: #ff6b5e; --page: #08061a;
+  --d1: #ff4d9d; --d2: #7be7ff; --d3: #c5e46a; --d4: #ff8f6b; --d5: #a98bff;
+  --scrim: rgba(6, 4, 18, 0.66);
+  --display: 'Unbounded', 'Arial Black', sans-serif;
+  --body: 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color-scheme: dark;
+}
+:root[data-theme="light"] {
+  --bg: #f7f4ff; --surface: #ffffff; --surface-2: #ece8fa; --line: #d9d3f0; --fg: #1a1433; --muted: #5c5680;
+  --accent-text: #c2185f; --error: #c62828; --page: #ebe6fa;
+  --d1: #e0337f; --d2: #0f8fae; --d3: #5f8a00; --d4: #d2582f; --d5: #6a3fe0;
+  --scrim: rgba(26, 20, 51, 0.45);
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--page); color: var(--fg); font: 15px/1.45 var(--body); font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+input { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; border-radius: 10px; }
+
+.page-head { max-width: 900px; margin: 0 auto; padding: 28px 20px 8px; display: flex; flex-direction: column; gap: 14px; }
+.page-head h1 { font: 800 20px/1.1 var(--display); text-transform: uppercase; margin: 0; }
+.page-head p { margin: 0; color: var(--muted); max-width: 64ch; }
+.toggles { display: flex; flex-wrap: wrap; gap: 8px; }
+.toggle { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 9px 15px; font-weight: 700; font-size: 14px; }
+
+.board { max-width: 900px; margin: 0 auto; padding: 16px 20px 48px; display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 32px 24px; align-items: start; }
+.shot { display: flex; flex-direction: column; gap: 10px; }
+.shot-label { display: flex; gap: 10px; align-items: baseline; }
+.shot-label b { font: 800 13px/1 var(--display); color: var(--accent-text); }
+.shot-label span { font-weight: 700; }
+.shot-note { color: var(--muted); font-size: 13.5px; margin: 0; }
+
+/* One phone: a real viewport height, so the length of the screen is felt. */
+.phone { position: relative; background: var(--bg); border: 1px solid var(--line); border-radius: 34px; overflow: hidden; display: flex; flex-direction: column; width: 100%; max-width: 390px; height: 780px; }
+.screen { flex: 1; min-height: 0; overflow-y: auto; padding: 22px 16px 24px; display: flex; flex-direction: column; gap: 18px; scrollbar-width: thin; }
+.screen > * { flex-shrink: 0; }
+.tabbar { border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(4, 1fr); padding: 10px 0 14px; }
+.tabbar span { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11.5px; color: var(--muted); font-weight: 600; }
+.tabbar span.on { color: var(--fg); }
+.tabbar span.on svg { color: var(--accent); }
+.tabbar svg { width: 22px; height: 22px; }
+
+/* Header: the Day is the title, in its colour; the date and the one-line summary sit under it. */
+.head { display: grid; grid-template-columns: 32px 1fr; gap: 2px 10px; align-items: start; }
+.back { width: 32px; height: 32px; display: grid; place-items: center; margin-left: -6px; }
+.back svg { width: 20px; height: 20px; }
+.head h1 { margin: 4px 0 0; font: 800 20px/1.15 var(--display); text-transform: uppercase; color: var(--c, var(--fg)); text-wrap: balance; overflow-wrap: anywhere; }
+.head .date { grid-column: 2; color: var(--muted); font-size: 13.5px; font-weight: 600; }
+.summary-line { color: var(--muted); font-size: 14px; display: flex; flex-wrap: wrap; gap: 0 6px; }
+.summary-line b { color: var(--fg); font-weight: 800; }
+.summary-line .sep { opacity: .6; }
+
+/* Variant A: one flat list, a subheading for each Exercise, a hairline between groups. */
+.log { display: flex; flex-direction: column; }
+.group { padding: 14px 0 10px; }
+.group + .group { border-top: 1px solid var(--line); }
+.group:first-child { padding-top: 0; }
+.ex-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 4px; }
+.ex-head h2 { margin: 0; font-size: 16px; font-weight: 800; line-height: 1.25; }
+.ex-head small { color: var(--muted); font-size: 13px; font-weight: 600; white-space: nowrap; }
+
+/* A Set: number, load × reps and RIR, the PR tag, a chevron that says it can be tapped. */
+.hset { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto 16px; gap: 8px; align-items: center; width: calc(100% + 16px); margin-inline: -8px; padding: 8px; border-radius: 10px; text-align: left; }
+.hset:hover { background: var(--surface-2); }
+.hset .n { color: var(--muted); font-weight: 800; font-size: 13px; text-align: center; }
+.hset .v { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hset .v small { color: var(--muted); font-weight: 600; font-size: 13px; }
+.hset .pr-tag { font-size: 12px; font-weight: 800; color: var(--accent-text); white-space: nowrap; }
+.hset .chev { width: 16px; height: 16px; color: var(--muted); opacity: .7; }
+.hset.wu { opacity: .55; }
+.hset.wu .n { font-size: 10px; letter-spacing: .04em; }
+.hset.is-pr { background: color-mix(in srgb, var(--accent) 13%, transparent); }
+
+/* Variant B: the same rows, one card per Exercise. */
+.cards { display: flex; flex-direction: column; gap: 10px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 14px 16px 8px; }
+.card .ex-head { margin-bottom: 2px; }
+
+/* The edit sheet, inside its phone. */
+.scrim { position: absolute; inset: 0; background: var(--scrim); display: none; align-items: flex-end; z-index: 5; }
+.scrim.open { display: flex; }
+.sheet { width: 100%; background: var(--surface); border-top: 1px solid var(--line); border-radius: 24px 24px 0 0; padding: 10px 20px 26px; display: flex; flex-direction: column; gap: 12px; animation: up .18s ease-out; }
+@keyframes up { from { transform: translateY(30px); opacity: 0; } }
+.grab { width: 40px; height: 4px; border-radius: 2px; background: var(--line); align-self: center; margin-bottom: 6px; }
+.sheet h3 { margin: 0; font: 800 18px/1.1 var(--display); text-transform: uppercase; }
+.sheet p { margin: 0; }
+.muted { color: var(--muted); }
+.past-set { display: flex; align-items: center; gap: 10px; }
+.past-set input { flex: 1; min-width: 0; height: 52px; border-radius: 14px; border: 1px solid var(--line); background: var(--bg); text-align: center; font-size: 20px; font-weight: 800; }
+.past-set span { font-weight: 800; color: var(--muted); }
+.btn-primary { background: var(--accent); color: var(--accent-ink); border-radius: 999px; padding: 13px; font-weight: 800; }
+.btn-danger { background: var(--error); color: #1a0614; border-radius: 999px; padding: 12px; font-weight: 700; }
+.btn-ghost { border: 1px solid var(--line); border-radius: 999px; padding: 11px; font-weight: 600; }
+</style>
+</head>
+<body>
+<header class="page-head">
+  <h1 id="pageTitle"></h1>
+  <p id="pageIntro"></p>
+  <div class="toggles">
+    <button class="toggle" id="themeBtn" type="button"></button>
+    <button class="toggle" id="langBtn" type="button"></button>
+    <button class="toggle" id="dayBtn" type="button"></button>
+    <button class="toggle" id="resetBtn" type="button"></button>
+  </div>
+</header>
+<main class="board">
+  <section class="shot">
+    <div class="shot-label"><b>A</b><span id="labelA"></span></div>
+    <p class="shot-note" id="noteA"></p>
+    <div class="phone" id="phoneA"></div>
+  </section>
+  <section class="shot">
+    <div class="shot-label"><b>B</b><span id="labelB"></span></div>
+    <p class="shot-note" id="noteB"></p>
+    <div class="phone" id="phoneB"></div>
+  </section>
+</main>
+
+<script>
+const T = {
+  es: {
+    pageTitle: 'Detalle de sesión: propuesta',
+    pageIntro: 'Datos inventados con la forma de tu sesión del viernes. Tocá una serie para ver la hoja de edición; guardar y borrar funcionan de verdad en el mockup.',
+    theme: (d) => d ? 'Tema: oscuro' : 'Tema: claro',
+    lang: 'Idioma: ES',
+    day: (has) => has ? 'Con día de rutina' : 'Sin día de rutina',
+    reset: 'Reiniciar datos',
+    labelA: 'Lista corrida (la elegida)',
+    noteA: 'Sin tarjetas: un subtítulo por ejercicio y una línea fina entre grupos. Se lee como un cuaderno.',
+    labelB: 'Una tarjeta por ejercicio (alternativa)',
+    noteB: 'Mismas filas, cada ejercicio en su caja. Más separación, más largo.',
+    noRoutine: 'Sin rutina',
+    exercises: (n) => n === 1 ? '1 ejercicio' : `${n} ejercicios`,
+    sets: (n) => n === 1 ? '1 serie' : `${n} series`,
+    prs: (n) => `${n} PR`,
+    pts: (n) => `+${n} pts`,
+    wu: 'ENT',
+    bw: (added) => added ? `PC +${added}` : 'PC',
+    setTitle: 'Editar serie', warmUp: 'Entrada en calor', working: 'Efectiva',
+    save: 'Guardar', del: 'Borrar', cancel: 'Cancelar',
+    deleteTitle: '¿Borrar esta serie?', deleteText: 'Se quita del historial de esta sesión. No se puede deshacer.', deleteConfirm: 'Borrar serie',
+    tabs: ['Inicio', 'Entrenar', 'Grupos', 'Perfil'],
+    date: 'vie, 30 oct',
+    back: 'Volver',
+  },
+  en: {
+    pageTitle: 'Session detail: proposal',
+    pageIntro: 'Made-up data shaped like your Friday session. Tap a set to see the edit sheet; save and delete really work in the mockup.',
+    theme: (d) => d ? 'Theme: dark' : 'Theme: light',
+    lang: 'Language: EN',
+    day: (has) => has ? 'With Routine Day' : 'Without Routine Day',
+    reset: 'Reset data',
+    labelA: 'Flat list (the pick)',
+    noteA: 'No cards: a subheading per exercise and a hairline between groups. Reads like a logbook.',
+    labelB: 'One card per exercise (runner-up)',
+    noteB: 'Same rows, each exercise in its own box. More separation, longer screen.',
+    noRoutine: 'No routine',
+    exercises: (n) => n === 1 ? '1 exercise' : `${n} exercises`,
+    sets: (n) => n === 1 ? '1 set' : `${n} sets`,
+    prs: (n) => n === 1 ? '1 PR' : `${n} PRs`,
+    pts: (n) => `+${n} pts`,
+    wu: 'WU',
+    bw: (added) => added ? `BW +${added}` : 'BW',
+    setTitle: 'Edit set', warmUp: 'Warm-up', working: 'Working',
+    save: 'Save', del: 'Delete', cancel: 'Cancel',
+    deleteTitle: 'Delete this Set?', deleteText: "It's removed from this Session's history. It can't be undone.", deleteConfirm: 'Delete set',
+    tabs: ['Home', 'Train', 'Groups', 'Profile'],
+    date: 'Fri, Oct 30',
+    back: 'Back',
+  },
+};
+
+// Exercise names in both languages; bw marks a bodyweight Exercise.
+const EX = {
+  row: { es: 'Remo con barra', en: 'Barbell row' },
+  incline: { es: 'Press banca inclinado con mancuernas', en: 'Incline dumbbell bench press' },
+  lateral: { es: 'Elevaciones laterales en polea', en: 'Cable lateral raise' },
+  legext: { es: 'Extensión de cuádriceps', en: 'Leg extension' },
+  legcurl: { es: 'Curl femoral acostado', en: 'Lying leg curl' },
+  skull: { es: 'Press francés con barra', en: 'Barbell skull crusher' },
+  hammer: { es: 'Curl martillo', en: 'Hammer curl' },
+  dips: { es: 'Fondos en paralelas', en: 'Parallel bar dips', bw: true },
+};
+
+// [exercise, kg, reps, rir, warm-up, PR {gain %, pts}] — 26 Sets, two warm-ups, two PRs.
+const SEED = [
+  ['row', 40, 10, null, true], ['row', 70, 8, 2], ['row', 70, 8, 2], ['row', 70, 7, 1], ['row', 70, 7, 1],
+  ['incline', 26, 10, 2, false, { gain: 4, pts: 6 }], ['incline', 26, 9, 1], ['incline', 26, 8, 1], ['incline', 24, 9, 1],
+  ['lateral', 7.5, 15, 2], ['lateral', 7.5, 14, 1], ['lateral', 7.5, 12, 0],
+  ['legext', 30, 12, null, true], ['legext', 55, 12, 2], ['legext', 55, 11, 1], ['legext', 60, 9, 1, false, { gain: 3, pts: 4 }],
+  ['legcurl', 40, 12, 2], ['legcurl', 40, 11, 1], ['legcurl', 40, 10, 1],
+  ['skull', 25, 10, 2], ['skull', 25, 9, 1], ['skull', 25, 8, 0],
+  ['hammer', 14, 12, 1], ['hammer', 14, 10, 0],
+  ['dips', 10, 10, 1], ['dips', 0, 12, 0],
+];
+// What the Session earned for Consistency (filling a dot); the PRs' Progress points add on top.
+const CONSISTENCY_PTS = 10;
+
+let sets, lang = 'es', dark = true, hasDay = true;
+function reset() { sets = SEED.map(([ex, kg, reps, rir, wu, pr], i) => ({ id: i, ex, kg, reps, rir, wu: !!wu, pr: pr || null })); }
+reset();
+
+const num = (n) => lang === 'es' ? String(n).replace('.', ',') : String(n);
+const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const icon = {
+  back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>',
+  chev: '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>',
+  home: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 10.5L12 4l8 6.5V20h-5v-6H9v6H4z"/></svg>',
+  train: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 9v6M6 7v10M18 7v10M21 9v6M6 12h12"/></svg>',
+  groups: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.5 3.4-5.5 6.5-5.5s5.7 2 6.5 5.5"/><path d="M15.5 4.8a3.5 3.5 0 010 6.4M18 14.8c1.8.8 3 2.5 3.5 5.2"/></svg>',
+  me: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg>',
+};
+
+function load(s) {
+  const kg = `${num(s.kg)} kg`;
+  return EX[s.ex].bw ? T[lang].bw(s.kg ? kg : '') : kg;
+}
+
+function groups() {
+  const order = [];
+  const by = {};
+  for (const s of sets) {
+    if (!by[s.ex]) { by[s.ex] = []; order.push(s.ex); }
+    by[s.ex].push(s);
+  }
+  return order.map((ex) => ({ ex, sets: by[ex] }));
+}
+
+function rows(list) {
+  const t = T[lang];
+  let working = 0;
+  return list.map((s) => {
+    if (!s.wu) working++;
+    const rir = s.rir !== null ? `<small> · RIR ${s.rir}</small>` : '';
+    const tag = s.pr ? `<span class="pr-tag">PR +${s.pr.gain}% · ${s.pr.pts} pts</span>` : '<span></span>';
+    return `<button type="button" class="hset${s.wu ? ' wu' : ''}${s.pr ? ' is-pr' : ''}" data-set="${s.id}">
+      <span class="n">${s.wu ? t.wu : working}</span>
+      <span class="v">${load(s)} × ${s.reps}${rir}</span>
+      ${tag}${icon.chev}
+    </button>`;
+  }).join('');
+}
+
+function head() {
+  const t = T[lang];
+  const g = groups();
+  const prs = sets.filter((s) => s.pr);
+  const pts = CONSISTENCY_PTS + prs.reduce((sum, s) => sum + s.pr.pts, 0);
+  const parts = [t.exercises(g.length), t.sets(sets.length)];
+  if (prs.length) parts.push(t.prs(prs.length));
+  if (pts > 0) parts.push(t.pts(pts));
+  const line = parts.map((p) => p.replace(/^(\+?[\d.,]+)/, '<b>$1</b>')).join('<span class="sep">·</span>');
+  const title = hasDay ? 'Viernes (Full-body)' : t.noRoutine;
+  return `<div class="head" style="${hasDay ? '--c: var(--d3)' : ''}">
+      <button type="button" class="back" aria-label="${t.back}">${icon.back}</button>
+      <h1>${esc(title)}</h1>
+      <span class="date">${t.date}</span>
+    </div>
+    <div class="summary-line">${line}</div>`;
+}
+
+function exHead(g) {
+  return `<div class="ex-head"><h2>${esc(EX[g.ex][lang])}</h2><small>${T[lang].sets(g.sets.length)}</small></div>`;
+}
+
+function tabbar() {
+  const t = T[lang];
+  const icons = [icon.home, icon.train, icon.groups, icon.me];
+  return `<nav class="tabbar">${t.tabs.map((label, i) => `<span class="${i === 1 ? 'on' : ''}">${icons[i]}${label}</span>`).join('')}</nav>`;
+}
+
+function render() {
+  const t = T[lang];
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  document.documentElement.lang = lang;
+  document.title = 'ULTI · ' + t.pageTitle;
+  for (const id of ['pageTitle', 'pageIntro', 'labelA', 'noteA', 'labelB', 'noteB']) document.getElementById(id).textContent = t[id];
+  document.getElementById('themeBtn').textContent = t.theme(dark);
+  document.getElementById('langBtn').textContent = t.lang;
+  document.getElementById('dayBtn').textContent = t.day(hasDay);
+  document.getElementById('resetBtn').textContent = t.reset;
+
+  const g = groups();
+  const flat = `<div class="log">${g.map((x) => `<section class="group">${exHead(x)}${rows(x.sets)}</section>`).join('')}</div>`;
+  const cards = `<div class="cards">${g.map((x) => `<section class="card">${exHead(x)}${rows(x.sets)}</section>`).join('')}</div>`;
+  for (const [id, body] of [['phoneA', flat], ['phoneB', cards]]) {
+    const phone = document.getElementById(id);
+    const scroll = phone.querySelector('.screen')?.scrollTop ?? 0;
+    phone.innerHTML = `<div class="screen">${head()}${body}</div>${tabbar()}<div class="scrim"></div>`;
+    phone.querySelector('.screen').scrollTop = scroll;
+  }
+}
+
+// The sheet: fix the Set, or confirm its deletion.
+function openSheet(phone, id, confirming = false) {
+  const t = T[lang];
+  const s = sets.find((x) => x.id === id);
+  const scrim = phone.querySelector('.scrim');
+  const name = esc(EX[s.ex][lang]);
+  scrim.innerHTML = confirming
+    ? `<div class="sheet" role="dialog" aria-label="${t.deleteTitle}"><span class="grab"></span>
+        <h3>${t.deleteTitle}</h3>
+        <p><strong>${name}</strong>: ${load(s)} × ${s.reps}</p>
+        <p class="muted">${t.deleteText}</p>
+        <button type="button" class="btn-danger" data-act="delete">${t.deleteConfirm}</button>
+        <button type="button" class="btn-ghost" data-act="close">${t.cancel}</button></div>`
+    : `<form class="sheet" role="dialog" aria-label="${t.setTitle}"><span class="grab"></span>
+        <h3>${t.setTitle}</h3>
+        <p class="muted"><strong>${name}</strong> · ${s.wu ? t.warmUp : t.working}</p>
+        <div class="past-set">
+          <input name="w" inputmode="decimal" autocomplete="off" value="${num(s.kg)}">
+          <span>×</span>
+          <input name="r" inputmode="numeric" autocomplete="off" value="${s.reps}">
+        </div>
+        <button class="btn-primary">${t.save}</button>
+        <button type="button" class="btn-danger" data-act="confirm">${t.del}</button></form>`;
+  scrim.classList.add('open');
+  scrim.onclick = (e) => {
+    if (e.target === scrim || e.target.dataset.act === 'close') scrim.classList.remove('open');
+    if (e.target.dataset.act === 'confirm') openSheet(phone, id, true);
+    if (e.target.dataset.act === 'delete') { sets = sets.filter((x) => x.id !== id); render(); }
+  };
+  const form = scrim.querySelector('form');
+  if (form) form.onsubmit = (e) => {
+    e.preventDefault();
+    const w = Number(form.w.value.replace(',', '.'));
+    const r = Number(form.r.value);
+    if (!Number.isFinite(w) || w < 0 || !Number.isInteger(r) || r < 1) return;
+    s.kg = w; s.reps = r;
+    render();
+  };
+}
+
+document.querySelector('.board').addEventListener('click', (e) => {
+  const btn = e.target.closest('.hset');
+  if (btn) openSheet(btn.closest('.phone'), Number(btn.dataset.set));
+});
+document.getElementById('themeBtn').onclick = () => { dark = !dark; render(); };
+document.getElementById('langBtn').onclick = () => { lang = lang === 'es' ? 'en' : 'es'; render(); };
+document.getElementById('dayBtn').onclick = () => { hasDay = !hasDay; render(); };
+document.getElementById('resetBtn').onclick = () => { reset(); render(); };
+render();
+</script>
+</body>
+</html>

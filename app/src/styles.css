@@ -133,6 +133,10 @@ button {
   flex-direction: column;
   gap: 20px;
 }
+/* A scrolling column never squeezes its children: a long screen scrolls instead. */
+.screen > * {
+  flex-shrink: 0;
+}
 
 .disp {
   font-family: var(--display);
@@ -1171,46 +1175,68 @@ button.cell {
   color: var(--muted);
   font-size: 13.5px;
 }
-.summary {
-  display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr);
-  gap: 8px;
-}
-.stat {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 10px 12px;
-  min-width: 0;
-}
-.stat b {
-  display: block;
-  font: 800 17px/1.1 var(--display);
-  overflow-wrap: anywhere;
-}
-.stat small {
+/* A past Session: a flat logbook list, a subheading per Exercise and a hairline between groups. */
+.summary-line {
+  margin: 0;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 14px;
 }
-.ex-name {
+.summary-line b {
+  color: var(--fg);
   font-weight: 800;
+}
+.summary-line .sep {
+  opacity: 0.6;
+}
+.log {
+  display: flex;
+  flex-direction: column;
+}
+.group {
+  padding: 14px 0 10px;
+}
+.group + .group {
+  border-top: 1px solid var(--line);
+}
+.group:first-child {
+  padding-top: 0;
+}
+.ex-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+.ex-head h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.25;
   min-width: 0;
   overflow-wrap: anywhere;
+}
+.ex-head small {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
 }
 .hset {
   display: grid;
-  grid-template-columns: 30px minmax(0, 1fr) auto;
-  gap: 10px;
+  grid-template-columns: 30px minmax(0, 1fr) auto 16px;
+  gap: 8px;
   align-items: center;
-  width: 100%;
-  min-width: 0;
-  padding: 9px 0;
-  border-top: 1px solid var(--line);
+  width: calc(100% + 16px);
+  min-height: 44px;
+  margin-inline: -8px;
+  padding: 8px;
+  border-radius: 10px;
   text-align: left;
 }
 .hset .n {
   color: var(--muted);
-  font-weight: 700;
+  font-weight: 800;
   text-align: center;
   font-size: 13px;
 }
@@ -1220,33 +1246,30 @@ button.cell {
 }
 .hset .v {
   font-weight: 700;
+  min-width: 0;
 }
 .hset .v small {
   color: var(--muted);
   font-weight: 600;
+  font-size: 13px;
+}
+.hset.wu {
+  opacity: 0.55;
 }
 .hset.is-pr {
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
-  border-radius: 10px;
-  border-top-color: transparent;
-  padding-inline: 6px;
-  margin-inline: -6px;
-  width: calc(100% + 12px);
+  background: color-mix(in srgb, var(--accent) 13%, transparent);
 }
 .hset .pr-tag {
-  min-width: 0;
-  max-width: 45vw;
-  overflow-wrap: anywhere;
   text-align: right;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 800;
   color: var(--accent-text);
 }
-.history-hint {
-  margin: 0;
+.hset .chev {
+  width: 16px;
+  height: 16px;
   color: var(--muted);
-  font-size: 13px;
-  text-align: center;
+  opacity: 0.7;
 }
 .set-edit .btn-ghost {
   min-height: 56px;
@@ -1826,6 +1849,26 @@ prefers-reduced-motion switches every animation off, so it stays off the badge. 
 .subhead .iconbtn {
   margin-left: -10px;
 }
+/* A title in a Routine Day's colour (--c) with a small muted line under it. */
+.subhead.with-sub {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 2px 8px;
+  align-items: start;
+}
+.subhead.with-sub .title {
+  font-size: 20px;
+  line-height: 1.15;
+  margin-top: 4px;
+  color: var(--c, var(--fg));
+  overflow-wrap: anywhere;
+}
+.subhead .subtitle {
+  grid-column: 2;
+  color: var(--muted);
+  font-size: 13.5px;
+  font-weight: 600;
+}
 .title-row {
   display: flex;
   align-items: center;
@@ -2224,32 +2267,7 @@ prefers-reduced-motion switches every animation off, so it stays off the badge. 
   }
 }
 
-/* A past Session carries its Routine Day's colour (--c): a tinted header band and tiles, a stripe on
-   each Exercise card and on its row in History. A Session with no Day keeps the neutral look. */
-.subhead.tinted {
-  background: color-mix(in srgb, var(--c) 24%, var(--surface));
-  border-radius: 18px;
-  padding: 6px 12px 6px 4px;
-}
-.summary[style*='--c'] .stat {
-  background: color-mix(in srgb, var(--c) 22%, var(--surface));
-  border-top: 3px solid var(--c);
-}
-.summary[style*='--c'] .stat.day-name b {
-  color: var(--c);
-}
-.day-card {
-  position: relative;
-  overflow: hidden;
-  padding-left: 22px;
-}
-.day-card::before {
-  content: '';
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 5px;
-  background: var(--c);
-}
+/* A Routine Day's colour (--c) stripes its row in History. */
 .sess.has-day {
   box-shadow: inset 5px 0 0 var(--c);
 }
