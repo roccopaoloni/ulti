@@ -16,6 +16,7 @@ import {
   newGroupPath,
   refreshGroups,
   refreshProfile,
+  renameGroup,
   resetInvite,
   saveProfile,
   selectGroup,
@@ -376,6 +377,7 @@ export function GroupSettingsScreen({ userId, groupId }: { userId: string; group
   const owner = group.members.some(({ me, owner }) => me && owner);
   return (
     <SubScreen title={g.settings} parent={paths.groups}>
+      {owner && <GroupNameCard userId={userId} group={group} />}
       {owner && <ScoringModeChoice userId={userId} group={group} />}
       {owner && <InviteLinkCard userId={userId} group={group} />}
       <section className="card">
@@ -398,6 +400,35 @@ export function GroupSettingsScreen({ userId, groupId }: { userId: string; group
       </button>
       <LeaveSheet dialog={leave} userId={userId} group={group} />
     </SubScreen>
+  );
+}
+
+// The Owner renames the Group. What was typed stays when saving fails.
+function GroupNameCard({ userId, group }: { userId: string; group: Group }) {
+  const { t } = useI18n();
+  const g = t.groups;
+  const [name, setName] = useState(group.name);
+  const { busy, error, run } = useAction();
+  return (
+    <section className="card">
+      <form
+        className="name-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          run(() => renameGroup(userId, group.id, name.trim()));
+        }}
+      >
+        <Field label={g.groupName} maxLength={40} pattern=".*\S.*" required value={name} onChange={(event) => setName(event.target.value)} />
+        <button className="btn-ghost" disabled={busy || name.trim() === group.name}>
+          {g.save}
+        </button>
+      </form>
+      {error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      )}
+    </section>
   );
 }
 

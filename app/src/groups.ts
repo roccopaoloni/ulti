@@ -119,6 +119,11 @@ export async function setScoringMode(groupId: string, mode: ScoringMode) {
   await call(supabase.rpc('set_scoring_mode', { group_id: groupId, mode, on_date: today() }));
 }
 
+export async function renameGroup(userId: string, groupId: string, name: string) {
+  await call(supabase.rpc('rename_group', { group_id: groupId, name }));
+  await refreshGroups(userId);
+}
+
 export async function resetInvite(userId: string, groupId: string) {
   await call(supabase.rpc('reset_invite', { group_id: groupId }));
   await refreshGroups(userId);
