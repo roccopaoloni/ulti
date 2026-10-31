@@ -35,7 +35,7 @@ const modes: ScoringMode[] = ['standard', 'prHunt', 'grind'];
 
 // Fetches a Group's board for a Period now and whenever the phone comes back online. Offline, the
 // board shows as last fetched.
-function useFreshBoard(userId: string, groupId: string, period: Period) {
+export function useFreshBoard(userId: string, groupId: string, period: Period) {
   const board = useBoard(userId, groupId, period);
   useEffect(() => {
     const refresh = () => refreshBoard(userId, groupId, period).catch(() => {});
@@ -66,8 +66,9 @@ function BoardRowView({ row, nameOf, onOpen }: { row: BoardRow; nameOf: (exercis
       </span>
       <span className="board-main">
         <button type="button" className="member-name btn-link" style={{ textAlign: 'start' }}>
-          {row.former ? g.formerMember : row.display_name}
-          {row.me && <span className="muted"> · {g.you}</span>}
+          <span className="board-name">{row.former ? g.formerMember : row.display_name}</span>
+          {row.me && <span className="tagpill you">{g.you}</span>}
+          {row.owner && <span className="tagpill">{t.glossary.owner.term}</span>}
           {/* Boards stored before Ranks came with the board have none. */}
           {row.tier && <Badge rank={{ tier: row.tier, division: row.division }} tierName={t.rank.tier[row.tier]} mode="sm" />}
           {row.position === 1 && row.points > 0 && <Crown />}
@@ -199,7 +200,6 @@ export function GroupBoard({ userId, group, training }: { userId: string; group:
     history.replaceState(history.state, '', `${paths.groups}?period=${next}`);
     setPeriod(next);
   };
-  const owner = group.members.some(({ me, owner }) => me && owner);
   const g = t.groups;
   const next = board?.next_scoring_mode;
   return (
@@ -217,25 +217,6 @@ export function GroupBoard({ userId, group, training }: { userId: string; group:
           {period !== 'year' && next && next !== board.scoring_mode && <> · {g.modeNext(g.modes[next], g.periods[period].toLowerCase())}</>}
         </p>
       )}
-      {owner && period !== 'year' && (
-        <div className="chips" role="group" aria-label={g.modeChoose}>
-          {modes.map((mode) => (
-            <button
-              key={mode}
-              type="button"
-              className="chip"
-              aria-pressed={mode === (next ?? board?.scoring_mode)}
-              onClick={() =>
-                setScoringMode(group.id, mode)
-                  .then(() => refreshBoard(userId, group.id, period))
-                  .catch(() => {})
-              }
-            >
-              {g.modes[mode]}
-            </button>
-          ))}
-        </div>
-      )}
       {board && (
         <ul className="members">
           {board.members.map((row, index) => (
@@ -243,6 +224,39 @@ export function GroupBoard({ userId, group, training }: { userId: string; group:
           ))}
         </ul>
       )}
+    </section>
+  );
+}
+
+// In Group settings, the Owner's choice of Scoring Mode (the board shows the one in use).
+export function ScoringModeChoice({ userId, group }: { userId: string; group: Group }) {
+  const { t } = useI18n();
+  const g = t.groups;
+  const board = useFreshBoard(userId, group.id, 'week');
+  const next = board?.next_scoring_mode ?? board?.scoring_mode;
+  return (
+    <section className="card">
+      <div className="eyebrow">
+        {t.glossary.scoringMode.term} <Info term="scoringMode" />
+      </div>
+      <div className="chips" role="group" aria-label={g.modeChoose}>
+        {modes.map((mode) => (
+          <button
+            key={mode}
+            type="button"
+            className="chip"
+            aria-pressed={mode === next}
+            onClick={() =>
+              setScoringMode(group.id, mode)
+                .then(() => refreshBoard(userId, group.id, 'week'))
+                .catch(() => {})
+            }
+          >
+            {g.modes[mode]}
+          </button>
+        ))}
+      </div>
+      <p className="muted">{g.modeHint}</p>
     </section>
   );
 }

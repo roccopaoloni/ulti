@@ -96,7 +96,7 @@ In order:
 
 ## Group board
 
-Week / Month / Year tabs. Each row shows position, avatar, name, Rank badge, score, the week's Session dots and the latest Personal Record chips ("Bench +3%"). The leader wears a crown. Tapping a member opens their profile, filtered by their Visibility. The Group's Scoring Mode is labelled at the top.
+Week / Month / Year tabs. Each row shows position, avatar, name, Rank badge, score, the week's Session dots and the latest Personal Record chips ("Bench +3%"). The leader wears a crown. Tapping a member opens their profile, filtered by their Visibility. The Group's Scoring Mode is labelled at the top. The board is also the member list: the name stays on one line (cut with an ellipsis), "You" and "Owner" are small tags beside it. The Group header has the name, Invite and a ⚙ that opens Group settings, a screen of its own under the Groups tab: the Owner chooses the Scoring Mode and resets the invite link, and everyone sees the members and Leave Group.
 
 ## Celebrations
 
