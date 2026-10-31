@@ -992,7 +992,7 @@ button.cell {
 /* A past Session: one tappable line. The dot is the Routine Day's colour, hollow when it has none. */
 .sess {
   display: grid;
-  grid-template-columns: 10px minmax(0, 1fr) auto auto;
+  grid-template-columns: 10px max-content minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
   width: 100%;
@@ -1003,6 +1003,7 @@ button.cell {
   border-top: 1px solid var(--line);
 }
 .sess svg {
+  grid-column: 4;
   width: 18px;
   height: 18px;
   color: var(--muted);
@@ -1018,7 +1019,7 @@ button.cell {
   border: 2px solid var(--line);
 }
 .sess-main {
-  min-width: 0;
+  max-width: 100%;
 }
 .sess strong {
   display: block;
@@ -1034,10 +1035,12 @@ button.cell {
   text-overflow: ellipsis;
 }
 .sess-prs {
+  grid-column: 3;
+  justify-self: end;
   display: flex;
   gap: 4px;
   min-width: 0;
-  max-width: 170px;
+  max-width: 100%;
 }
 .sess-prs .pr:first-child {
   min-width: 0;
