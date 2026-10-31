@@ -513,7 +513,7 @@ function FocusSets({
 
 // A large keypad in a sheet, for one number. The first key typed replaces the number; ± step it.
 // `decimal` is the language's decimal key, or null for a whole number.
-function Keypad({
+export function Keypad({
   label,
   value,
   decimal,
