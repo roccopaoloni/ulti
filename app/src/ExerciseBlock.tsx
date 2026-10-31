@@ -235,9 +235,9 @@ export function ExerciseBlock({
           units={units}
           labelFor={labelFor}
           onLog={async (weightKg, reps, label) => {
-                setUnlogged(null);
-                setAskRir(await onLog(weightKg, reps, label));
-              }}
+            setUnlogged(null);
+            setAskRir(await onLog(weightKg, reps, label));
+          }}
         />
       )}
       {editingIncrement !== null && (
