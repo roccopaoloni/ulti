@@ -1323,6 +1323,16 @@ prefers-reduced-motion switches every animation off, so it stays off the badge. 
   width: 28px;
   height: 28px;
 }
+/* Un-log set on a logged Set: an outline button, clearly not the filled Done. */
+.f-unlog {
+  min-height: 64px;
+  border-radius: 18px;
+  font-size: 16px;
+}
+.f-unlog svg {
+  width: 22px;
+  height: 22px;
+}
 
 /* The Rank-up moment (from the prototype): the old crest cracks, light leaks through, it shatters and the new one bursts out. */
 .ru{position:fixed;inset:0;z-index:50;overflow:clip;contain:strict;background:var(--bg);animation:ru-fade .2s;user-select:none;-webkit-user-select:none;cursor:pointer}
