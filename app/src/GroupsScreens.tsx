@@ -6,6 +6,7 @@ import {
   avatarColors,
   createGroup,
   deleteAccount,
+  deleteGroup,
   dropInvite,
   GroupsError,
   groupSettingsPath,
@@ -373,6 +374,7 @@ export function GroupSettingsScreen({ userId, groupId }: { userId: string; group
   const group = useGroups(userId)?.find(({ id }) => id === groupId);
   const leave = useRef<HTMLDialogElement>(null);
   const remove = useRef<HTMLDialogElement>(null);
+  const del = useRef<HTMLDialogElement>(null);
   const [removing, setRemoving] = useState<Member>();
   useEffect(() => {
     refreshGroups(userId).catch(() => {});
@@ -421,6 +423,14 @@ export function GroupSettingsScreen({ userId, groupId }: { userId: string; group
         {g.leave}
       </button>
       <LeaveSheet dialog={leave} userId={userId} group={group} />
+      {owner && (
+        <>
+          <button type="button" className="btn-link danger" onClick={() => del.current?.showModal()}>
+            {g.deleteGroup}
+          </button>
+          <DeleteGroupSheet dialog={del} userId={userId} group={group} />
+        </>
+      )}
       {removing && <RemoveSheet key={removing.user_id} dialog={remove} userId={userId} group={group} member={removing} />}
     </SubScreen>
   );
@@ -671,6 +681,48 @@ function LeaveSheet({ dialog, userId, group }: SheetProps) {
         }
       >
         {g.leaveConfirm}
+      </button>
+      <form method="dialog">
+        <button className="btn-ghost">{g.cancel}</button>
+      </form>
+    </Sheet>
+  );
+}
+
+// The Owner deletes the Group for everyone, after typing its name (trimmed, case-sensitive).
+function DeleteGroupSheet({ dialog, userId, group }: SheetProps) {
+  const { t } = useI18n();
+  const g = t.groups;
+  const [typed, setTyped] = useState('');
+  const { busy, error, run } = useAction();
+
+  return (
+    <Sheet dialog={dialog} label={g.deleteGroupTitle(group.name)}>
+      <h2 className="disp sheet-title">{g.deleteGroupTitle(group.name)}</h2>
+      <p>{g.deleteGroupText}</p>
+      <Field
+        label={g.deleteGroupType(group.name)}
+        autoComplete="off"
+        value={typed}
+        onChange={(event) => setTyped(event.target.value)}
+      />
+      {error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      )}
+      <button
+        type="button"
+        className="btn-danger"
+        disabled={busy || typed.trim() !== group.name}
+        onClick={() =>
+          run(async () => {
+            await deleteGroup(userId, group.id);
+            dialog.current?.close();
+          })
+        }
+      >
+        {g.deleteGroupConfirm}
       </button>
       <form method="dialog">
         <button className="btn-ghost">{g.cancel}</button>

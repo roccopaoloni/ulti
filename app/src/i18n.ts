@@ -45,6 +45,11 @@ type Messages = {
     leaveNextOwner: (name: string) => string;
     leaveLast: string;
     leaveConfirm: string;
+    deleteGroup: string;
+    deleteGroupTitle: (group: string) => string;
+    deleteGroupText: string;
+    deleteGroupType: (group: string) => string;
+    deleteGroupConfirm: string;
     removeMember: string;
     removeTitle: (name: string, group: string) => string;
     removeText: string;
@@ -497,6 +502,12 @@ const en: Messages = {
     leaveNextOwner: (name) => `${name} will become the Owner.`,
     leaveLast: "You're the last member, so the Group will be deleted.",
     leaveConfirm: 'Leave',
+    deleteGroup: 'Delete Group',
+    deleteGroupTitle: (group) => `Delete ${group}?`,
+    deleteGroupText:
+      "This deletes the Group, its boards and its history for every member. Nobody's own Points, Rank, Season results or Sessions are touched. It can't be undone.",
+    deleteGroupType: (group) => `Type ${group} to confirm`,
+    deleteGroupConfirm: 'Delete Group',
     removeMember: 'Remove',
     removeTitle: (name, group) => `Remove ${name} from ${group}?`,
     removeText: "They'll lose the Group from their list, with no notice. Their own Points, Rank and Sessions stay. They can rejoin with the invite link while it still works.",
@@ -928,6 +939,12 @@ const es: Messages = {
     leaveNextOwner: (name) => `${name} va a pasar a ser el creador.`,
     leaveLast: 'Sos el último miembro, así que el grupo se va a borrar.',
     leaveConfirm: 'Salir',
+    deleteGroup: 'Eliminar el grupo',
+    deleteGroupTitle: (group) => `¿Eliminar ${group}?`,
+    deleteGroupText:
+      'Esto elimina el grupo, sus tablas y su historial para todos los miembros. No toca los puntos, el rango, los resultados de temporada ni las sesiones de nadie. No se puede deshacer.',
+    deleteGroupType: (group) => `Escribí ${group} para confirmar`,
+    deleteGroupConfirm: 'Eliminar el grupo',
     removeMember: 'Quitar',
     removeTitle: (name, group) => `¿Quitar a ${name} de ${group}?`,
     removeText: 'Va a perder el grupo de su lista, sin aviso. Sus puntos, rango y sesiones propios se quedan. Puede volver a entrar con el link de invitación mientras siga funcionando.',

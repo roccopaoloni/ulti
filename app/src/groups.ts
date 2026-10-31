@@ -103,6 +103,11 @@ export async function leaveGroup(userId: string, groupId: string) {
   await refreshGroups(userId);
 }
 
+export async function deleteGroup(userId: string, groupId: string) {
+  await call(supabase.rpc('delete_group', { group_id: groupId }));
+  await refreshGroups(userId);
+}
+
 // Deletes the account on the server (online only, since the server has to erase it), then clears
 // everything this device holds for the user: their database and the small values in localStorage
 // (the device's language stays), and forgets the session.
