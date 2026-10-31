@@ -261,7 +261,10 @@ button {
 .auth-body {
   gap: 18px;
 }
-/* Turnstile fills this only when it needs a tap; usually it stays empty. */
+/* Turnstile hides its own iframe unless it needs a tap, then stretches to this width. */
+.captcha {
+  width: 100%;
+}
 .captcha:empty {
   display: none;
 }
