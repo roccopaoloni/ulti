@@ -103,7 +103,7 @@ export function StartSession({ logging, training }: { logging: ReturnType<typeof
     if (inProgress || next || (await training.followsNoRoutine()) || (await training.nextRoutineDay())) logging.start(next?.id);
     else noRoutine.current?.showModal();
   };
-  const answer =async (accept: boolean) => {
+  const answer = async (accept: boolean) => {
     await training.answerDeload(accept);
     setDeload(await training.deload());
   };

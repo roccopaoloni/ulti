@@ -35,7 +35,7 @@ type ExerciseRecord = { id: string; name: string; muscle?: string };
 type RoutineRecord = { id: string; days: unknown[]; updatedAt: string };
 // "I don't follow a routine", set or cleared. Saving a Routine clears it too.
 type NoRoutineRecord = { value: boolean; updatedAt: string };
-type IncrementRecord ={ exerciseId: string; incrementKg: number; updatedAt: string };
+type IncrementRecord = { exerciseId: string; incrementKg: number; updatedAt: string };
 // A Deload Week, by the Monday that starts it: suggested or self-started, accepted or dismissed.
 type DeloadRecord = { week: string; origin: 'suggested' | 'self'; reason?: string; status: 'accepted' | 'dismissed'; updatedAt: string };
 type Mutation =
@@ -260,7 +260,7 @@ async function save(client: Client, userId: string, mutations: Mutation[], recei
       and jsonb_array_length(r.days) > 0
       and profiles.no_routine_at < r."updatedAt"`;
   await transaction.queryArray`
-    insert into public.increment_overrides(user_id, exercise_id, increment_kg, updated_at)
+    insert into public.increment_overrides (user_id, exercise_id, increment_kg, updated_at)
     select ${userId}, i."exerciseId", i."incrementKg", i."updatedAt"
     from jsonb_to_recordset(${JSON.stringify([...increments.values()])}::jsonb) as i(
       "exerciseId" text, "incrementKg" numeric, "updatedAt" timestamptz

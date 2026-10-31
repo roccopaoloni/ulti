@@ -41,7 +41,7 @@ async function pull(userId: string, training: Training) {
   if (profile.data?.no_routine_at) {
     await training.saveNoRoutineFromServer({ value: profile.data.no_routine, updatedAt: profile.data.no_routine_at });
   }
-  if (profile.data?.units &&localStorage.getItem(unitsKey(userId)) === null) write(unitsKey(userId), profile.data.units);
+  if (profile.data?.units && localStorage.getItem(unitsKey(userId)) === null) write(unitsKey(userId), profile.data.units);
 }
 
 // The user's sex, bodyweight and Weekly Target on this phone. `ready` is true once the phone has
