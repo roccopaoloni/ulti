@@ -1,13 +1,14 @@
 import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import { Field } from './AuthScreens.tsx';
-import { GroupBoard } from './Boards.tsx';
+import { GroupBoard, ScoringModeChoice } from './Boards.tsx';
 import {
   avatarColors,
   createGroup,
   deleteAccount,
   dropInvite,
   GroupsError,
+  groupSettingsPath,
   initials,
   inviteLink,
   joinGroup,
@@ -26,9 +27,10 @@ import {
   type Profile,
 } from './groups.ts';
 import { useI18n, type I18n } from './i18n.ts';
-import { backIcon } from './icons.tsx';
+import { backIcon, gearIcon } from './icons.tsx';
 import { Info } from './Info.tsx';
 import { navigate, paths } from './navigation.ts';
+import { SubScreen } from './SubScreen.tsx';
 import { useStored, write } from './stored.ts';
 import type { Training } from './training.ts';
 
@@ -290,7 +292,7 @@ export function JoinInvite({ userId, code }: { userId: string; code: string }) {
   );
 }
 
-// The Groups tab: the user's Groups as chips, and the chosen one's members.
+// The Groups tab: the user's Groups as chips, and the chosen one's board, which is its member list.
 export function GroupsTab({ userId, training }: { userId: string; training: Training | null }) {
   const { t } = useI18n();
   const g = t.groups;
@@ -298,8 +300,6 @@ export function GroupsTab({ userId, training }: { userId: string; training: Trai
   const selected = useSelectedGroup();
   const [error, setError] = useState<string>();
   const invite = useRef<HTMLDialogElement>(null);
-  const leave = useRef<HTMLDialogElement>(null);
-
   useEffect(() => {
     const refresh = () =>
       refreshGroups(userId).then(
@@ -352,8 +352,32 @@ export function GroupsTab({ userId, training }: { userId: string; training: Trai
         <button type="button" className="btn-ghost" onClick={() => invite.current?.showModal()}>
           {g.invite}
         </button>
+        <button type="button" className="iconbtn" aria-label={g.settings} onClick={() => navigate(groupSettingsPath(group.id))}>
+          {gearIcon}
+        </button>
       </div>
       <GroupBoard userId={userId} group={group} training={training} />
+      <InviteSheet key={`invite-${group.id}`} dialog={invite} userId={userId} group={group} />
+    </>
+  );
+}
+
+// Group settings: a screen of its own under the Groups tab. The Owner chooses the Scoring Mode and
+// resets the invite link; every member can leave.
+export function GroupSettingsScreen({ userId, groupId }: { userId: string; groupId: string }) {
+  const { t } = useI18n();
+  const g = t.groups;
+  const group = useGroups(userId)?.find(({ id }) => id === groupId);
+  const leave = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    refreshGroups(userId).catch(() => {});
+  }, [userId]);
+  if (!group) return <SubScreen title={g.settings} parent={paths.groups}>{null}</SubScreen>;
+  const owner = group.members.some(({ me, owner }) => me && owner);
+  return (
+    <SubScreen title={g.settings} parent={paths.groups}>
+      {owner && <ScoringModeChoice userId={userId} group={group} />}
+      {owner && <InviteLinkCard userId={userId} group={group} />}
       <section className="card">
         <div className="eyebrow">{g.members(group.members.length)}</div>
         <ul className="members">
@@ -361,14 +385,10 @@ export function GroupsTab({ userId, training }: { userId: string; training: Trai
             <li key={index} className="member">
               <Avatar name={member.display_name} color={member.avatar_color} />
               <span className="member-name">
-                {member.display_name}
-                {member.me && <span className="muted"> · {g.you}</span>}
+                <span className="board-name">{member.display_name}</span>
+                {member.me && <span className="tagpill you">{g.you}</span>}
+                {member.owner && <span className="tagpill">{t.glossary.owner.term}</span>}
               </span>
-              {member.owner && (
-                <span className="owner">
-                  {t.glossary.owner.term} <Info term="owner" />
-                </span>
-              )}
             </li>
           ))}
         </ul>
@@ -376,9 +396,63 @@ export function GroupsTab({ userId, training }: { userId: string; training: Trai
       <button type="button" className="btn-link danger" onClick={() => leave.current?.showModal()}>
         {g.leave}
       </button>
-      <InviteSheet key={`invite-${group.id}`} dialog={invite} userId={userId} group={group} />
-      <LeaveSheet key={`leave-${group.id}`} dialog={leave} userId={userId} group={group} />
-    </>
+      <LeaveSheet dialog={leave} userId={userId} group={group} />
+    </SubScreen>
+  );
+}
+
+// The Owner's view of the invite link, with its reset.
+function InviteLinkCard({ userId, group }: { userId: string; group: Group }) {
+  const { t } = useI18n();
+  const g = t.groups;
+  const [confirming, setConfirming] = useState(false);
+  const [done, setDone] = useState(false);
+  const { busy, error, run } = useAction();
+  return (
+    <section className="card">
+      <div className="eyebrow">{g.inviteLinkTitle}</div>
+      <div className="invite-link">{inviteLink(group.invite_code).replace(/^https?:\/\//, '')}</div>
+      {confirming ? (
+        <>
+          <p>{g.resetConfirm}</p>
+          <button
+            type="button"
+            className="btn-ghost danger"
+            disabled={busy}
+            onClick={() =>
+              run(async () => {
+                await resetInvite(userId, group.id);
+                setConfirming(false);
+                setDone(true);
+              })
+            }
+          >
+            {g.reset}
+          </button>
+        </>
+      ) : (
+        <button
+          type="button"
+          className="btn-link"
+          onClick={() => {
+            setConfirming(true);
+            setDone(false);
+          }}
+        >
+          {g.reset}
+        </button>
+      )}
+      {done && (
+        <p className="muted" role="status">
+          {g.resetDone}
+        </p>
+      )}
+      {error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      )}
+    </section>
   );
 }
 

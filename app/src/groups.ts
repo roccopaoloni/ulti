@@ -77,7 +77,11 @@ export const newGroupPath = '/groups/new';
 
 // A member's profile is a screen under the Groups tab; the Period rides in the query.
 export const memberPath = (groupId: string, memberId: string, period: Period) => `/groups/${groupId}/${memberId}?period=${period}`;
-export const memberFromPath = (pathname: string) => /^\/groups\/([^/]+)\/([^/]+)$/.exec(pathname)?.slice(1) as [string, string] | undefined;
+export const memberFromPath = (pathname: string) => /^\/groups\/([^/]+)\/(?!settings$)([^/]+)$/.exec(pathname)?.slice(1) as [string, string] | undefined;
+
+// A Group's settings are a screen under the Groups tab too.
+export const groupSettingsPath = (groupId: string) => `/groups/${groupId}/settings`;
+export const groupSettingsFromPath = (pathname: string) => /^\/groups\/([^/]+)\/settings$/.exec(pathname)?.[1];
 export const periodFromSearch = (search: string): Period => {
   const period = new URLSearchParams(search).get('period');
   return period === 'month' || period === 'year' ? period : 'week';
@@ -153,6 +157,7 @@ export type BoardRow = {
   avatar_color: string;
   // A member who deleted their account: a frozen board keeps their place, with no name or colour.
   former?: boolean;
+  owner?: boolean;
   me: boolean;
   points: number;
   tier: Tier;
