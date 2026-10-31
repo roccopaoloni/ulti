@@ -171,6 +171,9 @@ type Messages = {
     legend: string;
     leave: string;
     finish: string;
+    discardTitle: string;
+    discardConfirm: string;
+    discardKeep: string;
     empty: string;
     addExercise: string;
     chooseExercise: string;
@@ -575,6 +578,9 @@ const en: Messages = {
     legend: 'Sets: weight × reps',
     leave: 'Back',
     finish: 'Finish',
+    discardTitle: 'Nothing logged. Discard this session?',
+    discardConfirm: 'Discard session',
+    discardKeep: 'Keep logging',
     empty: 'Add an exercise to start logging sets.',
     addExercise: 'Add exercise',
     chooseExercise: 'Choose an exercise',
@@ -967,6 +973,9 @@ const es: Messages = {
     legend: 'Series: peso × repeticiones',
     leave: 'Volver',
     finish: 'Terminar',
+    discardTitle: 'No registraste nada. ¿Descartar la sesión?',
+    discardConfirm: 'Descartar sesión',
+    discardKeep: 'Seguir registrando',
     empty: 'Agregá un ejercicio para empezar a registrar series.',
     addExercise: 'Agregar ejercicio',
     chooseExercise: 'Elegí un ejercicio',
