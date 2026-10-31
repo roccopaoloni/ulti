@@ -463,7 +463,12 @@ export function Sheet({ dialog, label, children }: { dialog: RefObject<HTMLDialo
       ref={dialog}
       className="sheet"
       aria-label={label}
-      onClick={(event) => event.target === event.currentTarget && event.currentTarget.close()}
+      onClick={(event) => {
+        // React passes portal events up the component tree; keep clicks and submits away from the parent.
+        event.stopPropagation();
+        if (event.target === event.currentTarget) event.currentTarget.close();
+      }}
+      onSubmit={(event) => event.stopPropagation()}
     >
       <div className="sheet-body">{children}</div>
     </dialog>,

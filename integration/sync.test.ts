@@ -23,6 +23,7 @@ async function trainingOf({ id, client }: Lifter) {
   const sessions = await client
     .from('sessions')
     .select('id, started_at, time_zone, local_date, finished_at')
+    .eq('deleted', false)
     .order('started_at');
   const sets = await client
     .from('sets')
@@ -387,6 +388,36 @@ test('a deleted Set is gone, replaying the delete changes nothing, and an older 
   expected.sets.pop();
   expect(await trainingOf(ana)).toEqual(expected);
   expect(sql(`select count(*) from private.dirty_users where user_id = '${ana.id}'`)).toBe('0');
+});
+
+// A Session finished with no Sets is discarded: sent once more marked deleted, like a Set.
+function discardOf({ start }: ReturnType<typeof anasMonday>, updatedAt: string) {
+  return { id: crypto.randomUUID(), kind: 'saveSession', session: { ...start.session, finishedAt: updatedAt, deleted: true, updatedAt } };
+}
+
+test('a discarded Session is not downloaded afterwards, and a late older write of it does not bring it back', async () => {
+  const ana = await lifter('ana');
+  const monday = anasMonday();
+  await sync(ana, [monday.start]);
+  expect((await trainingOf(ana)).sessions).toHaveLength(1);
+
+  const discard = discardOf(monday, '2026-10-19T23:00:00.000Z');
+  expect((await sync(ana, [discard])).rejected).toEqual([]);
+  await sync(ana, [discard]);
+  await sync(ana, [monday.finish]);
+
+  expect(await trainingOf(ana)).toEqual({ sessions: [], sets: [], scoringEvents: [] });
+});
+
+test("Bea can't discard Ana's Session", async () => {
+  const ana = await lifter('ana');
+  const bea = await lifter('bea');
+  const monday = anasMonday();
+  await sync(ana, [monday.start]);
+
+  await sync(bea, [discardOf(monday, '2026-10-19T21:30:00.000Z')]);
+
+  expect((await trainingOf(ana)).sessions).toHaveLength(1);
 });
 
 test("Bea can't read Ana's training or write it, directly or through a sync", async () => {

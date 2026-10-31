@@ -220,6 +220,8 @@ token_verifications = 1000
 # Number of Web3 logins that can be made in a 5 minute interval per IP address.
 web3 = 30
 
+# Captcha stays off on the local stack so the integration tests can sign up. The hosted project
+# turns on Turnstile in the dashboard (docs/setup.md, step 15).
 # Configure one of the supported captcha providers: `hcaptcha`, `turnstile`.
 # [auth.captcha]
 # enabled = true
