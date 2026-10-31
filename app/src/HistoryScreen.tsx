@@ -4,6 +4,7 @@ import {
   incrementInUnits,
   kgToUnits,
   labelSets,
+  sessionConsistencyPoints,
   unitsToKg,
   type ConsistencyWeek,
   type Dated,
@@ -34,12 +35,16 @@ function useHistory(training: Training) {
   const [days, setDays] = useState<RoutineDay[]>([]);
   // The Personal Records among all the Sets, by Set ID.
   const [records, setRecords] = useState(new Map<string, PersonalRecord>());
+  // The Consistency Points each Session added, by the ID of any of its Sets.
+  const [sessionPoints, setSessionPoints] = useState(new Map<string, number>());
   const [consistency, setConsistency] = useState<ConsistencyWeek[]>([]);
   const [weeklyTargets, setWeeklyTargets] = useState<Dated<number>[]>([]);
 
   const reload = useCallback(async () => {
     const scoring = await training.scoring();
     setRecords(new Map(scoring.events.map((event) => [event.setId, event])));
+    const added = sessionConsistencyPoints(scoring.history);
+    setSessionPoints(new Map(scoring.history.sessions.flatMap((session, i) => session.sets.map((set) => [set.id, added[i]!] as const))));
     setConsistency(scoring.consistency);
     setWeeklyTargets(scoring.history.weeklyTargets);
     setSessions(await training.pastSessions());
@@ -50,7 +55,7 @@ function useHistory(training: Training) {
     training.routine().then((routine) => setDays(routine?.days ?? []));
   }, [training, reload]);
 
-  return { sessions, catalog, days, records, consistency, weeklyTargets, reload };
+  return { sessions, catalog, days, records, sessionPoints, consistency, weeklyTargets, reload };
 }
 type HistoryData = ReturnType<typeof useHistory>;
 
@@ -253,7 +258,8 @@ export function SessionDetailScreen({ training, units, sessionId }: { training: 
   const { session, sets } = past;
   const day = dayOf(past, data.days);
   const labels = labelsOf(sets);
-  const progress = sets.reduce((sum, set) => sum + (data.records.get(set.id)?.progressPoints ?? 0), 0);
+  const progress =
+    sets.reduce((sum, set) => sum + (data.records.get(set.id)?.progressPoints ?? 0), 0) + (data.sessionPoints.get(sets[0]!.id) ?? 0);
   const exerciseIds = [...new Set(sets.map((set) => set.exerciseId))];
 
   return (

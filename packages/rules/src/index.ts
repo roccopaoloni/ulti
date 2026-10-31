@@ -228,11 +228,30 @@ function derivePersonalRecords(history: TrainingHistory): PersonalRecord[] {
   return events;
 }
 
-function deriveConsistency(history: TrainingHistory): ConsistencyWeek[] {
-  // Only Working Sets reach scoring (spec: Warm-up detection).
-  const qualifying = history.sessions.filter(
+// Only Working Sets reach scoring (spec: Warm-up detection).
+function qualifyingSessions(history: TrainingHistory): Session[] {
+  return history.sessions.filter(
     (session) => workingSets(session).length >= (inDeloadWeek(history, session) ? DELOAD_QUALIFYING_WORKING_SETS : QUALIFYING_WORKING_SETS),
   );
+}
+
+// The Consistency Points each of the history's Sessions added, in the same order: its share of the
+// weekly amount if it is one of the first Weekly Target qualifying Sessions of its week, else 0.
+export function sessionConsistencyPoints(history: TrainingHistory): number[] {
+  const qualifying = new Set(qualifyingSessions(history));
+  const counted = new Map<string, number>();
+  return history.sessions.map((session) => {
+    if (!qualifying.has(session)) return 0;
+    const week = weekStart(session.localDate);
+    const weeklyTarget = weeklyTargetOf(history.weeklyTargets, week);
+    const before = counted.get(week) ?? 0;
+    counted.set(week, before + 1);
+    return weeklyTarget !== undefined && before < weeklyTarget ? CONSISTENCY_WEEKLY_AMOUNT / weeklyTarget : 0;
+  });
+}
+
+function deriveConsistency(history: TrainingHistory): ConsistencyWeek[] {
+  const qualifying = qualifyingSessions(history);
   const events: ConsistencyWeek[] = [];
   for (const week of [...new Set(qualifying.map((session) => weekStart(session.localDate)))].sort()) {
     const weeklyTarget = weeklyTargetOf(history.weeklyTargets, week);
