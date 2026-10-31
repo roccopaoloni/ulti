@@ -56,7 +56,9 @@ async function groupOf(owner: Lifter, ...others: Lifter[]) {
   const { data: id } = await owner.client.rpc('create_group', { name: 'Gym crew' });
   const [{ invite_code }] = (await owner.client.rpc('my_groups')).data;
   for (const other of others) await other.client.rpc('join_group', { invite_code });
-  sql(`update public.group_members set joined_at = '2026-01-01T00:00:00Z' where group_id = '${id}'`);
+  // The creator joined first, so they stay the Owner.
+  sql(`update public.group_members set joined_at = '2026-01-02T00:00:00Z' where group_id = '${id}'`);
+  sql(`update public.group_members set joined_at = '2026-01-01T00:00:00Z' where group_id = '${id}' and user_id = '${owner.id}'`);
   return id as string;
 }
 
