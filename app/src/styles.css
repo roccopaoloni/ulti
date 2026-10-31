@@ -505,6 +505,22 @@ button {
   flex: none;
   color: var(--muted);
 }
+/* Home's race card, a button that opens its Group: the text, and the › as on the board rows. */
+.race-card {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: start;
+  color: inherit;
+}
+.race-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
 .profile-rows {
   list-style: none;
   margin: 8px 0 0;

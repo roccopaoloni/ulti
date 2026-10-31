@@ -11,6 +11,7 @@ import {
   refreshBoard,
   refreshGroups,
   refreshNews,
+  selectGroup,
   setScoringMode,
   useBoard,
   useGroups,
@@ -247,7 +248,8 @@ export function GroupBoard({ userId, group, training }: { userId: string; group:
   );
 }
 
-// "2nd of 5, 40 pts behind Ana": where the user stands in the Group's week.
+// "2nd of 5, 40 pts behind Ana": where the user stands in the Group's week. Tapping it opens the
+// Group on the Groups tab's Week board.
 function RaceCard({ userId, group }: { userId: string; group: Group }) {
   const { t } = useI18n();
   const g = t.groups;
@@ -256,14 +258,21 @@ function RaceCard({ userId, group }: { userId: string; group: Group }) {
   if (!board || !me) return null;
   const ahead = board.members.filter((row) => row.position < me.position).at(-1);
   const behind = board.members.find((row) => row.position > me.position);
+  const open = () => {
+    selectGroup(group.id);
+    navigate(paths.groups);
+  };
   return (
-    <section className="card">
-      <div className="eyebrow">{group.name}</div>
-      <p className="disp">{g.race(me.position, board.members.length)}</p>
-      <p className="muted">
-        {ahead ? g.behind(ahead.points - me.points, ahead.display_name) : behind ? g.ahead(me.points - behind.points, behind.display_name) : g.leading}
-      </p>
-    </section>
+    <button type="button" className="card race-card" onClick={open}>
+      <span className="race-main">
+        <span className="eyebrow">{group.name}</span>
+        <span className="disp">{g.race(me.position, board.members.length)}</span>
+        <span className="muted">
+          {ahead ? g.behind(ahead.points - me.points, ahead.display_name) : behind ? g.ahead(me.points - behind.points, behind.display_name) : g.leading}
+        </span>
+      </span>
+      <span className="chevron">{chevronIcon}</span>
+    </button>
   );
 }
 
