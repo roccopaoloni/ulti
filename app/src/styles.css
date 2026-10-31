@@ -536,6 +536,11 @@ button {
   background: color-mix(in srgb, var(--accent) 18%, transparent);
   color: var(--accent-text, var(--accent));
 }
+.member .btn-link {
+  padding: 4px 0;
+  font-size: 13.5px;
+  flex: none;
+}
 .member .member-name {
   display: flex;
   align-items: center;
