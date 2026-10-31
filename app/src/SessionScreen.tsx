@@ -204,6 +204,7 @@ export function SessionScreen({ training, units, layout, onLeave }: { training: 
   // The Focus layout shows one Exercise at a time: the one picked, or else the first.
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const [deload, setDeload] = useState(false);
+  const discardDialog = useRef<HTMLDialogElement>(null);
   useWakeLock();
   useEffect(() => {
     if (!banner) return;
@@ -239,6 +240,10 @@ export function SessionScreen({ training, units, layout, onLeave }: { training: 
   }
 
   async function finish() {
+    if (session!.sets.length === 0) {
+      discardDialog.current?.showModal();
+      return;
+    }
     const profile = await training.profile();
     const progressOf = async (without?: string) => weekProgress((await training.scoring(without)).consistency, profile);
     const before = await progressOf(sessionId);
@@ -347,6 +352,23 @@ export function SessionScreen({ training, units, layout, onLeave }: { training: 
           {s.finish}
         </button>
       </main>
+      <Sheet dialog={discardDialog} label={s.discardTitle}>
+        <h2 className="disp sheet-title">{s.discardTitle}</h2>
+        <button
+          type="button"
+          className="btn-danger"
+          onClick={async () => {
+            discardDialog.current?.close();
+            await training.discardSession(sessionId);
+            onLeave();
+          }}
+        >
+          {s.discardConfirm}
+        </button>
+        <form method="dialog">
+          <button className="btn-ghost">{s.discardKeep}</button>
+        </form>
+      </Sheet>
       <ExercisePicker
         open={picking}
         catalog={catalog}
