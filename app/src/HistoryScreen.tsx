@@ -1,6 +1,7 @@
 import {
   dayColour,
   historyWeeks,
+  incrementInUnits,
   kgToUnits,
   labelSets,
   unitsToKg,
@@ -13,6 +14,7 @@ import {
 } from '@ulti/rules';
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react';
 import { dayColourVar } from './dayColour.ts';
+import { Keypad } from './ExerciseBlock.tsx';
 import { Sheet } from './GroupsScreens.tsx';
 import { useI18n } from './i18n.ts';
 import { chevronIcon, checkIcon } from './icons.tsx';
@@ -97,7 +99,7 @@ function SessionRow({ past, data }: { past: Past; data: HistoryData }) {
     return record ? [h.recordChip(name(set.exerciseId), percent(record.percentGain))] : [];
   });
   return (
-    <button type="button" className="sess" style={{ '--c': day?.colour } as CSSProperties} onClick={() => navigate(sessionPath(past.session.id))}>
+    <button type="button" className={`sess${day ? ' has-day' : ''}`} style={{ '--c': day?.colour } as CSSProperties} onClick={() => navigate(sessionPath(past.session.id))}>
       <span className={`sess-dot${day ? '' : ' none'}`} />
       <span className="sess-main">
         <strong>{formatDay(language, past.session.localDate, { weekday: 'short', day: 'numeric', month: 'short' })}</strong>
@@ -255,9 +257,9 @@ export function SessionDetailScreen({ training, units, sessionId }: { training: 
   const exerciseIds = [...new Set(sets.map((set) => set.exerciseId))];
 
   return (
-    <SubScreen title={formatDay(language, session.localDate, { weekday: 'short', day: 'numeric', month: 'short' })} parent={historyPath}>
-      <div className="summary">
-        <div className="stat">
+    <SubScreen title={formatDay(language, session.localDate, { weekday: 'short', day: 'numeric', month: 'short' })} parent={historyPath} colour={day?.colour}>
+      <div className="summary" style={{ '--c': day?.colour } as CSSProperties}>
+        <div className="stat day-name">
           <b>{day?.name ?? h.noRoutine}</b>
           <small>{h.routineLabel}</small>
         </div>
@@ -274,7 +276,7 @@ export function SessionDetailScreen({ training, units, sessionId }: { training: 
         const exerciseSets = sets.filter((set) => set.exerciseId === exerciseId);
         let working = 0;
         return (
-          <section key={exerciseId} className="card">
+          <section key={exerciseId} className={`card${day ? ' day-card' : ''}`} style={{ '--c': day?.colour } as CSSProperties}>
             <div className="ex-name">{name(exerciseId)}</div>
             <div>
               {exerciseSets.map((set) => {
@@ -288,6 +290,7 @@ export function SessionDetailScreen({ training, units, sessionId }: { training: 
                     number={working}
                     exerciseName={name(exerciseId)}
                     units={units}
+                    incrementKg={data.catalog.find(({ id }) => id === exerciseId)?.incrementKg ?? 2.5}
                     bodyweight={data.catalog.find(({ id }) => id === exerciseId)?.bodyweight ?? false}
                     record={data.records.get(set.id)}
                     onEdit={async (weightKg, reps) => {
@@ -316,6 +319,7 @@ function PastSet({
   number,
   exerciseName,
   units,
+  incrementKg,
   bodyweight,
   record,
   onEdit,
@@ -326,6 +330,7 @@ function PastSet({
   number: number;
   exerciseName: string;
   units: Units;
+  incrementKg: number;
   bodyweight: boolean;
   record: PersonalRecord | undefined;
   onEdit: (weightKg: number, reps: number) => Promise<void>;
@@ -339,6 +344,8 @@ function PastSet({
   const typed = String(Math.round(kgToUnits(set.weightKg, units) * 100) / 100).replace('.', language === 'es' ? ',' : '.');
   const [weight, setWeight] = useState(typed);
   const [reps, setReps] = useState(String(set.reps));
+  // The logging screen's own keypad types the weight or the reps.
+  const [editing, setEditing] = useState<'weight' | 'reps' | null>(null);
 
   const typedWeight = Number(weight.replace(',', '.'));
   const weightKg = unitsToKg(typedWeight, units);
@@ -403,26 +410,18 @@ function PastSet({
               <strong>{exerciseName}</strong> · {label === 'warm-up' ? t.session.warmUp : t.session.working}
             </p>
             <div className="past-set">
-              <input
-                inputMode="decimal"
-                autoComplete="off"
-                aria-label={bodyweight ? t.session.addedWeight : t.session.weight}
-                value={weight}
-                onChange={(event) => setWeight(event.target.value.replace(/[^\d.,]/g, ''))}
-              />
+              <button type="button" aria-label={bodyweight ? t.session.addedWeight : t.session.weight} onClick={() => setEditing('weight')}>
+                {weight || '–'}
+              </button>
               <span>×</span>
-              <input
-                inputMode="numeric"
-                autoComplete="off"
-                aria-label={t.session.reps}
-                value={reps}
-                onChange={(event) => setReps(event.target.value.replace(/\D/g, ''))}
-              />
+              <button type="button" aria-label={t.session.reps} onClick={() => setEditing('reps')}>
+                {reps || '–'}
+              </button>
             </div>
             <button className="btn-primary" disabled={!valid}>
               {h.save}
             </button>
-            <button type="button" className="btn-danger" onClick={() => setConfirming(true)}>
+            <button type="button" className="btn-ghost danger" onClick={() => setConfirming(true)}>
               {h.delete}
             </button>
             <button type="button" className="btn-ghost" onClick={() => dialog.current?.close()}>
@@ -431,6 +430,16 @@ function PastSet({
           </form>
         )}
       </Sheet>
+      {editing && (
+        <Keypad
+          label={editing === 'weight' ? (bodyweight ? t.session.addedWeight : t.session.weight) : t.session.reps}
+          value={editing === 'weight' ? weight : reps}
+          decimal={editing === 'weight' ? (language === 'es' ? ',' : '.') : null}
+          step={editing === 'weight' ? incrementInUnits(incrementKg, units) : 1}
+          onChange={editing === 'weight' ? setWeight : setReps}
+          onClose={() => setEditing(null)}
+        />
+      )}
     </>
   );
 }
