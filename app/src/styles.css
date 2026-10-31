@@ -355,11 +355,54 @@ button {
   border-bottom: 0;
   border-radius: 24px 24px 0 0;
 }
-.sheet[open] {
-  animation: up 0.22s ease-out;
+/* Sheets (and the Exercise picker) slide up on open and down on close; where the browser lacks
+   @starting-style or discrete transitions they just appear and vanish. */
+.sheet,
+.picker {
+  transform: translateY(100%);
+  transition:
+    transform 0.22s ease,
+    overlay 0.22s allow-discrete,
+    display 0.22s allow-discrete;
+}
+.sheet[open],
+.picker[open] {
+  transform: none;
+}
+@starting-style {
+  .sheet[open],
+  .picker[open] {
+    transform: translateY(100%);
+  }
+}
+.sheet::backdrop,
+.picker::backdrop {
+  opacity: 0;
+  transition:
+    opacity 0.22s ease,
+    overlay 0.22s allow-discrete,
+    display 0.22s allow-discrete;
+}
+.sheet[open]::backdrop,
+.picker[open]::backdrop {
+  opacity: 1;
+}
+@starting-style {
+  .sheet[open]::backdrop,
+  .picker[open]::backdrop {
+    opacity: 0;
+  }
 }
 .sheet::backdrop {
   background: var(--scrim);
+}
+@media (prefers-reduced-motion: reduce) {
+  .sheet,
+  .picker,
+  .sheet::backdrop,
+  .picker::backdrop {
+    transition: none;
+  }
 }
 .sheet-body {
   display: flex;
@@ -950,16 +993,6 @@ button.cell {
   text-transform: uppercase;
 }
 
-@keyframes up {
-  from {
-    transform: translateY(40px);
-    opacity: 0.4;
-  }
-  to {
-    transform: none;
-    opacity: 1;
-  }
-}
 @media (prefers-reduced-motion: reduce) {
   * {
     animation: none !important;
@@ -1913,6 +1946,27 @@ prefers-reduced-motion switches every animation off, so it stays off the badge. 
 .routine-day-title small {
   font-size: 13px;
 }
+.routine-day-fold {
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  transition:
+    grid-template-rows 0.2s ease,
+    visibility 0.2s;
+}
+.routine-day-fold[data-open='true'] {
+  grid-template-rows: 1fr;
+  visibility: visible;
+}
+.routine-day-clip {
+  min-height: 0;
+  overflow: hidden;
+}
+@media (prefers-reduced-motion: reduce) {
+  .routine-day-fold {
+    transition: none;
+  }
+}
 .routine-day-body {
   padding: 12px 14px 14px 18px;
   display: flex;
@@ -2088,4 +2142,66 @@ prefers-reduced-motion switches every animation off, so it stays off the badge. 
   flex: none;
   height: 54px;
   padding: 0 20px;
+}
+
+/* Placeholder bars (<Skeleton>) shimmer while data loads. They fade in after a beat, so data that
+   is a moment away never flashes them, and they stay still with reduced motion. */
+.loading {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: sk-in 0.2s ease 0.15s backwards;
+}
+.sk {
+  width: var(--w, 100%);
+  height: 14px;
+  border-radius: 7px;
+  background: linear-gradient(90deg, var(--surface) 0%, var(--surface-2) 50%, var(--surface) 100%);
+  background-size: 200% 100%;
+  animation: sh 1.4s linear infinite;
+}
+.loading.card .sk:last-child:not(:first-child) {
+  height: 40px;
+  border-radius: 14px;
+}
+@keyframes sh {
+  to {
+    background-position: -200% 0;
+  }
+}
+@keyframes sk-in {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sk {
+    animation: none;
+  }
+}
+
+/* Screen changes: the screen fades and rises where View Transitions exist (see navigation.ts). */
+.screen {
+  view-transition-name: screen;
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+}
+::view-transition-old(screen) {
+  animation: screen-out 0.1s ease both;
+}
+::view-transition-new(screen) {
+  animation: screen-in 0.2s ease both;
+}
+@keyframes screen-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes screen-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
 }

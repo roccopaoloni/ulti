@@ -551,7 +551,8 @@ function Keypad({
       ref={dialog}
       className="sheet"
       aria-label={label}
-      onClose={onClose}
+      // The parent unmounts the sheet on close, so wait for it to slide down first.
+      onClose={() => setTimeout(onClose, matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 220)}
       onClick={(event) => {
         // React passes portal events up the component tree; keep clicks and submits away from the parent.
         event.stopPropagation();

@@ -28,6 +28,7 @@ import { Info } from './Info.tsx';
 import { chevronIcon } from './icons.tsx';
 import { navigate, paths } from './navigation.ts';
 import { useUnits } from './profile.ts';
+import { Skeleton } from './Skeleton.tsx';
 import { SubScreen } from './SubScreen.tsx';
 import type { Exercise, Training } from './training.ts';
 
@@ -218,6 +219,7 @@ export function GroupBoard({ userId, group, training }: { userId: string; group:
           {period !== 'year' && next && next !== board.scoring_mode && <> · {g.modeNext(g.modes[next], g.periods[period].toLowerCase())}</>}
         </p>
       )}
+      {!board && <Skeleton bars={['100%', '100%', '100%', '100%']} />}
       {board && (
         <ul className="members">
           {board.members.map((row, index) => (
@@ -269,7 +271,8 @@ function RaceCard({ userId, group }: { userId: string; group: Group }) {
   const g = t.groups;
   const board = useFreshBoard(userId, group.id, 'week');
   const me = board?.members.find((row) => row.me);
-  if (!board || !me) return null;
+  if (!board) return <Skeleton card bars={['40%', '70%']} />;
+  if (!me) return null;
   const ahead = board.members.filter((row) => row.position < me.position).at(-1);
   const behind = board.members.find((row) => row.position > me.position);
   const open = () => {
@@ -298,6 +301,7 @@ export function RaceCards({ userId }: { userId: string }) {
   }, [userId]);
   return (
     <>
+      {!groups && <Skeleton card bars={['40%', '70%']} />}
       {groups?.map((group) => (
         <RaceCard key={group.id} userId={userId} group={group} />
       ))}
