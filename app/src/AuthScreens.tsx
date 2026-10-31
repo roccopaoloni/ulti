@@ -1,6 +1,7 @@
 import { isAuthError, isAuthRetryableFetchError } from '@supabase/supabase-js';
 import { useId, useState, type FormEvent, type InputHTMLAttributes, type ReactNode } from 'react';
 import { supabase } from './auth.ts';
+import { CaptchaError, useCaptcha } from './captcha.tsx';
 import { usePendingInvite } from './groups.ts';
 import { useI18n, type I18n } from './i18n.ts';
 import { backIcon } from './icons.tsx';
@@ -34,6 +35,7 @@ const backTo: Partial<Record<Screen, Screen>> = {
 
 function errorMessage(error: unknown, t: I18n['t']) {
   const { errors, passwordHint } = t.auth;
+  if (error instanceof CaptchaError) return errors.captcha;
   if (isAuthRetryableFetchError(error)) return errors.offline;
   if (!isAuthError(error)) return errors.other;
   switch (error.code) {
@@ -46,6 +48,8 @@ function errorMessage(error: unknown, t: I18n['t']) {
       return errors.tooMany;
     case 'same_password':
       return errors.samePassword;
+    case 'captcha_failed':
+      return errors.captcha;
     case 'weak_password':
       return passwordHint;
     default:
@@ -67,6 +71,7 @@ export function AuthScreens({ flow, setFlow, signedIn }: { flow: Flow; setFlow: 
   const [notice, setNotice] = useState<string>();
   const invited = usePendingInvite() !== null;
   const email = flow.email.trim();
+  const captcha = useCaptcha();
 
   const go = (screen: Screen) => {
     setFlow({ ...flow, screen });
@@ -93,10 +98,11 @@ export function AuthScreens({ flow, setFlow, signedIn }: { flow: Flow; setFlow: 
 
   const resend = () =>
     run(async () => {
+      const captchaToken = await captcha.take();
       const { error } =
         flow.screen === 'verify'
-          ? await supabase.auth.resend({ type: 'signup', email })
-          : await supabase.auth.resetPasswordForEmail(email);
+          ? await supabase.auth.resend({ type: 'signup', email, options: { captchaToken } })
+          : await supabase.auth.resetPasswordForEmail(email, { captchaToken });
       if (error) throw error;
       setNotice(a.resent);
     });
@@ -192,7 +198,11 @@ export function AuthScreens({ flow, setFlow, signedIn }: { flow: Flow; setFlow: 
       );
       primary = a.createAccount;
       submit = async () => {
-        const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { language } } });
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { data: { language }, captchaToken: await captcha.take() },
+        });
         if (error) throw error;
         // An email that already has a verified account gets no code: Supabase answers as if it
         // signed up, but with no identities.
@@ -243,10 +253,14 @@ export function AuthScreens({ flow, setFlow, signedIn }: { flow: Flow; setFlow: 
       );
       primary = a.signIn;
       submit = async () => {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+          options: { captchaToken: await captcha.take() },
+        });
         // Signed up but never verified: send a fresh code and ask for it.
         if (error?.code === 'email_not_confirmed') {
-          await supabase.auth.resend({ type: 'signup', email });
+          await supabase.auth.resend({ type: 'signup', email, options: { captchaToken: await captcha.take() } });
           return go('verify');
         }
         if (error) throw error;
@@ -264,7 +278,7 @@ export function AuthScreens({ flow, setFlow, signedIn }: { flow: Flow; setFlow: 
       );
       primary = a.sendCode;
       submit = async () => {
-        const { error } = await supabase.auth.resetPasswordForEmail(email);
+        const { error } = await supabase.auth.resetPasswordForEmail(email, { captchaToken: await captcha.take() });
         if (error) throw error;
         go('reset');
       };
@@ -310,6 +324,7 @@ export function AuthScreens({ flow, setFlow, signedIn }: { flow: Flow; setFlow: 
           </button>
         )}
         {body}
+        {captcha.widget}
         {error && (
           <p className="error" role="alert">
             {error}
