@@ -8,6 +8,7 @@ import {
   nextRoutineDay,
   recommend,
   recommendDeload,
+  weekStamps,
   weekStart,
   type Dated,
   type Muscle,
@@ -520,6 +521,13 @@ export async function openTraining(userId: string, options: Options) {
         events: all.filter((event) => event.kind === 'personal-record'),
         consistency: all.filter((event) => event.kind === 'consistency'),
       };
+    },
+
+    // Whether this week's Weekly Target is already met, so another Session is an extra one that
+    // earns no Consistency Points.
+    async weeklyTargetMet() {
+      const week = weekStart(localDate(options.now(), options.timeZone()));
+      return weekStamps((await this.scoring()).consistency).includes(week);
     },
 
     // The user's Routine, the latest written, or null before they make one.
