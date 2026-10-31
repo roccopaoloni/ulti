@@ -45,6 +45,11 @@ type Messages = {
     leaveNextOwner: (name: string) => string;
     leaveLast: string;
     leaveConfirm: string;
+    removeMember: string;
+    removeTitle: (name: string, group: string) => string;
+    removeText: string;
+    removeConfirm: string;
+    removeAndReset: string;
     formerMember: string;
     deleteAccount: string;
     deleteAccountTitle: string;
@@ -492,6 +497,11 @@ const en: Messages = {
     leaveNextOwner: (name) => `${name} will become the Owner.`,
     leaveLast: "You're the last member, so the Group will be deleted.",
     leaveConfirm: 'Leave',
+    removeMember: 'Remove',
+    removeTitle: (name, group) => `Remove ${name} from ${group}?`,
+    removeText: "They'll lose the Group from their list, with no notice. Their own Points, Rank and Sessions stay. They can rejoin with the invite link while it still works.",
+    removeConfirm: 'Remove',
+    removeAndReset: 'Remove and reset link',
     formerMember: 'Former member',
     deleteAccount: 'Delete account',
     deleteAccountTitle: 'Delete your account?',
@@ -918,6 +928,11 @@ const es: Messages = {
     leaveNextOwner: (name) => `${name} va a pasar a ser el creador.`,
     leaveLast: 'Sos el último miembro, así que el grupo se va a borrar.',
     leaveConfirm: 'Salir',
+    removeMember: 'Quitar',
+    removeTitle: (name, group) => `¿Quitar a ${name} de ${group}?`,
+    removeText: 'Va a perder el grupo de su lista, sin aviso. Sus puntos, rango y sesiones propios se quedan. Puede volver a entrar con el link de invitación mientras siga funcionando.',
+    removeConfirm: 'Quitar',
+    removeAndReset: 'Quitar y cambiar el link',
     formerMember: 'Ex miembro',
     deleteAccount: 'Borrar cuenta',
     deleteAccountTitle: '¿Borrar tu cuenta?',
