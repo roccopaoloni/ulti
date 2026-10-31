@@ -26,6 +26,9 @@ type Messages = {
     members: (count: number) => string;
     you: string;
     invite: string;
+    settings: string;
+    inviteLinkTitle: string;
+    modeHint: string;
     inviteTitle: string;
     inviteText: string;
     inviteTextOwner: string;
@@ -470,6 +473,9 @@ const en: Messages = {
     members: (count) => (count === 1 ? '1 member' : `${count} members`),
     you: 'You',
     invite: 'Invite',
+    settings: 'Group settings',
+    inviteLinkTitle: 'Invite link',
+    modeHint: 'A change applies from the next week or month.',
     inviteTitle: 'Invite your friends',
     inviteText: 'Anyone with this link can join. If it leaks, the Owner can reset it.',
     inviteTextOwner: 'Anyone with this link can join. If it leaks, you can reset it.',
@@ -893,6 +899,9 @@ const es: Messages = {
     members: (count) => (count === 1 ? '1 miembro' : `${count} miembros`),
     you: 'Vos',
     invite: 'Invitar',
+    settings: 'Ajustes del grupo',
+    inviteLinkTitle: 'Invitación',
+    modeHint: 'Un cambio rige desde la semana o el mes siguiente.',
     inviteTitle: 'Invitá a tus amigos',
     inviteText: 'Cualquiera con este link entra al grupo. Si se filtra, el creador lo puede cambiar.',
     inviteTextOwner: 'Cualquiera con este link entra al grupo. Si se filtra, lo podés cambiar.',
