@@ -30,7 +30,8 @@
   --gold: #ffc83d;
   --diamond: #7be7ff;
   --elite: #a98bff;
-  --error: #ff6b5e;
+  --error: #ff4d4d;
+  --error-ink: #1a0614;
   /* Routine Day accents, in rotation order (pink, cyan, lime, coral, violet). */
   --day-1: #ff4d9d;
   --day-2: #7be7ff;
@@ -61,7 +62,8 @@
     --gold: #a87900;
     --diamond: #0f8fae;
     --elite: #6a3fe0;
-    --error: #c62828;
+    --error: #c4161c;
+    --error-ink: #ffffff;
     --day-1: #e0337f;
     --day-2: #0f8fae;
     --day-3: #5f8a00;
@@ -718,7 +720,7 @@ button {
   min-height: 56px;
   border-radius: 18px;
   background: var(--error);
-  color: var(--bg);
+  color: var(--error-ink);
   font-weight: 700;
   font-size: 16px;
 }
