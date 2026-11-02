@@ -656,8 +656,8 @@ export function recommend(history: TrainingHistory, exercise: string, rule: GoHe
 
 // A Deload Week is the Routine with about half the Sets at about this much of the weight.
 const DELOAD_WEIGHT = 0.9;
-// A new Deload Week, suggested or self-started, can begin at most this many weeks after the last
-// one began; a dismissed suggestion keeps quiet for as long.
+// A Deload Week is not suggested within this many weeks of the last one's start, and a dismissed
+// suggestion keeps quiet for as long. The lifter's own start is never limited.
 export const DELOAD_GAP_WEEKS = 4;
 // The gentle nudge comes after this many weeks without a Deload Week.
 export const DELOAD_NUDGE_WEEKS = 8;
@@ -670,11 +670,10 @@ export type DeloadReason = 'stalled' | 'rir' | 'time';
 
 const weeksBetween = (from: string, to: string) => Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / (7 * 86_400_000));
 
-// Whether the lifter can start a Deload Week in the week of the local date: not while one runs,
-// and not within four weeks of the last one's start (spec: Deload Week).
+// Whether the lifter can start a Deload Week in the week of the local date: any week that is not
+// already a Deload Week, however recent the last one (ADR 0007).
 export function canStartDeload(history: TrainingHistory, today: string): boolean {
-  const week = weekStart(today);
-  return (history.deloadWeeks ?? []).every((started) => weeksBetween(started, week) >= DELOAD_GAP_WEEKS);
+  return !(history.deloadWeeks ?? []).includes(weekStart(today));
 }
 
 // The weeks (as their Mondays, oldest first) that count as deloaded: those whose Deload Week is
@@ -684,6 +683,11 @@ export function deloadedWeeks(history: TrainingHistory): string[] {
   const weeks = new Set(history.deloadWeeks ?? []);
   for (const session of history.sessions) if (session.deload) weeks.add(weekStart(session.localDate));
   return [...weeks].sort();
+}
+
+// Whether the week before the local date's counts as deloaded, so starting another asks first.
+export function deloadedLastWeek(history: TrainingHistory, today: string): boolean {
+  return deloadedWeeks(history).some((week) => weeksBetween(week, weekStart(today)) === 1);
 }
 
 // RIR "keeps falling at the same weights" for an Exercise when its last three regular Sessions with
@@ -711,7 +715,7 @@ export function recommendDeload(
   dismissed: readonly string[] = [],
 ): DeloadReason | undefined {
   const week = weekStart(today);
-  if (!canStartDeload(history, today)) return undefined;
+  if ((history.deloadWeeks ?? []).some((started) => weeksBetween(started, week) < DELOAD_GAP_WEEKS)) return undefined;
   if (dismissed.some((quiet) => weeksBetween(quiet, week) < DELOAD_GAP_WEEKS)) return undefined;
   if (routine.filter(({ exercise, rule }) => recommendStall(history, exercise, rule)).length >= DELOAD_MIN_EXERCISES) return 'stalled';
   if (routine.filter(({ exercise }) => rirFalling(history, exercise)).length >= DELOAD_MIN_EXERCISES) return 'rir';

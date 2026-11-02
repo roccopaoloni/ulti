@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { canStartDeload, deloadedWeeks, deloadRows, recommendDeload, type Session, type TrainingHistory } from './index.ts';
+import { canStartDeload, deloadedLastWeek, deloadedWeeks, deloadRows, recommendDeload, type Session, type TrainingHistory } from './index.ts';
 
 const rule = { repMin: 8, repMax: 12, incrementKg: 2.5 };
 // The Routine's catalog Exercises, with their Rep Ranges and Increments.
@@ -138,15 +138,29 @@ test('a dismissed suggestion stays quiet for four weeks', () => {
   expect(recommendDeload(ana, today, routine, ['2026-08-17'])).toBe('stalled');
 });
 
-test('a lifter can start a Deload Week themselves at most once every four weeks', () => {
+test('a lifter can start a Deload Week any week it is not already on, however recent the last one', () => {
   const ana = (deloadWeeks: string[]) => history([], deloadWeeks);
   expect(canStartDeload(ana([]), today)).toBe(true);
   // The week of 14 September is itself a Deload Week.
   expect(canStartDeload(ana(['2026-09-14']), today)).toBe(false);
-  // Three weeks later is too soon; the fourth week after is allowed.
-  expect(canStartDeload(ana(['2026-08-24']), today)).toBe(false);
-  expect(canStartDeload(ana(['2026-08-17']), today)).toBe(true);
-  expect(canStartDeload(ana(['2026-05-04', '2026-08-24']), today)).toBe(false);
+  // Last week, three weeks ago or a run of them: all allowed.
+  expect(canStartDeload(ana(['2026-09-07']), today)).toBe(true);
+  expect(canStartDeload(ana(['2026-08-24']), today)).toBe(true);
+  expect(canStartDeload(ana(['2026-08-24', '2026-08-31', '2026-09-07']), today)).toBe(true);
+});
+
+test('last week counts as deloaded when its Deload Week is accepted or it holds a Deload Session', () => {
+  const sessions = [session('2026-09-01', 'bench-press', [[60, 10, 2]])];
+  expect(deloadedLastWeek(history(sessions), today)).toBe(false);
+  expect(deloadedLastWeek(history(sessions, ['2026-09-07']), today)).toBe(true);
+  expect(deloadedLastWeek(history([...sessions, deloadSession('2026-09-10', 'bench-press')]), today)).toBe(true);
+  // Only last week counts: this week and earlier ones do not.
+  expect(deloadedLastWeek(history(sessions, ['2026-09-14', '2026-08-31']), today)).toBe(false);
+});
+
+test('a Deload Week cancelled before any Session last week does not count as deloaded last week', () => {
+  // A cancelled Deload Week is not in deloadWeeks (accepted only) and holds no Deload Session.
+  expect(deloadedLastWeek(history([session('2026-09-10', 'bench-press', [[60, 10, 2]])]), today)).toBe(false);
 });
 
 test('a Deload Week has about half the Sets at about 10% less weight, rounded to the Increment', () => {
