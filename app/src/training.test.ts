@@ -345,6 +345,31 @@ test('a Custom Exercise created offline is pickable at once, survives a catalog 
   training.close();
 });
 
+test('loading a Routine Link reuses matching Custom Exercises, creates the missing ones once, and a second load adds none', async () => {
+  const network = server();
+  network.offline = true;
+  const training = await anasPhone(network).open();
+  const own = await training.createExercise('Wrist curl', 'biceps');
+  const set = (name: string, equipment: string | null) => ({ custom: { name, equipment, muscle: 'core' as const }, sets: 3, repMin: 8, repMax: 12 });
+  const days = [
+    { name: 'Arms', colour: 1, exercises: [{ exerciseId: 'bench', sets: 3, repMin: 8, repMax: 12 }, set(' WRIST curl ', null), set('Ab wheel', null)] },
+    { name: 'Core', colour: 2, exercises: [set('ab wheel', null)] },
+  ];
+
+  const first = await training.resolveRoutineLink(days);
+  const ids = first.flatMap((day) => day.exercises.map((e) => e.exerciseId));
+  expect(ids[1]).toBe(own.id);
+  expect(ids[2]).toBe(ids[3]);
+  expect(new Set(ids).size).toBe(3);
+  const second = await training.resolveRoutineLink(days);
+  expect(second.flatMap((day) => day.exercises.map((e) => e.exerciseId))).toEqual(ids);
+
+  const customs = (await training.exercises()).filter(({ custom }) => custom).map(({ nameEn }) => nameEn);
+  expect(customs.sort()).toEqual(['Ab wheel', 'Wrist curl']);
+  expect(first[0]).toEqual({ name: 'Arms', colour: 1, exercises: expect.any(Array) });
+  training.close();
+});
+
 test("a Set's label flipped offline shows at once and goes out as a later write of the same Set, which a retry resends unchanged", async () => {
   const network = server();
   network.offline = true;

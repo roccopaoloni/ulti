@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { packRoutineLink, unpackRoutineLink, type RoutineDay } from './index.ts';
+import { findCustomExercise, packRoutineLink, unpackRoutineLink, type RoutineDay } from './index.ts';
 
 const known = new Set(['bench', 'row', 'squat']);
 const days: RoutineDay[] = [
@@ -63,4 +63,54 @@ test('Sets and Rep Ranges that could not be in a Routine are rejected', () => {
   expect(unpackRoutineLink(zeroSets, known)).toBeNull();
   expect(unpackRoutineLink(backwardsRange, known)).toBeNull();
   expect(unpackRoutineLink(textReps, known)).toBeNull();
+});
+
+const wrist = { name: ' Wrist curl ', equipment: null, muscle: 'biceps' } as const;
+const customDays: RoutineDay[] = [
+  { id: 'a', name: 'Arms', colour: 1, exercises: [{ exerciseId: 'bench', sets: 3, repMin: 8, repMax: 12 }, { exerciseId: 'custom-1', sets: 2, repMin: 10, repMax: 15 }] },
+];
+
+test('Custom Exercises pack as name, equipment and muscle, and unpack as Custom Exercises, not dropped IDs', () => {
+  const data = packRoutineLink(customDays, 'Ana', new Map([['custom-1', wrist]]));
+  expect(unpackRoutineLink(data, known)).toEqual({
+    sender: 'Ana',
+    days: [{ name: 'Arms', colour: 1, exercises: [{ exerciseId: 'bench', sets: 3, repMin: 8, repMax: 12 }, { custom: wrist, sets: 2, repMin: 10, repMax: 15 }] }],
+    dropped: 0,
+  });
+  // Nothing about the sender's private ID travels.
+  expect(JSON.stringify(unpackRoutineLink(data, known))).not.toContain('custom-1');
+});
+
+test('a Custom Exercise keeps its name exactly as written, accents and emoji included', () => {
+  const data = packRoutineLink(customDays, 'Ana', new Map([['custom-1', { name: 'Remo ñandú 💪', equipment: 'cable', muscle: 'back' }]]));
+  const link = unpackRoutineLink(data, known);
+  expect(link?.days[0].exercises[1]).toMatchObject({ custom: { name: 'Remo ñandú 💪', equipment: 'cable', muscle: 'back' } });
+});
+
+test('a Custom Exercise ID the sender no longer has is still dropped as unknown', () => {
+  const data = packRoutineLink(customDays, 'Ana');
+  expect(unpackRoutineLink(data, known)?.dropped).toBe(1);
+});
+
+test('a link with a malformed Custom Exercise is rejected', () => {
+  // Written by hand: [1, 'Ana', [['Arms', 0, [[custom, 3, 8, 12]]]]] with the custom being...
+  const blankName = 'WzEsIkFuYSIsW1siQXJtcyIsMCxbW1siICIsbnVsbCwiY29yZSJdLDMsOCwxMl1dXV1d'; // [' ', null, 'core']
+  const numberName = 'WzEsIkFuYSIsW1siQXJtcyIsMCxbW1s1LG51bGwsImNvcmUiXSwzLDgsMTJdXV1dXQ'; // [5, null, 'core']
+  const numberEquipment = 'WzEsIkFuYSIsW1siQXJtcyIsMCxbW1siQ3VybCIsNywiY29yZSJdLDMsOCwxMl1dXV1d'; // ['Curl', 7, 'core']
+  const unknownMuscle = 'WzEsIkFuYSIsW1siQXJtcyIsMCxbW1siQ3VybCIsbnVsbCwiYWJzIl0sMyw4LDEyXV1dXV0'; // ['Curl', null, 'abs']
+  const fine = 'WzEsIkFuYSIsW1siQXJtcyIsMCxbW1siQ3VybCIsbnVsbCwiY29yZSJdLDMsOCwxMl1dXV1d'; // ['Curl', null, 'core']
+  expect([blankName, numberName, numberEquipment, unknownMuscle].map((data) => unpackRoutineLink(data, known))).toEqual([null, null, null, null]);
+  expect(unpackRoutineLink(fine, known)?.days[0].exercises).toEqual([{ custom: { name: 'Curl', equipment: null, muscle: 'core' }, sets: 3, repMin: 8, repMax: 12 }]);
+});
+
+test("an incoming Custom Exercise matches one of the recipient's ignoring capitals and surrounding spaces, with the same equipment", () => {
+  const own = [
+    { id: 'custom-a', nameEn: 'WRIST CURL', equipment: null, custom: true },
+    { id: 'custom-b', nameEn: 'Cable fly', equipment: 'cable', custom: true },
+    { id: 'bench', nameEn: 'Wrist curl', equipment: null, custom: false },
+  ];
+  expect(findCustomExercise(wrist, own)).toBe('custom-a');
+  expect(findCustomExercise({ name: 'cable FLY  ', equipment: 'cable', muscle: 'chest' }, own)).toBe('custom-b');
+  expect(findCustomExercise({ name: 'Cable fly', equipment: null, muscle: 'chest' }, own)).toBeUndefined();
+  expect(findCustomExercise({ name: 'Bench', equipment: null, muscle: 'chest' }, own)).toBeUndefined();
 });

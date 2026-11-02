@@ -27,6 +27,14 @@ test('Exercises the catalog does not know are dropped, and so are Days left empt
   expect(routine.dropped).toBe(2);
 });
 
+test('a kept link with a Custom Exercise keeps it as one, not as a dropped ID, ready to be resolved', () => {
+  const custom = { name: 'Wrist curl', equipment: null, muscle: 'biceps' } as const;
+  const data = packRoutineLink([day('Arms', ['bench', 'custom-1'])], 'Ana', new Map([['custom-1', custom]]));
+  const routine = routineFromLink(data, catalog)!;
+  expect(routine.dropped).toBe(0);
+  expect(routine.draft[0].exercises[1]).toEqual({ custom, sets: 3, repMin: 8, repMax: 12 });
+});
+
 test('an unreadable link, or nothing kept, gives no Routine', () => {
   expect(routineFromLink('not a link', catalog)).toBeNull();
   expect(routineFromLink('', catalog)).toBeNull();

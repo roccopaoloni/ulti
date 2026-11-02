@@ -1,4 +1,4 @@
-import { unpackRoutineLink } from '@ulti/rules';
+import { unpackRoutineLink, type LinkExercise } from '@ulti/rules';
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { dayColourVar } from './dayColour.ts';
 import { Sheet } from './GroupsScreens.tsx';
@@ -45,15 +45,19 @@ export function RoutineLinkScreen({ training }: { training: Training }) {
     );
   }
 
-  const nameOf = (id: string) => {
-    const exercise = catalog.find((candidate) => candidate.id === id);
-    return exercise ? (language === 'es' ? exercise.nameEs : exercise.nameEn) : id;
+  // Only catalog Exercises are translated; a Custom Exercise shows as its sender wrote it.
+  const nameOf = (e: LinkExercise) => {
+    if ('custom' in e) return e.custom.name;
+    const exercise = catalog.find((candidate) => candidate.id === e.exerciseId);
+    return exercise ? (language === 'es' ? exercise.nameEs : exercise.nameEn) : e.exerciseId;
   };
   const load = async () => {
     setBusy(true);
     replaceDialog.current?.close();
     // The same save as editing by hand: it syncs, and clears "I don't follow a routine".
-    await training.saveRoutineDraft(link.days.map((day) => ({ ...day, id: crypto.randomUUID() })));
+    // Custom Exercises in it become the lifter's own first.
+    const days = await training.resolveRoutineLink(link.days);
+    await training.saveRoutineDraft(days.map((day) => ({ ...day, id: crypto.randomUUID() })));
     navigate(routinePath, true);
   };
 
@@ -76,7 +80,7 @@ export function RoutineLinkScreen({ training }: { training: Training }) {
                   <div key={i} className="rex">
                     <div className="rex-row">
                       <div className="rex-main">
-                        <span className="rex-name">{nameOf(e.exerciseId)}</span>
+                        <span className="rex-name">{nameOf(e)}</span>
                         <span className="rex-sets">
                           {e.sets} × {e.repMin}–{e.repMax}
                         </span>
