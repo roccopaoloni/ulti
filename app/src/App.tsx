@@ -19,6 +19,7 @@ import { BodyweightPrompt, ConnectToFinish, Onboarding } from './ProfileScreens.
 import { SettingsScreen } from './SettingsScreen.tsx';
 import { MyRoutineButton, RoutineSubScreen } from './RoutineScreen.tsx';
 import { RoutineLinkScreen } from './RoutineLink.tsx';
+import { dropRoutineLink } from './routineLinkDraft.ts';
 import { SessionInProgressBar, SessionScreen, StartSession, useLogging } from './SessionScreen.tsx';
 import { useTraining } from './useTraining.ts';
 
@@ -74,6 +75,11 @@ function Tabs({ userId }: { userId: string }) {
   // Until the user has given their units, sex, bodyweight and Weekly Target, nothing else opens.
   // A phone that hasn't heard the server's profile history can't tell a new user from a returning
   // one, so it waits for a connection instead of onboarding.
+  // An onboarded account has no use for a kept Routine Link: the preview reads the link itself.
+  const onboarded = !!training && ready && hasEverything(profile, storedUnits);
+  useEffect(() => {
+    if (onboarded) dropRoutineLink();
+  }, [onboarded]);
   if (training && ready && !hasEverything(profile, storedUnits) && !downloaded) return <ConnectToFinish />;
   if (training && ready && !hasEverything(profile, storedUnits)) {
     return <Onboarding userId={userId} training={training} onDone={reload} />;
