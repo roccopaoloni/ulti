@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { canStartDeload, deloadRows, recommendDeload, type Session, type TrainingHistory } from './index.ts';
+import { canStartDeload, deloadedWeeks, deloadRows, recommendDeload, type Session, type TrainingHistory } from './index.ts';
 
 const rule = { repMin: 8, repMax: 12, incrementKg: 2.5 };
 // The Routine's catalog Exercises, with their Rep Ranges and Increments.
@@ -93,6 +93,32 @@ test('with no Deload Week yet, the eight weeks count from the first Session', ()
   expect(recommendDeload(history(sessions), '2026-09-14', routine)).toBe('time');
   expect(recommendDeload(history(sessions), '2026-09-13', routine)).toBeUndefined();
   expect(recommendDeload(history([]), '2026-09-14', routine)).toBeUndefined();
+});
+
+// A Deload Session: a Session marked when it was started in a Deload Week.
+const deloadSession = (localDate: string, exercise: string): Session => ({ ...session(localDate, exercise, [[54, 10, 2]]), deload: true });
+
+test('a week counts as deloaded if its Deload Week is accepted, or if it holds a Deload Session', () => {
+  const ana = history(
+    [session('2026-07-01', 'bench-press', [[60, 10, 2]]), deloadSession('2026-07-22', 'bench-press'), deloadSession('2026-08-05', 'bench-press')],
+    ['2026-08-03', '2026-06-01'],
+  );
+  expect(deloadedWeeks(ana)).toEqual(['2026-06-01', '2026-07-20', '2026-08-03']);
+});
+
+test('a Deload Week cancelled before any Deload Session leaves no trace for the eight-week clock', () => {
+  // A cancelled Deload Week is not in deloadWeeks (accepted only) and holds no Deload Session.
+  const sessions = [session('2026-07-22', 'bench-press', [[60, 10, 2]]), ...fine('bench-press')];
+  expect(deloadedWeeks(history(sessions))).toEqual([]);
+  expect(recommendDeload(history(sessions), '2026-09-13', routine)).toBeUndefined();
+  expect(recommendDeload(history(sessions), '2026-09-14', routine)).toBe('time');
+});
+
+test('a cancelled Deload Week that holds a Deload Session resets the eight-week clock', () => {
+  const sessions = [session('2026-07-06', 'bench-press', [[60, 10, 2]]), deloadSession('2026-08-05', 'bench-press'), ...fine('bench-press')];
+  // Eight weeks from the first Session would be 31 August; the Deload Session in the week of 3 August moves it to 28 September.
+  expect(recommendDeload(history(sessions), '2026-09-14', routine)).toBeUndefined();
+  expect(recommendDeload(history(sessions), '2026-09-28', routine)).toBe('time');
 });
 
 test('a Stall wins over the other reasons, and none is recommended inside four weeks of a Deload Week', () => {

@@ -95,6 +95,18 @@ test('a self-started Deload Week is stored, its Deload Sessions score, and only 
   expect((await bea.client.from('deload_weeks').select('week')).data).toEqual([]);
 });
 
+test('a self-started Deload Week the lifter cancels is accepted as dismissed, the latest write wins, and its Deload Sessions keep scoring', async () => {
+  const ana = await lifter('ana');
+  await sync(ana, [weeklyTarget(3), ...lightSession('2026-10-19'), deload('2026-10-19', 'accepted', '2026-10-19T10:00:00.000Z', 'self')]);
+
+  const cancel = deload('2026-10-19', 'dismissed', '2026-10-19T11:00:00.000Z', 'self');
+  expect((await sync(ana, [cancel])).rejected).toEqual([]);
+
+  const { data } = await ana.client.from('deload_weeks').select('week, origin, status');
+  expect(data).toEqual([{ week: '2026-10-19', origin: 'self', status: 'dismissed' }]);
+  expect(await weeks(ana)).toEqual([['2026-10-19', ['2026-10-19'], expect.any(Number)]]);
+});
+
 test('a Deload Week that does not start on a Monday is rejected', async () => {
   const ana = await lifter('ana');
   const wednesday = deload('2026-10-21', 'accepted', '2026-10-21T10:00:00.000Z');

@@ -99,9 +99,9 @@ export default {
 function isRejected(mutation: Mutation, receivedAt: number) {
   switch (mutation.kind) {
     case 'saveDeload': {
-      // A Deload Week starts on a Monday, and only a suggestion has a reason to be dismissed.
+      // A Deload Week starts on a Monday. Any Deload Week can be dismissed: that is how a lifter cancels one (ADR 0007).
       const { deload } = mutation;
-      return weekStart(deload.week) !== deload.week || (deload.origin === 'self' && deload.status !== 'accepted');
+      return weekStart(deload.week) !== deload.week;
     }
     case 'saveProfileEntry':
       return !isProfileValue(mutation.entry.field, mutation.entry.value);
