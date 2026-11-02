@@ -93,15 +93,14 @@ test('a Custom Exercise ID the sender no longer has is still dropped as unknown'
 });
 
 test('a link with a malformed Custom Exercise is rejected', () => {
-  const bad = (custom: unknown) => {
-    const json = JSON.stringify([1, 'Ana', [['Arms', 0, [[custom, 3, 8, 12]]]]]);
-    return unpackRoutineLink(btoa(json).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''), known);
-  };
-  expect(bad([' ', null, 'core'])).toBeNull();
-  expect(bad([5, null, 'core'])).toBeNull();
-  expect(bad(['Curl', 7, 'core'])).toBeNull();
-  expect(bad(['Curl', null, 'abs'])).toBeNull();
-  expect(bad(['Curl', null, 'core'])).not.toBeNull();
+  // Written by hand: [1, 'Ana', [['Arms', 0, [[custom, 3, 8, 12]]]]] with the custom being...
+  const blankName = 'WzEsIkFuYSIsW1siQXJtcyIsMCxbW1siICIsbnVsbCwiY29yZSJdLDMsOCwxMl1dXV1d'; // [' ', null, 'core']
+  const numberName = 'WzEsIkFuYSIsW1siQXJtcyIsMCxbW1s1LG51bGwsImNvcmUiXSwzLDgsMTJdXV1dXQ'; // [5, null, 'core']
+  const numberEquipment = 'WzEsIkFuYSIsW1siQXJtcyIsMCxbW1siQ3VybCIsNywiY29yZSJdLDMsOCwxMl1dXV1d'; // ['Curl', 7, 'core']
+  const unknownMuscle = 'WzEsIkFuYSIsW1siQXJtcyIsMCxbW1siQ3VybCIsbnVsbCwiYWJzIl0sMyw4LDEyXV1dXV0'; // ['Curl', null, 'abs']
+  const fine = 'WzEsIkFuYSIsW1siQXJtcyIsMCxbW1siQ3VybCIsbnVsbCwiY29yZSJdLDMsOCwxMl1dXV1d'; // ['Curl', null, 'core']
+  expect([blankName, numberName, numberEquipment, unknownMuscle].map((data) => unpackRoutineLink(data, known))).toEqual([null, null, null, null]);
+  expect(unpackRoutineLink(fine, known)?.days[0].exercises).toEqual([{ custom: { name: 'Curl', equipment: null, muscle: 'core' }, sets: 3, repMin: 8, repMax: 12 }]);
 });
 
 test("an incoming Custom Exercise matches one of the recipient's ignoring capitals and surrounding spaces, with the same equipment", () => {

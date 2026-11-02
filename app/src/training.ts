@@ -4,6 +4,7 @@ import {
   deloadedLastWeek,
   completeRoutine,
   deriveScoringEvents,
+  findCustomExercise,
   nextMonday,
   isMuscle,
   nextRoutineDay,
@@ -14,6 +15,7 @@ import {
   type Dated,
   type Muscle,
   type DeloadReason,
+  type LinkDay,
   type ProfileField,
   type RoutineDay,
   type RoutineExercise,
@@ -738,6 +740,32 @@ export async function openTraining(userId: string, options: Options) {
       const id = `custom-${crypto.randomUUID()}`;
       await write({ id: crypto.randomUUID(), kind: 'saveExercise', exercise: { id, name: name.trim(), muscle } });
       return { id };
+    },
+
+    // A Routine Link's Days as the lifter's own: each Custom Exercise in it becomes the lifter's
+    // matching one (same name and equipment), else a new one made like any they create by hand.
+    // Loading the same link again finds the ones made before, so it adds none.
+    async resolveRoutineLink(days: LinkDay[]): Promise<Omit<RoutineDay, 'id'>[]> {
+      const own = await this.exercises();
+      const resolved: Omit<RoutineDay, 'id'>[] = [];
+      for (const day of days) {
+        const exercises: RoutineExercise[] = [];
+        for (const e of day.exercises) {
+          if ('exerciseId' in e) {
+            exercises.push(e);
+            continue;
+          }
+          const { custom, ...plan } = e;
+          let exerciseId = findCustomExercise(custom, own);
+          if (!exerciseId) {
+            exerciseId = (await this.createExercise(custom.name, custom.muscle)).id;
+            own.push({ id: exerciseId, nameEn: custom.name.trim(), nameEs: custom.name.trim(), equipment: null, custom: true, incrementKg: 2.5, bodyweight: false, muscle: custom.muscle });
+          }
+          exercises.push({ ...plan, exerciseId });
+        }
+        resolved.push({ ...day, exercises });
+      }
+      return resolved;
     },
 
     close() {

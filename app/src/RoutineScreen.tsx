@@ -170,7 +170,9 @@ export function RoutineScreen({ userId, training, profile, onProfileSaved }: { u
   // Phones open their share sheet; browsers without one copy the Routine Link instead.
   async function shareRoutine(routine: RoutineDay[]) {
     const sender = sharer?.display_name ?? '';
-    const url = `${location.origin}${routineLinkPath}#${packRoutineLink(routine, sender)}`;
+    // Custom Exercises travel by name, equipment and muscle: their IDs mean nothing to anyone else.
+    const customs = new Map(catalog.filter(({ custom }) => custom).map(({ id, nameEn, equipment, muscle }) => [id, { name: nameEn, equipment, muscle }]));
+    const url = `${location.origin}${routineLinkPath}#${packRoutineLink(routine, sender, customs)}`;
     if (typeof navigator.share !== 'function') {
       await navigator.clipboard.writeText(url).then(() => setNotice(t.routineLink.copied), () => {});
       return;
