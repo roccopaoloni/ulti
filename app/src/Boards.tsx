@@ -58,35 +58,40 @@ function Crown() {
 }
 
 function BoardRowView({ row, nameOf, onOpen }: { row: BoardRow; nameOf: (exercise: string) => string; onOpen: () => void }) {
-  const { t } = useI18n();
+  const { t, formatNumber } = useI18n();
   const g = t.groups;
+  // The records come newest first; the row shows the latest one.
+  const record = row.records[0];
   return (
     <li className="board-row" onClick={row.former ? undefined : onOpen} style={{ cursor: row.former ? 'default' : 'pointer' }}>
       <span className="board-pos">{row.position}</span>
       <span className="avatar" style={{ '--c': row.avatar_color } as CSSProperties} aria-hidden="true">
         {initials(row.display_name)}
+        {/* Boards stored before Ranks came with the board have none. */}
+        {row.tier && <Badge rank={{ tier: row.tier, division: row.division }} tierName={t.rank.tier[row.tier]} mode="sm" />}
       </span>
-      <span className="board-main">
-        <button type="button" className="member-name btn-link" style={{ textAlign: 'start' }}>
-          <span className="board-name">{row.former ? g.formerMember : row.display_name}</span>
-          {row.me && <span className="tagpill you">{g.you}</span>}
+      <button type="button" className="board-name-line btn-link">
+        <span className="board-name">{row.former ? g.formerMember : row.display_name}</span>
+        {row.me && <span className="tagpill you">{g.you}</span>}
+        {row.position === 1 && row.points > 0 && <Crown />}
+      </button>
+      {(row.owner || record) && (
+        <span className="board-meta">
           {row.owner && <span className="tagpill">{t.glossary.owner.term}</span>}
-          {/* Boards stored before Ranks came with the board have none. */}
-          {row.tier && <Badge rank={{ tier: row.tier, division: row.division }} tierName={t.rank.tier[row.tier]} mode="sm" />}
-          {row.position === 1 && row.points > 0 && <Crown />}
-        </button>
+          {record && (
+            <span className="stamp board-stamp">
+              {nameOf(record.exercise)} +{Math.round(record.percent_gain)}%
+            </span>
+          )}
+        </span>
+      )}
+      <span className="board-end">
+        <span className="board-points">
+          {formatNumber(row.points)}
+          <span className="board-unit">{g.pointsUnit}</span>
+        </span>
         {row.weekly_target ? <Dots done={row.session_dates.length} target={row.weekly_target} /> : null}
-        {row.records.length > 0 && (
-          <span className="stamps">
-            {row.records.map((record, index) => (
-              <span key={index} className="stamp">
-                {nameOf(record.exercise)} +{Math.round(record.percent_gain)}%
-              </span>
-            ))}
-          </span>
-        )}
       </span>
-      <span className="disp board-points">{g.boardPoints(row.points)}</span>
       {!row.former && <span className="chevron">{chevronIcon}</span>}
     </li>
   );
@@ -206,15 +211,15 @@ export function GroupBoard({ userId, group, training }: { userId: string; group:
   const next = board?.next_scoring_mode;
   return (
     <section className="card">
-      <div className="chips">
+      <div className="period-tabs">
         {periods.map((candidate) => (
-          <button key={candidate} type="button" className="chip" aria-pressed={candidate === period} onClick={() => choose(candidate)}>
+          <button key={candidate} type="button" aria-pressed={candidate === period} onClick={() => choose(candidate)}>
             {t.groups.periods[candidate]}
           </button>
         ))}
       </div>
       {board?.scoring_mode && (
-        <p className="muted">
+        <p className="muted board-mode">
           {g.scoringMode(g.modes[board.scoring_mode])} <Info term="scoringMode" />
           {period !== 'year' && next && next !== board.scoring_mode && <> · {g.modeNext(g.modes[next], g.periods[period].toLowerCase())}</>}
         </p>
