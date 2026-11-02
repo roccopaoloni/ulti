@@ -83,8 +83,12 @@ _Avoid_: Plateau
 _Rioplatense_: Estancamiento
 
 **Deload Week**:
-A planned week of deliberately lighter training to recover from accumulated fatigue.
+A planned week of deliberately lighter training to recover from accumulated fatigue, which the lifter can cancel partway through.
 _Rioplatense_: Semana de descarga
+
+**Deload Session**:
+A Session started while a Deload Week was on; it stays one even if that Deload Week is later cancelled.
+_Rioplatense_: Sesión de descarga
 
 ## Scoring
 
