@@ -892,23 +892,77 @@ test('a Deload Week started offline is stored and synced, and its Sessions then 
   training.close();
 });
 
-test('a lifter can start a Deload Week at most once every four weeks', async () => {
+test('a lifter can start a Deload Week any week it is not already on, even right after another one', async () => {
   const network = server();
   network.offline = true;
   const phone = anasPhone(network);
   const training = await phone.open();
   expect(await training.startDeload()).toBe(true);
+  expect((await training.deload()).canStart).toBe(false);
   expect(await training.startDeload()).toBe(false);
   training.close();
 
-  // Three weeks on is too soon; four weeks on is allowed.
-  const soon = await phone.open(Date.UTC(2026, 10, 9, 21, 5));
-  expect(await soon.startDeload()).toBe(false);
-  soon.close();
-  const later = await phone.open(Date.UTC(2026, 10, 16, 21, 5));
-  expect((await later.deload()).canStart).toBe(true);
-  expect(await later.startDeload()).toBe(true);
+  // The next week and the one after are both allowed, and the lifter is told the previous one was a Deload Week.
+  const next = await phone.open(Date.UTC(2026, 9, 26, 21, 5));
+  expect(await next.deload()).toMatchObject({ canStart: true, deloadedLastWeek: true });
+  expect(await next.startDeload()).toBe(true);
+  next.close();
+  const later = await phone.open(Date.UTC(2026, 10, 9, 21, 5));
+  expect(await later.deload()).toMatchObject({ canStart: true, deloadedLastWeek: false });
   later.close();
+});
+
+test('a Deload Week cancelled before any Session does not count as last week, one with a Deload Session does', async () => {
+  const network = server();
+  network.offline = true;
+  const phone = anasPhone(network);
+  const training = await phone.open();
+  await training.startDeload();
+  await training.cancelDeload();
+  training.close();
+  const nextWeek = await phone.open(Date.UTC(2026, 9, 26, 21, 5));
+  expect((await nextWeek.deload()).deloadedLastWeek).toBe(false);
+  nextWeek.close();
+
+  const again = await phone.open();
+  await again.startDeload();
+  await benchSession(again, [[54, 12], [54, 12], [54, 12]]);
+  await again.cancelDeload();
+  again.close();
+  const after = await phone.open(Date.UTC(2026, 9, 26, 21, 5));
+  expect((await after.deload()).deloadedLastWeek).toBe(true);
+  after.close();
+});
+
+test('starting, cancelling and starting again in one week leaves each Session counted by its own mark and syncs the latest write', async () => {
+  const network = server();
+  network.offline = true;
+  const phone = anasPhone(network);
+  const training = await phone.open();
+  await training.setProfile('weeklyTarget', 3);
+  await training.startDeload();
+  await benchSession(training, [[54, 12], [54, 12], [54, 12]]);
+  await training.cancelDeload();
+  expect((await training.deload()).canStart).toBe(true);
+  await benchSession(training, [[60, 12], [60, 12], [60, 12], [60, 12], [60, 12], [60, 12]]);
+  expect(await training.startDeload()).toBe(true);
+  expect((await training.deload()).active).toBe(true);
+  await benchSession(training, [[54, 12], [54, 12], [54, 12]]);
+  // Each Session counted by its own mark: the two Deload Sessions with three Working Sets, the normal one with six.
+  expect((await training.scoring()).consistency.map((week) => week.sessionDates.length)).toEqual([3]);
+
+  network.offline = false;
+  phone.connectivity.dispatchEvent(new Event('online'));
+  await vi.waitFor(() => expect(network.batches.length).toBeGreaterThan(0));
+  const deloads = network.batches.flat().flatMap((m) => (m.kind === 'saveDeload' ? [m.deload] : []));
+  expect(deloads.map(({ week, status }) => ({ week, status }))).toEqual([
+    { week: '2026-10-19', status: 'accepted' },
+    { week: '2026-10-19', status: 'dismissed' },
+    { week: '2026-10-19', status: 'accepted' },
+  ]);
+  const marks = network.batches.flat().flatMap((m) => (m.kind === 'saveSession' ? [m.session.deload] : []));
+  expect([...new Set(marks.map(String))].sort()).toEqual(['true', 'undefined']);
+  training.close();
 });
 
 test('a suggested Deload Week can be dismissed or accepted, both are stored, and a dismissal keeps it quiet for four weeks', async () => {
