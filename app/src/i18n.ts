@@ -75,6 +75,8 @@ type Messages = {
     modeChoose: string;
     // A member's points and sessions on a board row, and a Personal Record chip ("Bench +3%").
     boardPoints: (points: number) => string;
+    // The small unit beside the points number on a board row.
+    pointsUnit: string;
     leader: string;
     // The Home race card: "2nd of 5, 40 pts behind Ana", or the lead when ahead.
     race: (position: number, size: number) => string;
@@ -535,6 +537,7 @@ const en: Messages = {
     modeNext: (mode, period) => `${mode} from next ${period}`,
     modeChoose: 'Scoring Mode (from the next week or month)',
     boardPoints: (points) => `${points} pts`,
+    pointsUnit: 'pts',
     leader: 'Leader',
     race: (position, size) => {
       const teens = position % 100 >= 11 && position % 100 <= 13;
@@ -974,6 +977,7 @@ const es: Messages = {
     modeNext: (mode, period) => `${mode} desde la ${period} que viene`,
     modeChoose: 'Modo de puntaje (desde la semana o el mes que viene)',
     boardPoints: (points) => `${points} pts`,
+    pointsUnit: 'pts',
     leader: 'Líder',
     race: (position, size) => `${position}º de ${size}`,
     behind: (points, name) => `${points} pts detrás de ${name}`,
