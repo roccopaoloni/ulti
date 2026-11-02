@@ -4,6 +4,7 @@ import { registerSW } from 'virtual:pwa-register';
 import { App } from './App.tsx';
 import { BadgeDefs } from './Badge.tsx';
 import { captureInvite } from './groups.ts';
+import { captureRoutineLink } from './routineLinkDraft.ts';
 import { captureInstallPrompt } from './install.ts';
 import { createI18n, detectLanguage, I18nContext, type Language } from './i18n.ts';
 import { languageKey } from './profile.ts';
@@ -11,6 +12,7 @@ import { useStored } from './stored.ts';
 import './styles.css';
 
 captureInvite();
+captureRoutineLink();
 captureInstallPrompt();
 
 // The language the user picked in Profile, else the phone's.
