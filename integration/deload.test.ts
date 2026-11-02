@@ -70,6 +70,18 @@ test('a Deload Session keeps counting after its Deload Week is dismissed, and Se
   expect(await weeks(ana)).toEqual([['2026-10-19', ['2026-10-19'], expect.any(Number)]]);
 });
 
+test('a Session once marked as a Deload Session stays one when it is saved again without the mark', async () => {
+  const ana = await lifter('ana');
+  const [start, ...sets] = lightSession('2026-10-19');
+  await sync(ana, [weeklyTarget(3), start, ...sets]);
+  // An older phone saves the same Session later, with no mark.
+  const { deload: _mark, ...unmarked } = (start as any).session;
+  await sync(ana, [{ id: crypto.randomUUID(), kind: 'saveSession', session: { ...unmarked, finishedAt: '2026-10-19T13:00:00.000Z', updatedAt: '2026-10-19T13:00:00.000Z' } }]);
+
+  const stored = await ana.client.from('sessions').select('finished_at, deload');
+  expect(stored.data).toEqual([{ finished_at: '2026-10-19T13:00:00+00:00', deload: true }]);
+});
+
 test('a self-started Deload Week is stored, its Deload Sessions score, and only the lifter can read hers', async () => {
   const ana = await lifter('ana');
   const bea = await lifter('bea');
