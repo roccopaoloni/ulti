@@ -37,6 +37,9 @@ export function usePathname() {
 export const settingsPath = `${paths.profile}/settings`;
 export const routinePath = `${paths.train}/routine`;
 
+// A Routine Link opens here; the Routine itself is in the URL fragment.
+export const routineLinkPath = '/r';
+
 export const historyPath = `${paths.train}/history`;
 export const sessionPath = (id: string) => `${historyPath}/${id}`;
 // The Session whose detail screen the path is, if any.

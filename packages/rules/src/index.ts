@@ -580,6 +580,7 @@ export function plannedRows<T>(lastSets: readonly T[], plannedSets: number | und
 }
 
 export * from './rank.ts';
+export * from './routine-link.ts';
 
 // What an Exercise is trained to in a Routine, and the Increment that applies to it.
 export type GoHeavierRule = { repMin: number; repMax: number; incrementKg: number };
