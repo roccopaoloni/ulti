@@ -217,7 +217,7 @@ async function save(client: Client, userId: string, mutations: Mutation[], recei
       finished_at = excluded.finished_at,
       routine_day_id = excluded.routine_day_id,
       deleted = excluded.deleted,
-      deload = excluded.deload,
+      deload = sessions.deload or excluded.deload,
       updated_at = excluded.updated_at
     where sessions.updated_at < excluded.updated_at`;
   await transaction.queryArray`

@@ -168,8 +168,8 @@ const DEFAULT_INCREMENT_KG = 2.5;
 export type Training = Awaited<ReturnType<typeof openTraining>>;
 
 export async function openTraining(userId: string, options: Options) {
-  const db = await openDB<Store>(`ulti-${userId}`, 8, {
-    upgrade(db, oldVersion) {
+  const db = await openDB<Store>(`ulti-${userId}`, 9, {
+    async upgrade(db, oldVersion, _newVersion, tx) {
       if (oldVersion < 1) {
         db.createObjectStore('sessions', { keyPath: 'id' });
         db.createObjectStore('sets', { keyPath: 'id' }).createIndex('bySession', 'sessionId');
@@ -198,6 +198,14 @@ export async function openTraining(userId: string, options: Options) {
       }
       if (oldVersion < 8) {
         db.createObjectStore('noRoutine');
+      }
+      if (oldVersion >= 5 && oldVersion < 9) {
+        // One-off: Sessions logged before the mark existed are Deload Sessions if their week is an
+        // accepted Deload Week, as the server's migration did. Not an outbox write: the server has it.
+        const weeks = (await tx.objectStore('deloads').getAll()).filter(({ status }) => status === 'accepted').map(({ week }) => week);
+        for (const session of await tx.objectStore('sessions').getAll()) {
+          if (weeks.includes(weekStart(session.localDate))) await tx.objectStore('sessions').put({ ...session, deload: true });
+        }
       }
     },
   });

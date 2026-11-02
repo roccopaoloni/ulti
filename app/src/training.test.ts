@@ -1,6 +1,7 @@
 import 'fake-indexeddb/auto';
 import { labelSets } from '@ulti/rules';
 import { expect, test, vi } from 'vitest';
+import { openDB } from 'idb';
 import { openTraining, type Mutation } from './training.ts';
 
 // The sync endpoint, as the phone sees it. Offline, every request fails before it leaves the phone.
@@ -1005,6 +1006,32 @@ test('a Deload Session stays one when its Deload Week is no longer accepted: it 
   expect((await training.scoring()).consistency.map((week) => week.sessionDates)).toEqual([['2026-10-19'], ['2026-10-26']]);
   expect((await training.lastSets('bench-press')).map((set) => set.weightKg)).toEqual([60, 60, 60, 60, 60, 60]);
   expect(await training.recommendation('bench-press', benchRange)).toEqual({ kind: 'goHeavier', weightKg: 62.5, reps: 8, incrementKg: 2.5 });
+  training.close();
+});
+
+test('a phone upgraded with Sessions already logged in an accepted Deload Week marks them as Deload Sessions', async () => {
+  const phone = anasPhone(server());
+  // The phone as it was before the mark existed: version 8, Sessions without it.
+  const old = await openDB(`ulti-${phone.userId}`, 8, {
+    upgrade(db) {
+      for (const name of ['outbox', 'state', 'exercises', 'routines', 'increments', 'deloads', 'downloaded', 'routineDraft', 'noRoutine', 'bodyweightPrompt', 'profile', 'sessions', 'sets']) {
+        const keyPath = { exercises: 'id', routines: 'id', increments: 'exerciseId', deloads: 'week', sessions: 'id', sets: 'id', profile: ['field', 'effectiveFrom'] }[name as string];
+        const store = db.createObjectStore(name, keyPath ? { keyPath } : name === 'outbox' ? { autoIncrement: true } : undefined);
+        if (name === 'sets') store.createIndex('bySession', 'sessionId');
+      }
+    },
+  });
+  const session = (id: string, localDate: string) => ({ id, startedAt: `${localDate}T21:00:00.000Z`, timeZone: 'America/Argentina/Buenos_Aires', localDate, finishedAt: `${localDate}T22:00:00.000Z`, updatedAt: `${localDate}T22:00:00.000Z` });
+  const set = (id: string, sessionId: string, weightKg: number) => ({ id, sessionId, exerciseId: 'bench-press', weightKg, reps: 10, loggedAt: `2026-10-20T21:00:00.000Z`, updatedAt: `2026-10-20T21:00:00.000Z` });
+  await old.put('sessions', session('normal', '2026-10-12'));
+  await old.put('sessions', session('light', '2026-10-20'));
+  await old.put('sets', set('s1', 'normal', 60));
+  await old.put('sets', set('s2', 'light', 54));
+  await old.put('deloads', { week: '2026-10-19', origin: 'self', status: 'accepted', updatedAt: '2026-10-19T10:00:00.000Z' });
+  old.close();
+
+  const training = await phone.open(Date.UTC(2026, 9, 26, 21, 5));
+  expect((await training.lastSets('bench-press')).map((set) => set.weightKg)).toEqual([60]);
   training.close();
 });
 
