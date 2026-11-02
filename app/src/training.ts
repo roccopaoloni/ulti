@@ -745,9 +745,9 @@ export async function openTraining(userId: string, options: Options) {
     // A Routine Link's Days as the lifter's own: each Custom Exercise in it becomes the lifter's
     // matching one (same name and equipment), else a new one made like any they create by hand.
     // Loading the same link again finds the ones made before, so it adds none.
-    async resolveRoutineLink(days: LinkDay[]): Promise<Omit<RoutineDay, 'id'>[]> {
+    async resolveRoutineLink<D extends LinkDay>(days: D[]): Promise<(Omit<D, 'exercises'> & { exercises: RoutineExercise[] })[]> {
       const own = await this.exercises();
-      const resolved: Omit<RoutineDay, 'id'>[] = [];
+      const resolved: (Omit<D, 'exercises'> & { exercises: RoutineExercise[] })[] = [];
       for (const day of days) {
         const exercises: RoutineExercise[] = [];
         for (const e of day.exercises) {

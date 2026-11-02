@@ -171,7 +171,7 @@ function RoutineStep({ training, onDone }: { training: Training; onDone: () => v
           type="button"
           className="btn-primary"
           onClick={async () => {
-            if (shared) await training.saveRoutineDraft(shared.draft);
+            if (shared) await training.saveRoutineDraft(await training.resolveRoutineLink(shared.draft));
             leave(routinePath);
           }}
         >

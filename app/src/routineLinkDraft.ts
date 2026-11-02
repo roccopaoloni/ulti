@@ -1,4 +1,4 @@
-import { unpackRoutineLink, type RoutineDay } from '@ulti/rules';
+import { unpackRoutineLink } from '@ulti/rules';
 import { useStored, write } from './stored.ts';
 
 // The Routine Link a signed-out visitor opened, kept on the phone (the part after `#`) through
@@ -13,10 +13,10 @@ export function captureRoutineLink() {
 }
 
 // The Routine the onboarding Routine step starts from: the kept link read against the catalog,
-// as a draft ready for `saveRoutineDraft`. Null when the link can't be read.
+// as a draft with Custom Exercises still to resolve (`training.resolveRoutineLink`) before `saveRoutineDraft`. Null when the link can't be read.
 export function routineFromLink(data: string, catalog: readonly { id: string; custom: boolean }[]) {
   const link = unpackRoutineLink(data, new Set(catalog.filter((exercise) => !exercise.custom).map(({ id }) => id)));
   if (!link) return null;
-  const draft: RoutineDay[] = link.days.map((day) => ({ ...day, id: crypto.randomUUID() }));
+  const draft = link.days.map((day) => ({ ...day, id: crypto.randomUUID() }));
   return { sender: link.sender, draft, dropped: link.dropped };
 }
