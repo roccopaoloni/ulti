@@ -76,7 +76,7 @@ const instant = (value: string) => new Date(value).toISOString();
 // Resolves to whether the phone got anything new.
 async function refreshHistory(training: Training) {
   const sessions = await pageThrough((from, to) =>
-    supabase.from('sessions').select('id, started_at, time_zone, local_date, finished_at, routine_day_id, updated_at').eq('deleted', false).order('id').range(from, to),
+    supabase.from('sessions').select('id, started_at, time_zone, local_date, finished_at, routine_day_id, deload, updated_at').eq('deleted', false).order('id').range(from, to),
   );
   const sets = await pageThrough((from, to) =>
     supabase
@@ -94,6 +94,7 @@ async function refreshHistory(training: Training) {
       localDate: row.local_date,
       finishedAt: row.finished_at && instant(row.finished_at),
       ...(row.routine_day_id && { routineDayId: row.routine_day_id }),
+      ...(row.deload && { deload: true }),
       updatedAt: instant(row.updated_at),
     })),
     sets.map((row) => ({

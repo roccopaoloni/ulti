@@ -24,6 +24,9 @@ export type SetLabel = 'warm-up' | 'working';
 export type Session = {
   localDate: string;
   sets: Set[];
+  // A Deload Session: started while a Deload Week was on (ADR 0007). It needs fewer Working Sets to
+  // qualify, and Calibration, go heavier and Stall ignore it.
+  deload?: boolean;
 };
 
 export type TrainingHistory = {
@@ -34,8 +37,8 @@ export type TrainingHistory = {
   // Sex and bodyweight check-ins, dated (ADR 0002). Bodyweight Exercises are scored with the
   // average bodyweight; without them every other Personal Record is weighted as the 50th percentile.
   profile?: { sex: Dated<Sex>[]; bodyweightKg: Dated<number>[] };
-  // The Mondays of the Deload Weeks the lifter accepted or started (spec: Deload Week). Their
-  // Sessions need fewer Working Sets to qualify, and are ignored by Calibration, go heavier and Stall.
+  // The Mondays of the Deload Weeks the lifter accepted or started (spec: Deload Week). Only the
+  // Deload Week advice reads them; how a Session counts is its own `deload` record.
   deloadWeeks?: string[];
 };
 
@@ -231,7 +234,7 @@ function derivePersonalRecords(history: TrainingHistory): PersonalRecord[] {
 // Only Working Sets reach scoring (spec: Warm-up detection).
 function qualifyingSessions(history: TrainingHistory): Session[] {
   return history.sessions.filter(
-    (session) => workingSets(session).length >= (inDeloadWeek(history, session) ? DELOAD_QUALIFYING_WORKING_SETS : QUALIFYING_WORKING_SETS),
+    (session) => workingSets(session).length >= (session.deload ? DELOAD_QUALIFYING_WORKING_SETS : QUALIFYING_WORKING_SETS),
   );
 }
 
@@ -274,15 +277,10 @@ function deriveConsistency(history: TrainingHistory): ConsistencyWeek[] {
   return events;
 }
 
-// Whether the Session was done in a Deload Week.
-function inDeloadWeek(history: TrainingHistory, session: Session): boolean {
-  return !!history.deloadWeeks?.includes(weekStart(session.localDate));
-}
-
-// The Sessions outside Deload Weeks: the only ones Calibration, Personal Records, go heavier and
+// The Sessions that are not Deload Sessions: the only ones Calibration, Personal Records, go heavier and
 // Stall look at (spec: Deload Week).
 function regularSessions(history: TrainingHistory): Session[] {
-  return history.sessions.filter((session) => !inDeloadWeek(history, session));
+  return history.sessions.filter((session) => !session.deload);
 }
 
 // The Weekly Target a week (given by its Monday) is scored with. A change applies from the next
