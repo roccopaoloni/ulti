@@ -42,6 +42,10 @@ A user's saved training plan: which Exercises to do in which Session, each with 
 _Avoid_: Program, plan, template
 _Rioplatense_: Rutina
 
+**Routine Link**:
+A link that carries a copy of a user's Routine, from which another user can load it as their own.
+_Rioplatense_: Link de rutina
+
 **Rep Range**:
 The target number of reps per Set for an Exercise in a Routine, such as 8–12.
 _Rioplatense_: Repeticiones objetivo (never "rango", which means Rank)

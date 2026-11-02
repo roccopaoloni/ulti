@@ -1,4 +1,4 @@
-import { completeRoutine, dayColour, moveItem, nextDayColour, suggestedWeeklyTarget, withDayColours, type RoutineDay } from '@ulti/rules';
+import { completeRoutine, dayColour, moveItem, nextDayColour, packRoutineLink, suggestedWeeklyTarget, withDayColours, type RoutineDay } from '@ulti/rules';
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { dayColourVar } from './dayColour.ts';
 import { useI18n } from './i18n.ts';
@@ -6,7 +6,8 @@ import { ExercisePicker } from './ExercisePicker.tsx';
 import { Sheet } from './GroupsScreens.tsx';
 import { chevronIcon, closeIcon, gripIcon } from './icons.tsx';
 import { Info } from './Info.tsx';
-import { navigate, paths, routinePath } from './navigation.ts';
+import { navigate, paths, routineLinkPath, routinePath } from './navigation.ts';
+import { useProfile } from './groups.ts';
 import { Skeleton } from './Skeleton.tsx';
 import { SubScreen } from './SubScreen.tsx';
 import type { Exercise, Profile, Training } from './training.ts';
@@ -119,7 +120,7 @@ function ExerciseRows({ day, dayIndex, open, setOpen, nameOf, equipmentOf, chang
 
 // The Routine editor: its Days as cards, each Exercise a row that opens to step its Sets and Rep
 // Range. Every change is saved on the phone at once; the Routine syncs whenever it is whole.
-export function RoutineScreen({ training, profile, onProfileSaved }: { training: Training; profile: Profile | null; onProfileSaved: () => void }) {
+export function RoutineScreen({ userId, training, profile, onProfileSaved }: { userId: string; training: Training; profile: Profile | null; onProfileSaved: () => void }) {
   const { t, language } = useI18n();
   const r = t.routine;
   const [draft, setDraft] = useState<RoutineDay[] | null>(null);
@@ -134,6 +135,8 @@ export function RoutineScreen({ training, profile, onProfileSaved }: { training:
   // The Days shown open: those added this visit and those that needed fixing when it began.
   const [unfolded, setUnfolded] = useState<ReadonlySet<string>>(new Set());
   const removeDialog = useRef<HTMLDialogElement>(null);
+  const sharer = useProfile(userId);
+  const [notice, setNotice] = useState<string>();
   // Saves go one after another, so the last edit is the one that stays.
   const writing = useRef<Promise<unknown>>(Promise.resolve());
 
@@ -163,6 +166,17 @@ export function RoutineScreen({ training, profile, onProfileSaved }: { training:
     const complete = completeRoutine(next);
     if (complete) setSavedDays(complete.length);
     writing.current = writing.current.then(() => training.saveRoutineDraft(next));
+  }
+  // Phones open their share sheet; browsers without one copy the Routine Link instead.
+  async function shareRoutine(routine: RoutineDay[]) {
+    const sender = sharer?.display_name ?? '';
+    const url = `${location.origin}${routineLinkPath}#${packRoutineLink(routine, sender)}`;
+    if (typeof navigator.share !== 'function') {
+      await navigator.clipboard.writeText(url).then(() => setNotice(t.routineLink.copied), () => {});
+      return;
+    }
+    // Closing the share sheet without picking anyone rejects; that's fine.
+    await navigator.share({ text: t.routineLink.shareText(sender), url }).catch(() => {});
   }
   const changeDay = (index: number, change: Partial<RoutineDay>) => edit(draft!.map((day, i) => (i === index ? { ...day, ...change } : day)));
   const changeExercise = (dayIndex: number, index: number, change: Partial<RoutineDay['exercises'][number]>) =>
@@ -264,6 +278,18 @@ export function RoutineScreen({ training, profile, onProfileSaved }: { training:
         }}>
         {r.addDay}
       </button>
+      {whole && (
+        <>
+          <button type="button" className="btn-ghost" onClick={() => shareRoutine(whole)}>
+            {t.routineLink.share}
+          </button>
+          {notice && (
+            <p className="muted" role="status">
+              {notice}
+            </p>
+          )}
+        </>
+      )}
       {suggested !== null && suggested !== current && (
         <div className="card">
           <p>
@@ -323,7 +349,7 @@ export function RoutineScreen({ training, profile, onProfileSaved }: { training:
   );
 }
 
-export function RoutineSubScreen(props: { training: Training; profile: Profile | null; onProfileSaved: () => void }) {
+export function RoutineSubScreen(props: { userId: string; training: Training; profile: Profile | null; onProfileSaved: () => void }) {
   const { t } = useI18n();
   return (
     <SubScreen title={t.routine.title} parent={paths.train}>

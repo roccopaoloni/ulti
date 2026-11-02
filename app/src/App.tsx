@@ -10,7 +10,7 @@ import { useI18n, type Term } from './i18n.ts';
 import { gearIcon, tabIcons } from './icons.tsx';
 import { Info } from './Info.tsx';
 import { InstallCard } from './InstallApp.tsx';
-import { historyPath, navigate, paths, routinePath, sessionFromPath, settingsPath, tabs, useCurrentTab, usePathname, type Tab } from './navigation.ts';
+import { historyPath, navigate, paths, routineLinkPath, routinePath, sessionFromPath, settingsPath, tabs, useCurrentTab, usePathname, type Tab } from './navigation.ts';
 import { hasEverything, useBodyProfile, useLayout, useUnits } from './profile.ts';
 import { RankCard } from './RankCard.tsx';
 import { CrownGate } from './CrownGate.tsx';
@@ -18,6 +18,7 @@ import { RankUpGate } from './RankUpGate.tsx';
 import { BodyweightPrompt, ConnectToFinish, Onboarding } from './ProfileScreens.tsx';
 import { SettingsScreen } from './SettingsScreen.tsx';
 import { MyRoutineButton, RoutineSubScreen } from './RoutineScreen.tsx';
+import { RoutineLinkScreen } from './RoutineLink.tsx';
 import { SessionInProgressBar, SessionScreen, StartSession, useLogging } from './SessionScreen.tsx';
 import { useTraining } from './useTraining.ts';
 
@@ -54,6 +55,7 @@ function Tabs({ userId }: { userId: string }) {
   const member = memberFromPath(pathname);
   const groupSettings = groupSettingsFromPath(pathname);
   const routineOpen = pathname === routinePath;
+  const routineLinkOpen = pathname === routineLinkPath;
   const historyOpen = pathname === historyPath;
   const sessionId = sessionFromPath(pathname);
   const { label, text } = t.screens[current];
@@ -93,7 +95,9 @@ function Tabs({ userId }: { userId: string }) {
         ) : sessionId && training ? (
           <SessionDetailScreen training={training} units={units} sessionId={sessionId} />
         ) : routineOpen && training ? (
-          <RoutineSubScreen training={training} profile={profile} onProfileSaved={reload} />
+          <RoutineSubScreen userId={userId} training={training} profile={profile} onProfileSaved={reload} />
+        ) : routineLinkOpen && training ? (
+          <RoutineLinkScreen training={training} />
         ) : (
           <>
             {current === 'home' ? (

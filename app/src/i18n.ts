@@ -324,6 +324,23 @@ type Messages = {
     suggestion: (count: number) => string;
     useSuggestion: string;
   };
+  // Sharing a Routine as a Routine Link, and opening one.
+  routineLink: {
+    share: string;
+    copied: string;
+    // The message beside the link in the share sheet.
+    shareText: (sender: string) => string;
+    title: string;
+    // `sender` is empty when the sender never set a name.
+    heading: (sender: string) => string;
+    dropped: (count: number) => string;
+    use: string;
+    replaceTitle: string;
+    replaceText: string;
+    replaceConfirm: string;
+    brokenTitle: string;
+    brokenText: string;
+  };
   // Consistency Points, Week Stamps and the Streak.
   consistency: {
     thisWeek: string;
@@ -751,6 +768,20 @@ const en: Messages = {
     cancel: 'Cancel',
     suggestion: (count) => `Your Routine suggests a Weekly Target of ${count} per week.`,
     useSuggestion: 'Use it',
+  },
+  routineLink: {
+    share: 'Share',
+    copied: 'Link copied',
+    shareText: (sender) => (sender ? `${sender} shared their Routine on ULTI` : 'Here is my Routine on ULTI'),
+    title: 'Shared routine',
+    heading: (sender) => `${sender || 'Someone'} shared their Routine with you`,
+    dropped: (count) => (count === 1 ? "1 exercise isn't available in your app and was left out." : `${count} exercises aren't available in your app and were left out.`),
+    use: 'Use this Routine',
+    replaceTitle: 'Replace your Routine?',
+    replaceText: 'Your current Routine will be replaced by this one. Your past Sessions keep their history.',
+    replaceConfirm: 'Replace my Routine',
+    brokenTitle: "This link doesn't work",
+    brokenText: 'Ask for a new one.',
   },
   consistency: {
     thisWeek: 'This week',
@@ -1188,6 +1219,20 @@ const es: Messages = {
     cancel: 'Cancelar',
     suggestion: (count) => `Tu rutina sugiere un objetivo semanal de ${count} por semana.`,
     useSuggestion: 'Usarlo',
+  },
+  routineLink: {
+    share: 'Compartir',
+    copied: 'Link copiado',
+    shareText: (sender) => (sender ? `${sender} compartió su rutina en ULTI` : 'Mirá mi rutina en ULTI'),
+    title: 'Rutina compartida',
+    heading: (sender) => `${sender || 'Alguien'} te compartió su rutina`,
+    dropped: (count) => (count === 1 ? 'Un ejercicio no está disponible en tu app y quedó afuera.' : `${count} ejercicios no están disponibles en tu app y quedaron afuera.`),
+    use: 'Usar esta rutina',
+    replaceTitle: '¿Reemplazar tu rutina?',
+    replaceText: 'Tu rutina actual se va a reemplazar por esta. Tus sesiones anteriores conservan su historial.',
+    replaceConfirm: 'Reemplazar mi rutina',
+    brokenTitle: 'Este link no funciona',
+    brokenText: 'Pedí uno nuevo.',
   },
   consistency: {
     thisWeek: 'Esta semana',
