@@ -276,6 +276,12 @@ type Messages = {
     accept: string;
     dismiss: string;
     start: string;
+    // The Cancel link on the badge and its confirm sheet.
+    cancel: string;
+    cancelTitle: string;
+    cancelText: string;
+    cancelConfirm: string;
+    cancelKeep: string;
   };
   // The Train tab's Routine.
   routine: {
@@ -704,6 +710,11 @@ const en: Messages = {
     accept: 'Start Deload Week',
     dismiss: 'Not now',
     start: 'Start a Deload Week',
+    cancel: 'Cancel',
+    cancelTitle: 'Back to a normal week?',
+    cancelText: 'Your next Sessions use your normal weights. The Sessions you already logged stay as Deload Sessions.',
+    cancelConfirm: 'Back to normal',
+    cancelKeep: 'Keep deloading',
   },
   routine: {
     title: 'My routine',
@@ -1135,6 +1146,11 @@ const es: Messages = {
     accept: 'Empezar Semana de descarga',
     dismiss: 'Ahora no',
     start: 'Empezar una Semana de descarga',
+    cancel: 'Cancelar',
+    cancelTitle: '¿Volver a una semana normal?',
+    cancelText: 'Tus próximas sesiones usan tus pesos normales. Las sesiones que ya registraste quedan como sesiones de descarga.',
+    cancelConfirm: 'Volver a lo normal',
+    cancelKeep: 'Seguir con la descarga',
   },
   routine: {
     title: 'Mi rutina',
