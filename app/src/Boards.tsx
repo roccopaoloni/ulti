@@ -63,7 +63,7 @@ function BoardRowView({ row, nameOf, onOpen }: { row: BoardRow; nameOf: (exercis
   // The records come newest first; the row shows the latest one.
   const record = row.records[0];
   return (
-    <li className="board-row" onClick={row.former ? undefined : onOpen} style={{ cursor: row.former ? 'default' : 'pointer' }}>
+    <li className={`board-row${row.owner || record ? '' : ' no-meta'}`} onClick={row.former ? undefined : onOpen} style={{ cursor: row.former ? 'default' : 'pointer' }}>
       <span className="board-pos">{row.position}</span>
       <span className="avatar" style={{ '--c': row.avatar_color } as CSSProperties} aria-hidden="true">
         {initials(row.display_name)}

@@ -615,6 +615,9 @@ Position, avatar, points and › share the row's vertical centre. */
   color: var(--fg);
   font-weight: 700;
 }
+.board-row.no-meta .board-name-line {
+  grid-row: 1 / 3;
+}
 .board-name {
   min-width: 0;
   overflow: hidden;
