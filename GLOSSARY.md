@@ -43,7 +43,7 @@ _Avoid_: Program, plan, template
 _Rioplatense_: Rutina
 
 **Routine Link**:
-A link that carries a copy of a user's Routine, from which another user can load it as their own.
+A link that carries a copy of a user's Routine, from which another user can load it as their own. Custom Exercises in it travel by name, equipment and muscle, and loading reuses the recipient's matching Custom Exercise (same name ignoring capitals and spaces, same equipment) or creates one.
 _Rioplatense_: Link de rutina
 
 **Rep Range**:
