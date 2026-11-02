@@ -175,7 +175,7 @@ function RoutineStep({ training, onDone }: { training: Training; onDone: () => v
             leave(routinePath);
           }}
         >
-          {b.routineNow}
+          {shared ? t.routineLink.use : b.routineNow}
         </button>
         <button type="button" className="btn-ghost" onClick={() => leave(paths.home)}>
           {b.routineLater}
