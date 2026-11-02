@@ -103,6 +103,8 @@ During a Deload Week, Home shows a "Deload Week" badge with a **Cancel** link. I
 
 Week / Month / Year tabs. Each row shows position, avatar, name, Rank badge, score, the week's Session dots and the latest Personal Record chips ("Bench +3%"). The leader wears a crown. Tapping a member opens their profile, filtered by their Visibility. The Group's Scoring Mode is labelled at the top. The board is also the member list: the name stays on one line (cut with an ellipsis), "You" and "Owner" are small tags beside it. The Group header has the name, Invite and a ⚙ that opens Group settings, a screen of its own under the Groups tab: the Owner chooses the Scoring Mode and resets the invite link, and everyone sees the members and Leave Group.
 
+Each row has two lines beside the avatar: the name with its "You" tag and the leader's crown, then the "Owner" tag and the latest Personal Record chip. The small Rank badge sits on the avatar's lower corner. On the right, the points sit above the week's Session dots, then a › to the member's profile. Position, avatar, points and › are centred on the row. Group and member names show exactly as typed, never uppercased, and everything on the board is in Manrope; only the screen title uses Unbounded. Approved mockup: `prototype/ulti-groups.mockup.html`, with renders in `docs/screenshots/groups-mockup/`.
+
 ## Celebrations
 
 - **Personal Record during a Session**: a brief animated banner ("PR! Bench +3% · +40 pts") that never blocks logging.
