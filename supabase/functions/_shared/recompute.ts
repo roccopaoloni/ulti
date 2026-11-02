@@ -35,7 +35,7 @@ export async function recompute(client: Client, userId: string) {
       'sex', coalesce((select jsonb_agg(jsonb_build_object('effectiveFrom', h.effective_from, 'value', h.value)) from public.profile_history h where h.user_id = ${userId} and h.field = 'sex'), '[]'::jsonb),
       'bodyweightKg', coalesce((select jsonb_agg(jsonb_build_object('effectiveFrom', h.effective_from, 'value', h.value)) from public.profile_history h where h.user_id = ${userId} and h.field = 'bodyweightKg'), '[]'::jsonb)
     ), 'sessions', coalesce(jsonb_agg(
-      jsonb_build_object('localDate', s.local_date, 'sets', coalesce((
+      jsonb_build_object('localDate', s.local_date, 'deload', s.deload, 'sets', coalesce((
         select jsonb_agg(
           jsonb_build_object(
             'id', t.id, 'exercise', t.exercise_id, 'custom', x.owner_id is not null, 'bodyweight', x.type = 'bodyweight', 'weightKg', t.weight_kg, 'reps', t.reps, 'label', t.label
