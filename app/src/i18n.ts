@@ -282,6 +282,8 @@ type Messages = {
     cancelText: string;
     cancelConfirm: string;
     cancelKeep: string;
+    // The confirm before starting a Deload Week right after one; its buttons are accept and dismiss.
+    againTitle: string;
   };
   // The Train tab's Routine.
   routine: {
@@ -715,6 +717,7 @@ const en: Messages = {
     cancelText: 'Your next Sessions use your normal weights. The Sessions you already logged stay as Deload Sessions.',
     cancelConfirm: 'Back to normal',
     cancelKeep: 'Keep deloading',
+    againTitle: 'You deloaded last week. Deload again this week?',
   },
   routine: {
     title: 'My routine',
@@ -1151,6 +1154,7 @@ const es: Messages = {
     cancelText: 'Tus próximas sesiones usan tus pesos normales. Las sesiones que ya registraste quedan como sesiones de descarga.',
     cancelConfirm: 'Volver a lo normal',
     cancelKeep: 'Seguir con la descarga',
+    againTitle: 'La semana pasada hiciste descarga. ¿Hacés descarga de nuevo esta semana?',
   },
   routine: {
     title: 'Mi rutina',
