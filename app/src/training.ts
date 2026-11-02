@@ -1,6 +1,7 @@
 import {
   bodyweightPromptDue,
   canStartDeload,
+  deloadedLastWeek,
   completeRoutine,
   deriveScoringEvents,
   nextMonday,
@@ -670,11 +671,13 @@ export async function openTraining(userId: string, options: Options) {
       return {
         active: history.deloadWeeks!.includes(weekStart(today)),
         canStart: canStartDeload(history, today),
+        deloadedLastWeek: deloadedLastWeek(history, today),
         suggestion: recommendDeload(history, today, [...routine.values()], dismissed),
       };
     },
 
-    // The lifter starts a Deload Week themselves, at most once every four weeks: false when it is too soon.
+    // The lifter starts a Deload Week themselves, in any week that isn't one already, also again after
+    // cancelling one (the later write wins): false when this week is one.
     async startDeload() {
       if (!(await this.deload()).canStart) return false;
       const deload: DeloadRecord = {

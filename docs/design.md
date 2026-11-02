@@ -97,7 +97,7 @@ In order:
 3. One race card per Group with the user's weekly position ("2nd of 5, 40 pts behind Ana").
 4. The "since your last visit" summary appears as a card at the top when there is news.
 
-During a Deload Week, Home shows a "Deload Week" badge with a **Cancel** link. It asks "Back to a normal week?" ("Your next Sessions use your normal weights. The Sessions you already logged stay as Deload Sessions.", with **Back to normal** / **Keep deloading**). Starting a Deload Week the week after another one asks first: "You deloaded last week. Deload again this week?" (**Start Deload Week** / **Not now**). See [ADR 0007](adr/0007-deload-weeks-unlimited-and-cancellable.md).
+During a Deload Week, Home shows a "Deload Week" badge with a **Cancel** link. It asks "Back to a normal week?" ("Your next Sessions use your normal weights. The Sessions you already logged stay as Deload Sessions.", with **Back to normal** / **Keep deloading**). A Deload Week can be started in any week that is not one already. If last week counts as deloaded (its Deload Week was not cancelled, or it holds a Deload Session), starting asks first: "You deloaded last week. Deload again this week?" (**Start Deload Week** / **Not now**). See [ADR 0007](adr/0007-deload-weeks-unlimited-and-cancellable.md).
 
 ## Group board
 
