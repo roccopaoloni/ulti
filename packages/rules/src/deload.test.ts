@@ -6,6 +6,7 @@ import {
   recommendStall,
   streak,
   weekStamps,
+  weekStart,
   type Dated,
   type Session,
   type TrainingHistory,
@@ -20,7 +21,12 @@ function session(localDate: string, workingSets = 6, exercise = 'back-squat', we
 }
 
 const target3: Dated<number>[] = [{ effectiveFrom: '2026-10-05', value: 3 }];
-const ana = (sessions: Session[], deloadWeeks: string[] = []): TrainingHistory => ({ userId: 'ana', sessions, weeklyTargets: target3, deloadWeeks });
+// Sessions started in one of the given Deload Weeks (by Monday) are Deload Sessions, as the phone records them.
+const ana = (sessions: Session[], deloadWeeks: string[] = []): TrainingHistory => ({
+  userId: 'ana',
+  sessions: sessions.map((s) => (deloadWeeks.includes(weekStart(s.localDate)) ? { ...s, deload: true } : s)),
+  weeklyTargets: target3,
+});
 const consistencyOf = (history: TrainingHistory) => deriveScoringEvents(history).filter((event) => event.kind === 'consistency');
 const personalRecordsOf = (history: TrainingHistory) => deriveScoringEvents(history).filter((event) => event.kind === 'personal-record');
 
@@ -82,4 +88,17 @@ test('the app still says Calibration counting only non-deload Sessions', () => {
   const sessions = [benchSession('2026-10-05', 60, 8), benchSession('2026-10-12', 54, 8), benchSession('2026-10-19', 60, 8)];
   expect(inCalibration(ana(sessions, ['2026-10-12']), 'bench-press')).toBe(true);
   expect(inCalibration(ana([...sessions, benchSession('2026-10-26', 60, 8)], ['2026-10-12']), 'bench-press')).toBe(false);
+});
+
+test('the Session decides, not its week: a Deload Week can hold both a Deload Session and a normal one', () => {
+  const light = { ...session('2026-10-19', 3), deload: true };
+  const alsoLight = session('2026-10-20', 3);
+  const events = consistencyOf({ userId: 'ana', sessions: [light, alsoLight], weeklyTargets: target3 });
+  expect(events.map((event) => event.sessionDates)).toEqual([['2026-10-19']]);
+});
+
+test('a Deload Session stays one, and counts with three Working Sets, whatever week it falls in', () => {
+  const light = { ...session('2026-10-21', 3), deload: true };
+  const events = consistencyOf({ userId: 'ana', sessions: [light], weeklyTargets: target3, deloadWeeks: [] });
+  expect(events.map((event) => event.sessionDates)).toEqual([['2026-10-21']]);
 });

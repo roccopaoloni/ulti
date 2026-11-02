@@ -226,7 +226,6 @@ export function SessionScreen({ training, units, layout, onLeave }: { training: 
   const [summary, setSummary] = useState<{ progress: WeekProgress; earned: number } | null>(null);
   // The Focus layout shows one Exercise at a time: the one picked, or else the first.
   const [focusedId, setFocusedId] = useState<string | null>(null);
-  const [deload, setDeload] = useState(false);
   const discardDialog = useRef<HTMLDialogElement>(null);
   useWakeLock();
   useEffect(() => {
@@ -238,7 +237,6 @@ export function SessionScreen({ training, units, layout, onLeave }: { training: 
   const reload = useCallback(async () => {
     setSession(await training.sessionInProgress());
     setScoring(await training.scoring());
-    setDeload((await training.deload()).active);
   }, [training]);
   useEffect(() => {
     reload();
@@ -319,7 +317,7 @@ export function SessionScreen({ training, units, layout, onLeave }: { training: 
           <ExerciseBlock
             key={exerciseId}
             focus={layout === 'focus'}
-            deload={deload}
+            deload={!!session.session.deload}
             name={name(exerciseId)}
             training={training}
             exerciseId={exerciseId}
