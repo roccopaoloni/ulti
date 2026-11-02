@@ -38,6 +38,8 @@ export type SessionRecord = {
   deleted?: boolean;
   // The Routine Day it was started from; none for an unplanned Session.
   routineDayId?: string;
+  // Started while a Deload Week was on (ADR 0007); absent for a normal Session. It stays set even if that Deload Week is later cancelled.
+  deload?: boolean;
   // When this phone last changed it: the server keeps the latest write.
   updatedAt: string;
 };
@@ -291,6 +293,7 @@ export async function openTraining(userId: string, options: Options) {
       const day = routineDayId ? (await this.routine())?.days.find(({ id }) => id === routineDayId) : undefined;
       const now = options.now();
       const timeZone = options.timeZone();
+      const deload = (await this.deload()).active;
       const session: SessionRecord = {
         id: crypto.randomUUID(),
         startedAt: now.toISOString(),
@@ -298,6 +301,7 @@ export async function openTraining(userId: string, options: Options) {
         localDate: localDate(now, timeZone),
         finishedAt: null,
         ...(day && { routineDayId: day.id }),
+        ...(deload && { deload }),
         updatedAt: now.toISOString(),
       };
       const plan = day?.exercises ?? [];
@@ -415,10 +419,9 @@ export async function openTraining(userId: string, options: Options) {
     async lastSets(exerciseId: string) {
       const inProgress = await db.get('state', 'sessionInProgress');
       const sets = (await db.getAll('sets')).filter((set) => set.exerciseId === exerciseId && set.sessionId !== inProgress?.sessionId);
-      // Deload Week Sessions are skipped: their lighter Sets are not what the next Session builds on.
-      const deloadWeeks = await this.deloadWeeks();
+      // Deload Sessions are skipped: their lighter Sets are not what the next Session builds on.
       const sessions = (await Promise.all([...new Set(sets.map((set) => set.sessionId))].map((id) => db.get('sessions', id)))).filter(
-        (session) => !deloadWeeks.includes(weekStart(session!.localDate)),
+        (session) => !session!.deload,
       );
       if (sessions.length === 0) return [];
       const last = sessions.reduce((a, b) => (a!.startedAt > b!.startedAt ? a : b))!;
@@ -496,11 +499,12 @@ export async function openTraining(userId: string, options: Options) {
         profile,
         deloadWeeks: await this.deloadWeeks(),
         sessions: await Promise.all(
-          sessions.map(async ({ id, localDate }) => {
+          sessions.map(async ({ id, localDate, deload }) => {
             const sets = await db.getAllFromIndex('sets', 'bySession', id);
             sets.sort((a, b) => a.loggedAt.localeCompare(b.loggedAt));
             return {
               localDate,
+              ...(deload && { deload }),
               sets: sets.map((set) => ({
                 id: set.id,
                 exercise: set.exerciseId,
