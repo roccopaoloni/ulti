@@ -83,6 +83,11 @@ body,
   height: 100%;
   margin: 0;
 }
+/* Nothing makes the page itself wider than the phone: no sideways drag. Only chip rows swipe. */
+html,
+body {
+  overflow-x: clip;
+}
 body {
   background: var(--bg);
   color: var(--fg);
@@ -120,13 +125,20 @@ button {
   display: flex;
   flex-direction: column;
   padding-top: env(safe-area-inset-top, 0px);
-  padding-left: max(16px, env(safe-area-inset-left, 0px));
-  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  --gutter-left: max(16px, env(safe-area-inset-left, 0px));
+  --gutter-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-left: var(--gutter-left);
+  padding-right: var(--gutter-right);
 }
 .screen {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  /* A screen only scrolls up and down. It reaches into the gutters and pads itself back, so rows
+     that bleed 8px past the content (the Set rows) stay inside it instead of widening it. */
+  overflow-x: hidden;
+  margin-inline: calc(-1 * var(--gutter-left)) calc(-1 * var(--gutter-right));
+  padding-inline: var(--gutter-left) var(--gutter-right);
   overscroll-behavior: contain;
   padding-block: 20px 24px;
   display: flex;
@@ -249,6 +261,8 @@ button {
 .lead {
   font-size: 17px;
   max-width: 34ch;
+  /* A long email address on the code screen wraps instead of widening it. */
+  overflow-wrap: anywhere;
 }
 .error {
   color: var(--error);
@@ -1031,6 +1045,7 @@ input.cell:focus {
   font-weight: 600;
   font-size: 16px;
   text-align: left;
+  overflow-wrap: anywhere;
 }
 button.cell {
   color: var(--fg);
@@ -1139,7 +1154,7 @@ button.cell {
 /* A past Session: one tappable line. The dot is the Routine Day's colour, hollow when it has none. */
 .sess {
   display: grid;
-  grid-template-columns: 10px max-content minmax(0, 1fr) auto;
+  grid-template-columns: 10px fit-content(40%) minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
   width: 100%;
@@ -1167,6 +1182,7 @@ button.cell {
 }
 .sess-main {
   max-width: 100%;
+  min-width: 0;
 }
 .sess strong {
   display: block;
@@ -1188,6 +1204,9 @@ button.cell {
   gap: 4px;
   min-width: 0;
   max-width: 100%;
+}
+.sess-prs .pr.more {
+  flex: none;
 }
 .sess-prs .pr:first-child {
   min-width: 0;
@@ -1489,7 +1508,9 @@ button.cell {
   gap: 8px;
 }
 .rir-chip {
-  min-width: 44px;
+  /* 44px where there is room; at 320px the five chips share what the row has. */
+  flex: 0 1 44px;
+  min-width: 0;
   min-height: 44px;
   border-radius: 12px;
   border: 1px solid var(--line);
@@ -1569,11 +1590,16 @@ prefers-reduced-motion switches every animation off, so it stays off the badge. 
   align-items: center;
   gap: 16px;
 }
+.badge-lg > div {
+  min-width: 0;
+}
 .badge-lg .disp {
-  font-size: calc(38px * var(--ds));
+  /* Shrinks with the phone so a Tier name ("Diamante") fits beside the badge at 320px. */
+  font-size: min(calc(38px * var(--ds)), 8.5vw);
+  overflow-wrap: anywhere;
 }
 .badge-lg .rank-badge {
-  width: 132px;
+  width: clamp(96px, 30vw, 132px);
   height: auto;
   flex: none;
   margin: -8px -6px -8px -10px;
