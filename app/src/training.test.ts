@@ -1,6 +1,7 @@
 import 'fake-indexeddb/auto';
 import { labelSets } from '@ulti/rules';
 import { expect, test, vi } from 'vitest';
+import { openDB } from 'idb';
 import { openTraining, type Mutation } from './training.ts';
 
 // The sync endpoint, as the phone sees it. Offline, every request fails before it leaves the phone.
@@ -961,6 +962,77 @@ test('Deload Week Sessions are skipped when the next Session is pre-filled and w
   expect((await deload.lastSets('bench-press')).map((set) => set.weightKg)).toEqual([60, 60, 60]);
   expect(await deload.recommendation('bench-press', benchRange)).toEqual({ kind: 'goHeavier', weightKg: 62.5, reps: 8, incrementKg: 2.5 });
   deload.close();
+});
+
+test('a Session started in a Deload Week is saved as a Deload Session, offline too, and one started outside is not', async () => {
+  const network = server();
+  network.offline = true;
+  const phone = anasPhone(network);
+  const before = await phone.open();
+  const normal = await before.startSession();
+  before.close();
+
+  const training = await phone.open(Date.UTC(2026, 9, 26, 21, 5));
+  expect(await training.startDeload()).toBe(true);
+  const light = await training.startSession();
+
+  expect(light.deload).toBe(true);
+  expect(normal.deload).toBeUndefined();
+  network.offline = false;
+  phone.connectivity.dispatchEvent(new Event('online'));
+  await vi.waitFor(() => expect(network.batches.length).toBeGreaterThan(0));
+  const sent = network.batches.flat().flatMap((m) => (m.kind === 'saveSession' ? [[m.session.id, m.session.deload]] : []));
+  expect(sent).toEqual(expect.arrayContaining([[normal.id, undefined], [light.id, true]]));
+  training.close();
+});
+
+test('a Deload Session stays one when its Deload Week is no longer accepted: it still qualifies with three Working Sets and pre-fill and go heavier still skip it', async () => {
+  const network = server();
+  network.offline = true;
+  const phone = anasPhone(network);
+  const regular = await phone.open();
+  await regular.saveExercises(benchCatalog);
+  await regular.setProfile('weeklyTarget', 2);
+  await benchSession(regular, [[60, 12], [60, 12], [60, 12], [60, 12], [60, 12], [60, 12]]);
+  regular.close();
+
+  const training = await phone.open(Date.UTC(2026, 9, 26, 21, 5));
+  await training.startDeload();
+  await benchSession(training, [[54, 12], [54, 12], [54, 12]]);
+  // The week's acceptance is replaced by a later dismissal.
+  await training.saveDeloadsFromServer([{ week: '2026-10-26', origin: 'self', status: 'dismissed', updatedAt: '2099-01-01T00:00:00.000Z' }]);
+  expect((await training.deload()).active).toBe(false);
+
+  expect((await training.scoring()).consistency.map((week) => week.sessionDates)).toEqual([['2026-10-19'], ['2026-10-26']]);
+  expect((await training.lastSets('bench-press')).map((set) => set.weightKg)).toEqual([60, 60, 60, 60, 60, 60]);
+  expect(await training.recommendation('bench-press', benchRange)).toEqual({ kind: 'goHeavier', weightKg: 62.5, reps: 8, incrementKg: 2.5 });
+  training.close();
+});
+
+test('a phone upgraded with Sessions already logged in an accepted Deload Week marks them as Deload Sessions', async () => {
+  const phone = anasPhone(server());
+  // The phone as it was before the mark existed: version 8, Sessions without it.
+  const old = await openDB(`ulti-${phone.userId}`, 8, {
+    upgrade(db) {
+      for (const name of ['outbox', 'state', 'exercises', 'routines', 'increments', 'deloads', 'downloaded', 'routineDraft', 'noRoutine', 'bodyweightPrompt', 'profile', 'sessions', 'sets']) {
+        const keyPath = { exercises: 'id', routines: 'id', increments: 'exerciseId', deloads: 'week', sessions: 'id', sets: 'id', profile: ['field', 'effectiveFrom'] }[name as string];
+        const store = db.createObjectStore(name, keyPath ? { keyPath } : name === 'outbox' ? { autoIncrement: true } : undefined);
+        if (name === 'sets') store.createIndex('bySession', 'sessionId');
+      }
+    },
+  });
+  const session = (id: string, localDate: string) => ({ id, startedAt: `${localDate}T21:00:00.000Z`, timeZone: 'America/Argentina/Buenos_Aires', localDate, finishedAt: `${localDate}T22:00:00.000Z`, updatedAt: `${localDate}T22:00:00.000Z` });
+  const set = (id: string, sessionId: string, weightKg: number) => ({ id, sessionId, exerciseId: 'bench-press', weightKg, reps: 10, loggedAt: `2026-10-20T21:00:00.000Z`, updatedAt: `2026-10-20T21:00:00.000Z` });
+  await old.put('sessions', session('normal', '2026-10-12'));
+  await old.put('sessions', session('light', '2026-10-20'));
+  await old.put('sets', set('s1', 'normal', 60));
+  await old.put('sets', set('s2', 'light', 54));
+  await old.put('deloads', { week: '2026-10-19', origin: 'self', status: 'accepted', updatedAt: '2026-10-19T10:00:00.000Z' });
+  old.close();
+
+  const training = await phone.open(Date.UTC(2026, 9, 26, 21, 5));
+  expect((await training.lastSets('bench-press')).map((set) => set.weightKg)).toEqual([60]);
+  training.close();
 });
 
 test('the Deload Weeks the server holds reach a phone that is new to this user', async () => {

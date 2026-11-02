@@ -14,6 +14,8 @@ type SessionRecord = {
   finishedAt: string | null;
   deleted?: boolean;
   routineDayId?: string;
+  // Started while a Deload Week was on (ADR 0007); a phone from before this change sends none.
+  deload?: boolean;
   updatedAt: string;
 };
 type SetRecord = {
@@ -203,10 +205,10 @@ async function save(client: Client, userId: string, mutations: Mutation[], recei
     from jsonb_to_recordset(${JSON.stringify([...exercises.values()])}::jsonb) as e(id text, name text, muscle text)
     on conflict (id) do nothing`;
   await transaction.queryArray`
-    insert into public.sessions(user_id, id, started_at, time_zone, local_date, finished_at, routine_day_id, deleted, updated_at)
-    select ${userId}, s.id, s."startedAt", s."timeZone", s."localDate", s."finishedAt", s."routineDayId", coalesce(s.deleted, false), s."updatedAt"
+    insert into public.sessions(user_id, id, started_at, time_zone, local_date, finished_at, routine_day_id, deleted, deload, updated_at)
+    select ${userId}, s.id, s."startedAt", s."timeZone", s."localDate", s."finishedAt", s."routineDayId", coalesce(s.deleted, false), coalesce(s.deload, false), s."updatedAt"
     from jsonb_to_recordset(${JSON.stringify([...sessions.values()])}::jsonb) as s(
-      id uuid, "startedAt" timestamptz, "timeZone" text, "localDate" date, "finishedAt" timestamptz, "routineDayId" text, deleted boolean, "updatedAt" timestamptz
+      id uuid, "startedAt" timestamptz, "timeZone" text, "localDate" date, "finishedAt" timestamptz, "routineDayId" text, deleted boolean, deload boolean, "updatedAt" timestamptz
     )
     on conflict (user_id, id) do update set
       started_at = excluded.started_at,
@@ -215,6 +217,7 @@ async function save(client: Client, userId: string, mutations: Mutation[], recei
       finished_at = excluded.finished_at,
       routine_day_id = excluded.routine_day_id,
       deleted = excluded.deleted,
+      deload = sessions.deload or excluded.deload,
       updated_at = excluded.updated_at
     where sessions.updated_at < excluded.updated_at`;
   await transaction.queryArray`
