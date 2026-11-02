@@ -352,7 +352,7 @@ export function GroupsTab({ userId, training }: { userId: string; training: Trai
         </button>
       </div>
       <div className="g-head">
-        <h2 className="disp g-name">{group.name}</h2>
+        <h2 className="g-name">{group.name}</h2>
         <button type="button" className="btn-ghost" onClick={() => invite.current?.showModal()}>
           {g.invite}
         </button>
