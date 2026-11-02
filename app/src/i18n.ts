@@ -172,6 +172,8 @@ type Messages = {
     routineTitle: string;
     routineText: string;
     routineNow: string;
+    // `sender` is empty when the sender never set a name.
+    routineShared: (sender: string) => string;
     routineLater: string;
     routineNone: string;
   };
@@ -649,6 +651,7 @@ const en: Messages = {
     routineTitle: 'Your routine',
     routineText: 'With a routine we recommend what weight to use and track your progress. You can set it up or change it any time from Train.',
     routineNow: 'Set it up now',
+    routineShared: (sender) => `${sender || 'Someone'} shared this Routine with you`,
     routineLater: "I'll do it later",
     routineNone: "I don't follow a routine",
   },
@@ -1100,6 +1103,7 @@ const es: Messages = {
     routineTitle: 'Tu rutina',
     routineText: 'Con una rutina te recomendamos qué peso usar y seguimos tu progreso. Podés armarla o cambiarla cuando quieras desde Entrenar.',
     routineNow: 'Armarla ahora',
+    routineShared: (sender) => `${sender || 'Alguien'} te compartió esta rutina`,
     routineLater: 'Lo hago después',
     routineNone: 'No sigo una rutina',
   },

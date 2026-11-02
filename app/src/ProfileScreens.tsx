@@ -4,9 +4,11 @@ import { Field } from './AuthScreens.tsx';
 import { refreshVisibility, saveVisibility, useVisibility, type Visibility } from './groups.ts';
 import { useI18n, type Language } from './i18n.ts';
 import { Info } from './Info.tsx';
-import { navigate, routinePath } from './navigation.ts';
+import { navigate, paths, routineLinkPath, routinePath } from './navigation.ts';
+import { dropRoutineLink, routineFromLink, useKeptRoutineLink } from './routineLinkDraft.ts';
+import { Skeleton } from './Skeleton.tsx';
 import { setLanguage, setLayout, setUnits, today, useLayout, type Layout } from './profile.ts';
-import type { Profile, Training } from './training.ts';
+import type { Exercise, Profile, Training } from './training.ts';
 
 const sexes: Sex[] = ['male', 'female', 'unspecified'];
 const targets = [2, 3, 4, 5, 6];
@@ -119,26 +121,63 @@ async function saveBody(training: Training, current: Profile | null, draft: Draf
   if (draft.target !== valueInForce(current?.weeklyTarget ?? [], day)) await training.setProfile('weeklyTarget', draft.target);
 }
 
-// The last step of onboarding: the Routine, set up now, later, or never.
+// The last step of onboarding: the Routine, set up now, later, or never. A Routine Link kept from
+// before signing up is loaded as the draft by "now", so the editor opens with it filled in.
 function RoutineStep({ training, onDone }: { training: Training; onDone: () => void }) {
   const { t } = useI18n();
   const b = t.body;
+  const kept = useKeptRoutineLink();
+  const [catalog, setCatalog] = useState<Exercise[]>([]);
+  // A fresh phone has no catalog until the first download, and reading the link without it would
+  // drop every Exercise, so wait for it.
+  useEffect(() => {
+    if (!kept) return;
+    let timer: ReturnType<typeof setTimeout>;
+    const read = () =>
+      training.exercises().then((exercises) => {
+        setCatalog(exercises);
+        if (exercises.length === 0) timer = setTimeout(read, 500);
+      });
+    read();
+    return () => clearTimeout(timer);
+  }, [training, kept]);
+  const shared = kept && catalog.length ? routineFromLink(kept, catalog) : null;
+  useEffect(() => {
+    if (kept && catalog.length && !shared) dropRoutineLink(); // unreadable: onboarding as usual
+  }, [kept, catalog, shared]);
+  // Leaving drops the link, and the link's own screen would otherwise reopen after onboarding.
+  const leave = (path: string) => {
+    dropRoutineLink();
+    navigate(path, location.pathname === routineLinkPath);
+    onDone();
+  };
+  if (kept && !catalog.length) return <Skeleton card bars={['30%', '100%', '60%']} />;
   return (
     <main className="screen">
       <h1 className="disp title">{b.routineTitle}</h1>
       <section className="card form">
+        {shared && (
+          <>
+            <p className="lead">{b.routineShared(shared.sender)}</p>
+            <ul className="muted">
+              {shared.draft.map((day) => (
+                <li key={day.id}>{day.name}</li>
+              ))}
+            </ul>
+          </>
+        )}
         <p className="muted">{b.routineText}</p>
         <button
           type="button"
           className="btn-primary"
-          onClick={() => {
-            navigate(routinePath);
-            onDone();
+          onClick={async () => {
+            if (shared) await training.saveRoutineDraft(shared.draft);
+            leave(routinePath);
           }}
         >
-          {b.routineNow}
+          {shared ? t.routineLink.use : b.routineNow}
         </button>
-        <button type="button" className="btn-ghost" onClick={onDone}>
+        <button type="button" className="btn-ghost" onClick={() => leave(paths.home)}>
           {b.routineLater}
         </button>
         <button
@@ -146,7 +185,7 @@ function RoutineStep({ training, onDone }: { training: Training; onDone: () => v
           className="btn-link"
           onClick={async () => {
             await training.setFollowsNoRoutine(true);
-            onDone();
+            leave(paths.home);
           }}
         >
           {b.routineNone}
