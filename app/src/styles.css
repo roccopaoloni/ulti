@@ -1371,6 +1371,10 @@ button.cell {
   padding: 0;
   font-size: 12px;
 }
+/* On the Deload Week badge row, Cancel sits centred on the line, not at its top. */
+.go-heavier .btn-link.inline {
+  align-self: center;
+}
 .badge {
   padding: 4px 10px;
   border-radius: 999px;

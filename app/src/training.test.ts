@@ -1042,6 +1042,24 @@ test('cancelling a Deload Week offline is stored and synced as a dismissal, the 
   training.close();
 });
 
+test('a Deload Week the lifter started and cancelled leaves no trace: a suggestion in a later week is still offered', async () => {
+  const network = server();
+  network.offline = true;
+  const phone = anasPhone(network);
+  const first = await phone.open();
+  await benchSession(first, [[60, 10], [60, 10]]);
+  first.close();
+
+  const mistap = await phone.open(Date.UTC(2026, 11, 7, 21, 5));
+  await mistap.startDeload();
+  await mistap.cancelDeload();
+  mistap.close();
+
+  const later = await phone.open(Date.UTC(2026, 11, 14, 21, 5));
+  expect((await later.deload()).suggestion).toBe('time');
+  later.close();
+});
+
 test('a suggested Deload Week that is accepted and then cancelled is not suggested again that week', async () => {
   const network = server();
   network.offline = true;

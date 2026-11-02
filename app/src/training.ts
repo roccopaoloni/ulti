@@ -665,7 +665,8 @@ export async function openTraining(userId: string, options: Options) {
           rule: { repMin: planned.repMin, repMax: planned.repMax, incrementKg: exercise.incrementKg },
         });
       }
-      const dismissed = (await db.getAll('deloads')).filter(({ status }) => status === 'dismissed').map(({ week }) => week);
+      // Only dismissed suggestions keep it quiet: a Deload Week the lifter started and cancelled leaves no trace.
+      const dismissed = (await db.getAll('deloads')).filter(({ status, origin }) => status === 'dismissed' && origin === 'suggested').map(({ week }) => week);
       return {
         active: history.deloadWeeks!.includes(weekStart(today)),
         canStart: canStartDeload(history, today),
