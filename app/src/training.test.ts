@@ -1009,6 +1009,55 @@ test('a Deload Session stays one when its Deload Week is no longer accepted: it 
   training.close();
 });
 
+test('cancelling a Deload Week offline is stored and synced as a dismissal, the next Session is normal and pre-fills from the last normal Session, and the Deload Session stays', async () => {
+  const network = server();
+  network.offline = true;
+  const phone = anasPhone(network);
+  const regular = await phone.open();
+  await regular.saveExercises(benchCatalog);
+  await regular.setProfile('weeklyTarget', 2);
+  await benchSession(regular, [[60, 12], [60, 12], [60, 12]]);
+  regular.close();
+
+  const training = await phone.open(Date.UTC(2026, 9, 26, 21, 5));
+  await training.startDeload();
+  await benchSession(training, [[54, 12], [54, 12], [54, 12]]);
+  expect((await training.deload()).active).toBe(true);
+
+  await training.cancelDeload();
+  expect((await training.deload()).active).toBe(false);
+  const next = await training.startSession();
+  expect(next.deload).toBeUndefined();
+  expect((await training.lastSets('bench-press')).map((set) => set.weightKg)).toEqual([60, 60, 60]);
+  expect((await training.scoring()).consistency.map((week) => week.sessionDates)).toContainEqual(['2026-10-26']);
+
+  network.offline = false;
+  phone.connectivity.dispatchEvent(new Event('online'));
+  await vi.waitFor(() => expect(network.batches.length).toBeGreaterThan(0));
+  const deloads = network.batches.flat().flatMap((m) => (m.kind === 'saveDeload' ? [m.deload] : []));
+  expect(deloads.map(({ week, origin, status }) => ({ week, origin, status }))).toEqual([
+    { week: '2026-10-26', origin: 'self', status: 'accepted' },
+    { week: '2026-10-26', origin: 'self', status: 'dismissed' },
+  ]);
+  training.close();
+});
+
+test('a suggested Deload Week that is accepted and then cancelled is not suggested again that week', async () => {
+  const network = server();
+  network.offline = true;
+  const phone = anasPhone(network);
+  const first = await phone.open();
+  await benchSession(first, [[60, 10], [60, 10]]);
+  first.close();
+
+  const training = await phone.open(Date.UTC(2026, 11, 14, 21, 5));
+  expect((await training.deload()).suggestion).toBe('time');
+  await training.answerDeload(true);
+  await training.cancelDeload();
+  expect(await training.deload()).toMatchObject({ active: false, suggestion: undefined });
+  training.close();
+});
+
 test('a phone upgraded with Sessions already logged in an accepted Deload Week marks them as Deload Sessions', async () => {
   const phone = anasPhone(server());
   // The phone as it was before the mark existed: version 8, Sessions without it.

@@ -700,6 +700,15 @@ export async function openTraining(userId: string, options: Options) {
       await write({ id: crypto.randomUUID(), kind: 'saveDeload', deload });
     },
 
+    // Cancels this week's Deload Week by writing it as dismissed (ADR 0007), keeping who started it.
+    // The Sessions already logged stay Deload Sessions; a dismissed week is not suggested again.
+    async cancelDeload() {
+      const week = weekStart(localDate(options.now(), options.timeZone()));
+      const kept = await db.get('deloads', week);
+      if (kept?.status !== 'accepted') return;
+      await write({ id: crypto.randomUUID(), kind: 'saveDeload', deload: { ...kept, status: 'dismissed', updatedAt: stamp() } });
+    },
+
     // Keeps the Deload Weeks the server holds, as on a phone that is new to this user, unless the
     // phone has a later write of one.
     async saveDeloadsFromServer(deloads: DeloadRecord[]) {

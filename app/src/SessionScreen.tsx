@@ -100,6 +100,7 @@ export function StartSession({ logging, training }: { logging: ReturnType<typeof
   const d = t.deload;
   const noRoutine = useRef<HTMLDialogElement>(null);
   const extra = useRef<HTMLDialogElement>(null);
+  const cancelDeload = useRef<HTMLDialogElement>(null);
   // With the Weekly Target met, a new Session is an extra one: it never moves the Routine's next
   // Day, so it starts unplanned, after the lifter confirms.
   // With no Routine, Start asks first, unless the lifter said they don't follow one. Read when
@@ -117,7 +118,10 @@ export function StartSession({ logging, training }: { logging: ReturnType<typeof
     <>
       {deload?.active && (
         <p className="go-heavier">
-          <span className="badge">{d.active}</span> <Info term="deload" />
+          <span className="badge">{d.active}</span> <Info term="deload" />{' '}
+          <button type="button" className="btn-link inline" onClick={() => cancelDeload.current?.showModal()}>
+            {d.cancel}
+          </button>
         </p>
       )}
       {deload?.suggestion && (
@@ -168,6 +172,24 @@ export function StartSession({ logging, training }: { logging: ReturnType<typeof
           }}
         >
           {s.noRoutineNever}
+        </button>
+      </Sheet>
+      <Sheet dialog={cancelDeload} label={d.cancelTitle}>
+        <h2 className="disp sheet-title">{d.cancelTitle}</h2>
+        <p className="muted">{d.cancelText}</p>
+        <button
+          type="button"
+          className="btn-primary"
+          onClick={async () => {
+            cancelDeload.current?.close();
+            await training.cancelDeload();
+            setDeload(await training.deload());
+          }}
+        >
+          {d.cancelConfirm}
+        </button>
+        <button type="button" className="btn-ghost" onClick={() => cancelDeload.current?.close()}>
+          {d.cancelKeep}
         </button>
       </Sheet>
       <Sheet dialog={extra} label={s.extraTitle}>
