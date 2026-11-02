@@ -67,6 +67,8 @@ Four bottom tabs:
 
 A Session in progress takes over the whole screen; when the user leaves it, a persistent "Session in progress" bar on every tab returns to it.
 
+Every screen fits the phone's width, from 320px up: it scrolls up and down, never sideways. Only a row of chips may swipe sideways, inside itself. Pinch-zoom stays on.
+
 ## Logging a Session
 
 Each user picks a **logging layout** in Profile; both work on the same Session:
@@ -94,6 +96,8 @@ In order:
 2. A large "Start Session" button suggesting the next Session of the Routine, including any Deload Week suggestion.
 3. One race card per Group with the user's weekly position ("2nd of 5, 40 pts behind Ana").
 4. The "since your last visit" summary appears as a card at the top when there is news.
+
+During a Deload Week, Home shows a "Deload Week" badge with a **Cancel** link. It asks "Back to a normal week?" ("Your next Sessions use your normal weights. The Sessions you already logged stay as Deload Sessions.", with **Back to normal** / **Keep deloading**). Starting a Deload Week the week after another one asks first: "You deloaded last week. Deload again this week?" (**Start Deload Week** / **Not now**). See [ADR 0007](adr/0007-deload-weeks-unlimited-and-cancellable.md).
 
 ## Group board
 
