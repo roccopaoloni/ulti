@@ -378,8 +378,11 @@ export function SessionScreen({ training, units, layout, onLeave }: { training: 
               try {
                 set = await training.logSet(sessionId, exerciseId, weightKg, reps, label);
               } catch (error) {
-                if (implausible.refuse(error)) return null;
-                throw error;
+                // A jump waits here for the lifter's answer: "I lifted it" saves the Set, "Fix it" nothing.
+                const answer = await implausible.refuse(error);
+                if (answer === null) throw error;
+                if (answer === 'refused') return null;
+                set = await training.logSet(sessionId, exerciseId, weightKg, reps, label, { confirmedJump: true });
               }
               const record = (await training.scoring()).events.find((event) => event.setId === set.id);
               if (record) {
