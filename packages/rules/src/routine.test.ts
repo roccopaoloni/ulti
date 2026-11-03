@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { completeRoutine, dayColour, moveItem, nextDayColour, plannedRows, suggestedRoutineDay, suggestedWeeklyTarget, withDayColours } from './index.ts';
+import { completeRoutine, dayColour, moveItem, nextDayColour, plannedRows, routineDayChoices, suggestedRoutineDay, suggestedWeeklyTarget, withDayColours, type RoutineDay } from './index.ts';
 
 const blank = (ids: string[]) => ids.map((id) => ({ id, name: id, exercises: [] }));
 
@@ -78,6 +78,30 @@ test('with Days done in order, it matches the rotation: the Day after the last o
 
 test('Sessions from a Day no longer in the Routine are ignored', () => {
   expect(suggestedRoutineDay(days, [at('arms', '2026-10-09'), at('push', '2026-10-01')])).toBe('pull');
+});
+
+const planned = (id: string, exercises: number, colour?: number): RoutineDay => ({
+  id,
+  name: id,
+  colour,
+  exercises: Array.from({ length: exercises }, () => ({ exerciseId: 'x', sets: 3, repMin: 8, repMax: 12 })),
+});
+const on = (dayId: string, startedAt: string) => ({ dayId, startedAt, localDate: startedAt.slice(0, 10) });
+
+test('the Days to pick from start with the Suggested Day, then follow in Routine order', () => {
+  const routine = [planned('push', 2), planned('pull', 3), planned('legs', 1), planned('arms', 1)];
+  const choices = routineDayChoices(routine, [on('push', '2026-10-03T08:00:00Z'), on('pull', '2026-10-01T08:00:00Z'), on('legs', '2026-10-02T08:00:00Z'), on('arms', '2026-10-04T08:00:00Z')]);
+  expect(choices.map((choice) => choice.day.id)).toEqual(['pull', 'push', 'legs', 'arms']);
+  expect(choices.map((choice) => choice.suggested)).toEqual([true, false, false, false]);
+});
+
+test("each Day to pick shows its colour, its Exercise count and the date of the latest Session started from it, or none if never done", () => {
+  const routine = [planned('push', 2, 3), planned('pull', 3)];
+  const choices = routineDayChoices(routine, [on('push', '2026-10-01T08:00:00Z'), on('push', '2026-10-05T08:00:00Z'), on('arms', '2026-10-09T08:00:00Z')]);
+  expect(choices.map(({ day, colour, exerciseCount, lastDone }) => [day.id, colour, exerciseCount, lastDone])).toEqual([
+    ['pull', 1, 3, null],
+    ['push', 3, 2, '2026-10-05'],
+  ]);
 });
 
 test('a Routine Day planning 3 Sets shows 3 rows, the ones past the last Session repeating its last Set', () => {
