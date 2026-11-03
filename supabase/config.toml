@@ -60,6 +60,8 @@ max_client_conn = 100
 # Where the database's scheduled jobs reach the Edge Functions. CI sets ULTI_FUNCTIONS_URL to the
 # local stack's API gateway, and when it deploys, to the hosted project's functions.
 functions_url = "env(ULTI_FUNCTIONS_URL)"
+# The same shared secret, which the retry job sends in the x-recompute-secret header.
+recompute_secret = "env(ULTI_RECOMPUTE_SECRET)"
 
 [db.migrations]
 # If disabled, migrations will be skipped during a db push or reset.
@@ -407,15 +409,17 @@ inspector_port = 8083
 # The Deno major version to use.
 deno_version = 2
 
-# [edge_runtime.secrets]
-# secret_key = "env(SECRET_VALUE)"
+[edge_runtime.secrets]
+# The shared secret the database's retry job sends to the recompute function. CI sets
+# ULTI_RECOMPUTE_SECRET for the local stack; the deploy job sets it on the hosted project.
+RECOMPUTE_SECRET = "env(ULTI_RECOMPUTE_SECRET)"
 
 # Public: the uptime monitor calls it with no key.
 [functions.health]
 verify_jwt = false
 
-# Public: the database's retry job calls it with no key. It takes nothing in and only recomputes
-# users already marked dirty, which is always safe to repeat.
+# Not public: it has no JWT check, but the function itself answers 401 unless the request carries
+# the shared secret, which only the database's retry job has (Vault: recompute_secret).
 [functions.recompute]
 verify_jwt = false
 
