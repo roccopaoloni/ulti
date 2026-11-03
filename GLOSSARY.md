@@ -68,6 +68,11 @@ _Rioplatense_: PR
 A lifter's first Sessions with an Exercise, which establish their starting best and cannot produce Personal Records.
 _Rioplatense_: Calibración
 
+**Implausible Set**:
+A Set whose numbers are beyond what any human has lifted, or a far bigger jump over the lifter's best than training produces. Usually a typo, sometimes a lie.
+_Avoid_: Cheat, fake
+_Rioplatense_: Serie imposible
+
 **Strength Level**:
 How advanced a lifter is on an Exercise compared with other lifters of the same sex and bodyweight.
 _Avoid_: Experience, training age

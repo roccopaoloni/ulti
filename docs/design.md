@@ -88,6 +88,13 @@ List layout:
 - A dumbbell Exercise says its weight is per dumbbell, on its rows and its keypad. The weight is stored and scored per dumbbell, so no numbers change.
 - One-handed use: large tap targets, primary actions within thumb reach, and the screen stays awake during a Session.
 
+### Implausible Sets
+
+Saving a Set (✓, Focus's Done, or editing a Set in a Session's detail) first checks it for an Implausible Set, on the phone and offline. Custom Exercises are never checked.
+
+- **Beyond any human.** Each catalog Exercise has a ceiling in kg: its all-time record, equipped lifts included, or a generous hand-picked number where no record exists. A Set whose e1RM (bodyweight plus added weight for a bodyweight Exercise, or the added weight alone when no bodyweight is logged) is over the ceiling is never saved, Warm-up Sets included. The sheet says **"No me caminés, no estás levantando eso."** / *"¿Se te fue el dedo? Revisá el peso y las repes."* (EN: **"Nice try. Nobody lifts that."** / *"Fat-fingered it? Check the weight and reps."*) with one button, **Corregir** / **Fix it**, that returns to the numbers. The server scores any such Set that reaches it (from an old or modified app) as if it weren't there.
+- **Too big a jump.** Only Sets that could be a Personal Record are checked: catalog Exercise, Working Set, 1–12 reps, past Calibration and not a Deload Session. One whose e1RM is more than the limit above the lifter's best going into the last 28 days (or their Calibration best, if they're newer than that) is a jump. The limit depends on the Strength Level of that best: +40% below the 25th percentile, +20% from the 25th to the 75th, +10% above the 75th; a lifter without sex or bodyweight counts as the 50th. The sheet says **"¿Ah, sí? ¿{X}% más en un mes?"** / *"Si lo levantaste, guardala. No suma puntos, pero queda como tu nueva mejor marca."* (EN: **"Oh really? {X}% up in a month?"** / *"If you lifted it, save it. It won't earn Points, but it becomes your new best."*) with **Corregir** / **Sí, lo levanté** (EN: **Fix it** / **I lifted it**). A saved jump earns no Progress Points but becomes the lifter's best and the baseline for later checks, as Calibration does, so an honest returning lifter is asked once. The rule is the same on the server whether or not anyone tapped the override, so nothing extra is stored.
+
 ## Home
 
 In order:
