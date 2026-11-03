@@ -43,11 +43,11 @@ export type TrainingHistory = {
 };
 
 // Bump when a change to the rules changes the events they derive, so stored events show which rules made them.
-export const RULES_VERSION = 2;
+export const RULES_VERSION = 3;
 
 // A lifter's first Sessions with an Exercise only set their starting best (spec: Calibration).
 export const CALIBRATION_SESSIONS = 2;
-// Only Sets of 1–12 reps can be Personal Records, so a switch to high-rep Sets can't fake one.
+// Sets of 1–12 reps are Personal Records by e1RM; above that e1RM overestimates, so Sets of more reps can only be rep PRs.
 export const MAX_RECORD_REPS = 12;
 // Progress Points per 1% of e1RM gained, before the Strength Level weight, and the most that any
 // single Personal Record earns. Tuned with the simulation (#31): 22 sets a typical lifter's Progress to 40% of their Points; 150 is hit by a 7% gain at the 50th percentile.
@@ -174,6 +174,8 @@ export function deriveScoringEvents(history: TrainingHistory): ScoringEvent[] {
 function derivePersonalRecords(history: TrainingHistory): PersonalRecord[] {
   const events: PersonalRecord[] = [];
   const bests = new Map<string, number>();
+  // The earlier Sets of more than 12 reps per Exercise: the load they were lifted at and their reps.
+  const repSets = new Map<string, { load: number; reps: number }[]>();
   const sessionsDone = new Map<string, number>();
   for (const session of regularSessions(history)) {
     // Only Working Sets reach scoring (spec: Warm-up detection), and Custom Exercises never score.
@@ -181,51 +183,75 @@ function derivePersonalRecords(history: TrainingHistory): PersonalRecord[] {
     for (const exercise of new Set(working.map((set) => set.exercise))) {
       const calibrating = (sessionsDone.get(exercise) ?? 0) < CALIBRATION_SESSIONS;
       sessionsDone.set(exercise, (sessionsDone.get(exercise) ?? 0) + 1);
-      // At most one Personal Record per Exercise per Session, for its best eligible Set, so a jump
-      // split across Sets can't dodge the per-record cap.
-      const eligible = working.filter((s) => s.exercise === exercise && s.reps <= MAX_RECORD_REPS);
-      if (eligible.length === 0) continue;
+      // At most one Personal Record of each kind per Exercise per Session, for its best eligible
+      // Set, so a jump split across Sets can't dodge the per-record cap.
+      const sets = working.filter((s) => s.exercise === exercise);
       // A bodyweight Exercise is lifted at the lifter's recent average bodyweight plus the added
       // weight, so a short swing can't create or erase a record. Without a check-in it can't be scored.
-      const averageKg = eligible[0].bodyweight ? averageBodyweight(history.profile?.bodyweightKg ?? [], session.localDate) : null;
+      const averageKg = sets[0].bodyweight ? averageBodyweight(history.profile?.bodyweightKg ?? [], session.localDate) : null;
       if (averageKg === undefined) continue;
       const load = (s: Set) => s.weightKg + (averageKg ?? 0);
-      const set = eligible.reduce((top, s) => (e1rm(load(s), s.reps) > e1rm(load(top), top.reps) ? s : top));
-      const value = e1rm(load(set), set.reps);
-      const best = bests.get(exercise) ?? 0;
-      if (value <= best) continue;
-      bests.set(exercise, value);
-      if (calibrating || best === 0) continue;
-      const gain = (value / best - 1) * 100;
       const sex = valueInForce(history.profile?.sex ?? [], session.localDate) ?? 'unspecified';
       const bodyweightKg = averageKg ?? valueInForce(history.profile?.bodyweightKg ?? [], session.localDate) ?? null;
-      let percentile = DEFAULT_PERCENTILE;
-      if (bodyweightKg !== null && !BODYWEIGHT_BENCHMARKS.has(exercise)) {
-        // A Benchmark Lift is measured by its own e1RM; any other Exercise by the average of the
-        // lifter's levels on the Benchmark Lifts they do, each at their best e1RM so far.
-        const own = strengthLevelPercentile(exercise, value, sex, bodyweightKg);
-        const levels = [...bests]
-          .filter(([lift]) => !BODYWEIGHT_BENCHMARKS.has(lift))
-          .flatMap(([lift, liftBest]) => strengthLevelPercentile(lift, liftBest, sex, bodyweightKg) ?? []);
-        percentile = own ?? (levels.length === 0 ? DEFAULT_PERCENTILE : levels.reduce((a, b) => a + b, 0) / levels.length);
+      const record = (set: Set, value: number, previous: number, levelE1rm: number | undefined) => {
+        const gain = (value / previous - 1) * 100;
+        let percentile = DEFAULT_PERCENTILE;
+        if (bodyweightKg !== null && !BODYWEIGHT_BENCHMARKS.has(exercise)) {
+          // A Benchmark Lift is measured by its own e1RM; any other Exercise by the average of the
+          // lifter's levels on the Benchmark Lifts they do, each at their best e1RM so far.
+          const own = levelE1rm === undefined ? undefined : strengthLevelPercentile(exercise, levelE1rm, sex, bodyweightKg);
+          const levels = [...bests]
+            .filter(([lift]) => !BODYWEIGHT_BENCHMARKS.has(lift))
+            .flatMap(([lift, liftBest]) => strengthLevelPercentile(lift, liftBest, sex, bodyweightKg) ?? []);
+          percentile = own ?? (levels.length === 0 ? DEFAULT_PERCENTILE : levels.reduce((a, b) => a + b, 0) / levels.length);
+        }
+        const weight = STRENGTH_WEIGHT_RANGE ** ((percentile - 50) / WEIGHT_SPAN_PERCENTILES);
+        const progressPoints = Math.min(MAX_POINTS_PER_RECORD, Math.round(gain * POINTS_PER_PERCENT_GAIN * weight));
+        events.push({
+          kind: 'personal-record',
+          id: `${history.userId}:personal-record:${set.id}`,
+          exercise,
+          setId: set.id,
+          localDate: session.localDate,
+          previousE1rm: previous,
+          newE1rm: value,
+          percentGain: Math.round(gain * 100) / 100,
+          strengthLevelPercentile: Math.round(percentile * 100) / 100,
+          bodyweightKg,
+          rulesVersion: RULES_VERSION,
+          progressPoints,
+          points: progressModePoints(progressPoints),
+        });
+      };
+      const best = bests.get(exercise) ?? 0;
+
+      // Sets of 1–12 reps: a new all-time best e1RM.
+      const eligible = sets.filter((s) => s.reps <= MAX_RECORD_REPS);
+      if (eligible.length > 0) {
+        const set = eligible.reduce((top, s) => (e1rm(load(s), s.reps) > e1rm(load(top), top.reps) ? s : top));
+        const value = e1rm(load(set), set.reps);
+        if (value > best) {
+          bests.set(exercise, value);
+          if (!calibrating && best !== 0) record(set, value, best, value);
+        }
       }
-      const weight = STRENGTH_WEIGHT_RANGE ** ((percentile - 50) / WEIGHT_SPAN_PERCENTILES);
-      const progressPoints = Math.min(MAX_POINTS_PER_RECORD, Math.round(gain * POINTS_PER_PERCENT_GAIN * weight));
-      events.push({
-        kind: 'personal-record',
-        id: `${history.userId}:personal-record:${set.id}`,
-        exercise,
-        setId: set.id,
-        localDate: session.localDate,
-        previousE1rm: best,
-        newE1rm: value,
-        percentGain: Math.round(gain * 100) / 100,
-        strengthLevelPercentile: Math.round(percentile * 100) / 100,
-        bodyweightKg,
-        rulesVersion: RULES_VERSION,
-        progressPoints,
-        points: progressModePoints(progressPoints),
+
+      // Sets of more than 12 reps are rep PRs: as heavy as any earlier such Set, and more reps than
+      // any earlier one at that weight or heavier. They earn by e1RM gain over the earlier high-rep
+      // best but never touch the 1–12 rep best.
+      const earlier = repSets.get(exercise) ?? [];
+      const high = sets.filter((s) => s.reps > MAX_RECORD_REPS);
+      const earlierBest = Math.max(0, ...earlier.map((e) => e1rm(e.load, e.reps)));
+      const heaviest = Math.max(0, ...earlier.map((e) => e.load));
+      const beats = high.filter((s) => {
+        const reps = Math.max(0, ...earlier.filter((e) => e.load >= load(s)).map((e) => e.reps));
+        return earlier.length > 0 && load(s) >= heaviest && s.reps > reps && e1rm(load(s), s.reps) > earlierBest;
       });
+      if (beats.length > 0 && !calibrating) {
+        const set = beats.reduce((top, s) => (e1rm(load(s), s.reps) > e1rm(load(top), top.reps) ? s : top));
+        record(set, e1rm(load(set), set.reps), earlierBest, bests.get(exercise));
+      }
+      repSets.set(exercise, [...earlier, ...high.map((s) => ({ load: load(s), reps: s.reps }))]);
     }
   }
   return events;
