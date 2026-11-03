@@ -19,6 +19,9 @@ Small things for the owner that didn't block a merge: decisions you may want to 
 - **Jump limit boundaries and buttons** (#148, PR #154). The bands are below the 25th, the 25th to 75th inclusive, and above the 75th, and exactly +20% passes. The 28 days count back from the Set's own Session date. On the sheet, "I lifted it" is the pink primary button and "Fix it" the outlined one. Escape or tapping outside counts as "Fix it".
 - **Bodyweight Exercises always get the +20% jump limit** (#148, PR #154): their Strength Level is taken as the 50th percentile.
 
+- **"Last: …" shows a weekday within 7 days, else a short date** (#157, PR #159). "Last: Thu" or "Last: Oct 22" ("Última: jue" / "22 oct"). A Day done today reads as today's weekday, not "Today". The cutoff uses the phone's local date, not the app's time zone.
+- **An extra session with a one-Day Routine starts that Day directly** (#157, PR #159). The ticket didn't say. With several Days, an extra session opens the sheet after the confirmation; with no Routine it starts unplanned, as before.
+
 ## Check after deploy
 
 - **Done: the Supabase token now writes Edge Function secrets** (#146, PR #150, `docs/setup.md` §16). The deploys of #150 and #152 failed without it. After the owner widened the token, the deploy of #154 passed and brought the backend up to date with main.
@@ -30,12 +33,17 @@ Small things for the owner that didn't block a merge: decisions you may want to 
 - **The "Nobody lifts that" sheet** (#147, PR #152). Only the List layout was screenshotted. Focus's Done and the Session detail edit sheet, where it opens over the edit sheet, run the same code but were never seen. Try a 1000 kg squat in each.
 - **The "Oh really? X% up in a month?" sheet** (#148, PR #154). It was only seen in headless Chromium, in the List layout. Never seen live: Focus's Done, the Session detail edit, where it opens over the edit sheet and "I lifted it" then saves the edit, and iOS. Try a Set 25% over your best in each.
 
+- **The "Which session today?" sheet** (#157, PR #159). It was only seen in headless Edge, from a stub harness. Never seen live: a signed-in Home, the slide-up animation with the 78dvh cap on iOS Safari, and the list scrolling with the hairlines. Try it with 10+ Days.
+
 ## Robustness nits
 
 - **The phone and the server use different bodyweights for the ceiling** (#147, PR #152). The phone checks bodyweight Exercises against the latest logged bodyweight, while the server uses the 28-day average. A bodyweight Set right at the ceiling can save on the phone and then be dropped by the server.
 - **A refused Set forgets its remembered label** (#147, PR #152). `ExerciseBlock` clears `unlogged` before calling `onLog`, so when a Set that was un-logged and re-typed is refused, its Warm-up/Working choice is lost. #148's implementer was asked to fix it if it's trivial.
 - **The Calibration hint stays up at the start of the third Session** (seen in #148's screenshots, from before it). `inCalibration` counts the Session in progress only once it holds a Working Set, so "Your first sessions set your baseline" shows on the third Session until its first Set is logged.
 - **The retry job's HTTP call times out after 5 s while the recompute keeps going** (#146 era, seen Nov 3). When every user is dirty after a rescore migration, `recompute` takes more than 5 s, so `net._http_response` logs "Timeout of 5000 ms reached". The function still finishes and the users are cleared. Harmless now; as users grow, pass a larger `timeout_milliseconds` to `net.http_post` in the cron job, or recompute in batches.
+
+- **The i18n key behind "Suggested: X" is still named `startNext`** (#156, PR #158). It works; only the name is stale.
+- **The #156 PR posted no Home screenshots** (PR #158). The change was one line of copy, and #159's screenshots show the new hint.
 
 ## Test gaps
 
@@ -45,6 +53,9 @@ Small things for the owner that didn't block a merge: decisions you may want to 
 
 - **Rep PRs on bodyweight Exercises and the Strength Level fallback are untested** (#149, PR #151).
 - **No server integration test for jumps** (#148, PR #154). The server calls the same `deriveScoringEvents`, so they're covered by the rules tests. The sheet's wait-for-an-answer logic has no test, since v1 has no UI tests.
+
+- **`lastDoneLabel` has its own unit test outside the three seams** (#157, PR #159): `app/src/lastDone.test.ts`, a pure-function test. Keep or drop it.
+- **The extra session's sheet path has no new test** (#157, PR #159). Consistency points for extra sessions didn't change, and no UI tests exist in v1.
 
 ## CI flakes
 
