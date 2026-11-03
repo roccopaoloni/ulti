@@ -44,7 +44,7 @@ export type TrainingHistory = {
 };
 
 // Bump when a change to the rules changes the events they derive, so stored events show which rules made them.
-export const RULES_VERSION = 4;
+export const RULES_VERSION = 5;
 
 // A lifter's first Sessions with an Exercise only set their starting best (spec: Calibration).
 export const CALIBRATION_SESSIONS = 2;
@@ -198,7 +198,86 @@ export function deriveScoringEvents(history: TrainingHistory): ScoringEvent[] {
   return [...derivePersonalRecords(history), ...deriveConsistency(history)];
 }
 
+// The percentile that weights a Personal Record on an Exercise, and sets the limit of a jump. A
+// Benchmark Lift is measured by its own e1RM; any other Exercise by the average of the lifter's
+// levels on the Benchmark Lifts they do, each at their best e1RM so far (`bests`). Without a
+// bodyweight, or on a bodyweight Benchmark Lift, it is the 50th percentile.
+function weightingPercentile(
+  exercise: string,
+  levelE1rm: number | undefined,
+  bests: ReadonlyMap<string, number>,
+  sex: Sex,
+  bodyweightKg: number | null,
+): number {
+  if (bodyweightKg === null || BODYWEIGHT_BENCHMARKS.has(exercise)) return DEFAULT_PERCENTILE;
+  const own = levelE1rm === undefined ? undefined : strengthLevelPercentile(exercise, levelE1rm, sex, bodyweightKg);
+  const levels = [...bests]
+    .filter(([lift]) => !BODYWEIGHT_BENCHMARKS.has(lift))
+    .flatMap(([lift, liftBest]) => strengthLevelPercentile(lift, liftBest, sex, bodyweightKg) ?? []);
+  return own ?? (levels.length === 0 ? DEFAULT_PERCENTILE : levels.reduce((a, b) => a + b, 0) / levels.length);
+}
+
+// A jump is a Set more than this far over the lifter's baseline within 28 days (spec: Implausible
+// Sets), by the baseline's percentile: +40% below the 25th, +20% up to the 75th, +10% above it.
+const JUMP_WINDOW_DAYS = 28;
+function jumpLimit(percentile: number): number {
+  return percentile < 25 ? 0.4 : percentile <= 75 ? 0.2 : 0.1;
+}
+
+// The Sets that are a jump (spec: Implausible Sets), by ID, with the percent each is over its
+// baseline (rounded to 0.01). Only Sets that could be a Personal Record are checked: a catalog
+// Exercise's Working Sets of 1–12 reps, past Calibration, outside Deload Sessions. The baseline is
+// the lifter's best e1RM going into the 28 days up to the Set's local date, or their Calibration
+// best if their first Session on the Exercise is newer than that; a jump saved in those days
+// replaces it. A jump counts as the best from then on (as Calibration sets the starting best), which
+// is why an honest returning lifter is flagged once. The history holds the Set being checked.
+export function findJumps(history: TrainingHistory): Map<string, number> {
+  history = withoutImplausibleSets(history);
+  const jumps = new Map<string, number>();
+  const bests = new Map<string, number>();
+  const done = new Map<string, { localDate: string; best: number }[]>();
+  const saved = new Map<string, { localDate: string; value: number }[]>();
+  for (const session of regularSessions(history)) {
+    const working = workingSets(session).filter((set) => !set.custom);
+    for (const exercise of new Set(working.map((set) => set.exercise))) {
+      const earlier = done.get(exercise) ?? [];
+      const sets = working.filter((s) => s.exercise === exercise);
+      const averageKg = sets[0].bodyweight ? averageBodyweight(history.profile?.bodyweightKg ?? [], session.localDate) : null;
+      if (averageKg === undefined) {
+        done.set(exercise, [...earlier, { localDate: session.localDate, best: 0 }]);
+        continue;
+      }
+      const sex = valueInForce(history.profile?.sex ?? [], session.localDate) ?? 'unspecified';
+      const bodyweightKg = averageKg ?? valueInForce(history.profile?.bodyweightKg ?? [], session.localDate) ?? null;
+      const windowStart = new Date(Date.parse(`${session.localDate}T00:00:00Z`) - JUMP_WINDOW_DAYS * 86_400_000).toISOString().slice(0, 10);
+      const before = earlier.filter((entry) => entry.localDate < windowStart);
+      const bestOf = (entries: { best: number }[]) => Math.max(0, ...entries.map((entry) => entry.best));
+      const calibrating = earlier.length < CALIBRATION_SESSIONS;
+      let sessionBest = 0;
+      for (const set of sets.filter((s) => s.reps <= MAX_RECORD_REPS)) {
+        const value = e1rm(set.weightKg + (averageKg ?? 0), set.reps);
+        sessionBest = Math.max(sessionBest, value);
+        if (calibrating) continue;
+        const baseline = Math.max(
+          before.length > 0 ? bestOf(before) : bestOf(earlier.slice(0, CALIBRATION_SESSIONS)),
+          ...(saved.get(exercise) ?? []).filter((jump) => jump.localDate >= windowStart).map((jump) => jump.value),
+        );
+        if (baseline === 0) continue;
+        const limit = jumpLimit(weightingPercentile(exercise, baseline, bests, sex, bodyweightKg));
+        if (value > baseline * (1 + limit) + 1e-9) {
+          jumps.set(set.id, Math.round((value / baseline - 1) * 10000) / 100);
+          saved.set(exercise, [...(saved.get(exercise) ?? []), { localDate: session.localDate, value }]);
+        }
+      }
+      done.set(exercise, [...earlier, { localDate: session.localDate, best: sessionBest }]);
+      bests.set(exercise, Math.max(bests.get(exercise) ?? 0, sessionBest));
+    }
+  }
+  return jumps;
+}
+
 function derivePersonalRecords(history: TrainingHistory): PersonalRecord[] {
+  const jumps = findJumps(history);
   const events: PersonalRecord[] = [];
   const bests = new Map<string, number>();
   // The earlier Sets of more than 12 reps per Exercise: the load they were lifted at and their reps.
@@ -222,16 +301,7 @@ function derivePersonalRecords(history: TrainingHistory): PersonalRecord[] {
       const bodyweightKg = averageKg ?? valueInForce(history.profile?.bodyweightKg ?? [], session.localDate) ?? null;
       const record = (set: Set, value: number, previous: number, levelE1rm: number | undefined) => {
         const gain = (value / previous - 1) * 100;
-        let percentile = DEFAULT_PERCENTILE;
-        if (bodyweightKg !== null && !BODYWEIGHT_BENCHMARKS.has(exercise)) {
-          // A Benchmark Lift is measured by its own e1RM; any other Exercise by the average of the
-          // lifter's levels on the Benchmark Lifts they do, each at their best e1RM so far.
-          const own = levelE1rm === undefined ? undefined : strengthLevelPercentile(exercise, levelE1rm, sex, bodyweightKg);
-          const levels = [...bests]
-            .filter(([lift]) => !BODYWEIGHT_BENCHMARKS.has(lift))
-            .flatMap(([lift, liftBest]) => strengthLevelPercentile(lift, liftBest, sex, bodyweightKg) ?? []);
-          percentile = own ?? (levels.length === 0 ? DEFAULT_PERCENTILE : levels.reduce((a, b) => a + b, 0) / levels.length);
-        }
+        const percentile = weightingPercentile(exercise, levelE1rm, bests, sex, bodyweightKg);
         const weight = STRENGTH_WEIGHT_RANGE ** ((percentile - 50) / WEIGHT_SPAN_PERCENTILES);
         const progressPoints = Math.min(MAX_POINTS_PER_RECORD, Math.round(gain * POINTS_PER_PERCENT_GAIN * weight));
         events.push({
@@ -250,10 +320,13 @@ function derivePersonalRecords(history: TrainingHistory): PersonalRecord[] {
           points: progressModePoints(progressPoints),
         });
       };
+      // A jump earns nothing but becomes the best, like Calibration, even before the Session's other Sets.
+      const jumped = Math.max(0, ...sets.filter((s) => jumps.has(s.id)).map((s) => e1rm(load(s), s.reps)));
+      if (jumped > (bests.get(exercise) ?? 0)) bests.set(exercise, jumped);
       const best = bests.get(exercise) ?? 0;
 
       // Sets of 1–12 reps: a new all-time best e1RM.
-      const eligible = sets.filter((s) => s.reps <= MAX_RECORD_REPS);
+      const eligible = sets.filter((s) => s.reps <= MAX_RECORD_REPS && !jumps.has(s.id));
       if (eligible.length > 0) {
         const set = eligible.reduce((top, s) => (e1rm(load(s), s.reps) > e1rm(load(top), top.reps) ? s : top));
         const value = e1rm(load(set), set.reps);

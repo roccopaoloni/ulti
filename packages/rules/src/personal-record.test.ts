@@ -93,15 +93,15 @@ test("each Exercise has its own baseline: a new Exercise's first Sessions do not
 });
 
 test("a ramp within one Session gives one Personal Record, from the pre-Session best to the Session's best Set, capped", () => {
-  // 105, 110 and 120 × 6 each beat 120, but splitting a jump across Sets must not dodge the cap.
-  const top = set('back-squat', 130, 6);
-  const ramp = session('2026-10-19', set('back-squat', 105, 6), set('back-squat', 110, 6), set('back-squat', 120, 6), top);
+  // 105, 110 and 115 × 6 each beat 120, but splitting a gain across Sets must not dodge the cap.
+  const top = set('back-squat', 118, 6);
+  const ramp = session('2026-10-19', set('back-squat', 105, 6), set('back-squat', 110, 6), set('back-squat', 115, 6), top);
 
   const events = deriveScoringEvents(history(...baseline, ramp));
 
   expect(events).toHaveLength(1);
   expect(events[0]).toMatchObject({ setId: top.id, previousE1rm: 120, progressPoints: 150 });
-  expect(events[0].newE1rm).toBeCloseTo(156);
+  expect(events[0].newE1rm).toBeCloseTo(141.6);
 });
 
 test("the Session's best Set earns the record even when it was not the last one logged", () => {
@@ -112,8 +112,8 @@ test("the Session's best Set earns the record even when it was not the last one 
 });
 
 test('a single Personal Record is capped, so a typo cannot win the week', () => {
-  // 100 × 6 = 120 to 200 × 6 = 240 is a 100% gain, worth 2200 uncapped.
-  expect(pointsOf(squat('2026-10-19', 200, 6))).toEqual([150]);
+  // 100 × 6 = 120 to 118 × 6 = 141.6 is an 18% gain, worth 396 uncapped (a bigger one is a jump).
+  expect(pointsOf(squat('2026-10-19', 118, 6))).toEqual([150]);
 });
 
 test('the same history derives the same events every time, and a later Session leaves earlier events alone', () => {

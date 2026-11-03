@@ -148,7 +148,7 @@ test('deriving twice from the same history gives identical events, each stamped 
   const history = ana([session('2026-10-19'), session('2026-10-21')]);
 
   expect(deriveScoringEvents(history)).toEqual(deriveScoringEvents(history));
-  expect(consistencyOf(history)[0].rulesVersion).toBe(4);
+  expect(consistencyOf(history)[0].rulesVersion).toBe(5);
 });
 
 test('Sessions beyond the Weekly Target earn nothing extra', () => {
