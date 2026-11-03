@@ -1,5 +1,6 @@
-import { asksRir, inCalibration, type RoutineDay, type Units } from '@ulti/rules';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { asksRir, inCalibration, type RoutineDayChoice, type Units } from '@ulti/rules';
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
+import { dayColourVar } from './dayColour.ts';
 import { Sheet } from './GroupsScreens.tsx';
 import { useI18n } from './i18n.ts';
 import { navigate, routinePath } from './navigation.ts';
@@ -8,6 +9,7 @@ import { ExerciseBlock } from './ExerciseBlock.tsx';
 import { ExercisePicker } from './ExercisePicker.tsx';
 import { backIcon } from './icons.tsx';
 import { Info } from './Info.tsx';
+import { lastDoneLabel } from './lastDone.ts';
 import { useImplausibleSheet } from './NoticeSheet.tsx';
 import type { Layout } from './profile.ts';
 import type { Exercise, Training } from './training.ts';
@@ -87,35 +89,53 @@ function useWakeLock() {
 // The button on Home that starts a Session, or returns to the one in progress.
 // The Routine's next Session is suggested, with a way to log an unplanned one instead.
 export function StartSession({ logging, training }: { logging: ReturnType<typeof useLogging>; training: Training }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const s = t.session;
   const { inProgress } = logging;
-  const [next, setNext] = useState<RoutineDay | null>(null);
+  const [choices, setChoices] = useState<RoutineDayChoice[]>([]);
+  const next = choices[0]?.day ?? null;
   const [deload, setDeload] = useState<Awaited<ReturnType<Training['deload']>> | null>(null);
   const [met, setMet] = useState(false);
   useEffect(() => {
-    training.nextRoutineDay().then(setNext);
+    training.dayChoices().then(setChoices);
     training.weeklyTargetMet().then(setMet);
     training.deload().then(setDeload);
   }, [training, inProgress]);
   const d = t.deload;
   const noRoutine = useRef<HTMLDialogElement>(null);
   const extra = useRef<HTMLDialogElement>(null);
+  const pick = useRef<HTMLDialogElement>(null);
+  const pickList = useRef<HTMLDivElement>(null);
   const cancelDeload = useRef<HTMLDialogElement>(null);
   const deloadAgain = useRef<HTMLDialogElement>(null);
   const startDeload = async () => {
     await training.startDeload();
     setDeload(await training.deload());
   };
-  // With the Weekly Target met, a new Session is an extra one: it never moves the Routine's next
-  // Day, so it starts unplanned, after the lifter confirms.
+  // Start asks which Routine Day to do, unless the Routine has only one. With the Weekly Target
+  // met the lifter confirms an extra session first, then picks the same way; it earns no points.
   // With no Routine, Start asks first, unless the lifter said they don't follow one. Read when
   // tapped, so a choice that just arrived from the server counts.
-  const start = async () => {
-    if (met && !inProgress) extra.current?.showModal();
-    else if (inProgress || next || (await training.followsNoRoutine()) || (await training.nextRoutineDay())) logging.start(next?.id);
+  const chooseDay = async (isExtra = false) => {
+    const days = await training.dayChoices();
+    if (days.length > 1) {
+      setChoices(days);
+      pick.current?.showModal();
+      // The list's edges get a hairline while it overflows the sheet's fixed height.
+      requestAnimationFrame(() => {
+        const list = pickList.current;
+        list?.classList.toggle('overflows', !!list && list.scrollHeight > list.clientHeight);
+      });
+    } else if (days.length === 1) logging.start(days[0].day.id);
+    else if (isExtra || (await training.followsNoRoutine())) logging.start();
     else noRoutine.current?.showModal();
   };
+  const start = async () => {
+    if (met && !inProgress) extra.current?.showModal();
+    else if (inProgress) logging.start(next?.id);
+    else await chooseDay();
+  };
+  const today = new Date().toLocaleDateString('en-CA');
   const answer = async (accept: boolean) => {
     await training.answerDeload(accept);
     setDeload(await training.deload());
@@ -222,7 +242,7 @@ export function StartSession({ logging, training }: { logging: ReturnType<typeof
           className="btn-primary"
           onClick={() => {
             extra.current?.close();
-            logging.start();
+            chooseDay(true);
           }}
         >
           {s.extraConfirm}
@@ -231,11 +251,52 @@ export function StartSession({ logging, training }: { logging: ReturnType<typeof
           {s.extraCancel}
         </button>
       </Sheet>
+      <Sheet dialog={pick} label={s.pickTitle} className="pick">
+        <h2 className="disp sheet-title">{s.pickTitle}</h2>
+        <div
+          className="days-scroll"
+          ref={pickList}
+          onScroll={(event) => event.currentTarget.classList.toggle('overflows', event.currentTarget.scrollHeight > event.currentTarget.clientHeight)}
+        >
+          <div className="days">
+            {choices.map(({ day, colour, exerciseCount, lastDone, suggested }) => (
+              <button
+                key={day.id}
+                type="button"
+                className={suggested ? 'day-row top' : 'day-row'}
+                style={{ '--c': dayColourVar(colour) } as CSSProperties}
+                onClick={() => {
+                  pick.current?.close();
+                  logging.start(day.id);
+                }}
+              >
+                <span className="day-bar" />
+                <span>
+                  <span className="name">{day.name}</span>
+                  <span className="meta">{s.dayMeta(exerciseCount, lastDoneLabel(language, lastDone, today, s.lastNever))}</span>
+                </span>
+                {suggested ? <span className="day-badge">{s.suggestedBadge}</span> : <span />}
+                <span className="chev">›</span>
+              </button>
+            ))}
+          </div>
+        </div>
+        <button
+          type="button"
+          className="btn-link"
+          onClick={() => {
+            pick.current?.close();
+            logging.start();
+          }}
+        >
+          {s.startUnplanned}
+        </button>
+      </Sheet>
       <button type="button" className="btn-start" onClick={start}>
         <span className="disp">{inProgress ? s.resume : met ? s.startExtra : s.start}</span>
         <small>{inProgress ? s.logged(inProgress.sets.length) : met ? s.extraHint : next ? s.startNext(next.name) : s.startHint}</small>
       </button>
-      {next && !met && !inProgress && (
+      {choices.length === 1 && !met && !inProgress && (
         <button type="button" className="btn-link" onClick={() => logging.start()}>
           {s.startUnplanned}
         </button>

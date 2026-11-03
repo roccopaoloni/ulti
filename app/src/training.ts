@@ -9,6 +9,7 @@ import {
   isImplausibleSet,
   nextMonday,
   isMuscle,
+  routineDayChoices,
   suggestedRoutineDay,
   recommend,
   recommendDeload,
@@ -621,6 +622,16 @@ export async function openTraining(userId: string, options: Options) {
       const done = (await db.getAll('sessions')).flatMap((session) => (session.routineDayId ? [{ dayId: session.routineDayId, startedAt: session.startedAt }] : []));
       const id = suggestedRoutineDay(days.map((day) => day.id), done);
       return days.find((day) => day.id === id)!;
+    },
+
+    // The Days to pick from when starting a Session: the Suggested Day first, then the rest in
+    // Routine order, each with its last done date. Empty before there is a Routine.
+    async dayChoices() {
+      const days = (await this.routine())?.days ?? [];
+      const done = (await db.getAll('sessions')).flatMap((session) =>
+        session.routineDayId ? [{ dayId: session.routineDayId, startedAt: session.startedAt, localDate: session.localDate }] : [],
+      );
+      return routineDayChoices(days, done);
     },
 
     // Creates the Routine, or replaces its Sessions: the same Routine written again, so the latest

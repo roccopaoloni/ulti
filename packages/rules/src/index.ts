@@ -702,6 +702,20 @@ export function suggestedRoutineDay(dayIds: readonly string[], done: readonly { 
   return oldest;
 }
 
+export type RoutineDayChoice = { day: RoutineDay; colour: number; exerciseCount: number; lastDone: string | null; suggested: boolean };
+
+// The Days to pick from when starting a Session: the Suggested Day first, then the rest in Routine
+// order. `lastDone` is the local date of the latest Session started from the Day (the same Sessions
+// the suggestion counts), null if never.
+export function routineDayChoices(days: readonly RoutineDay[], done: readonly { dayId: string; startedAt: string; localDate: string }[]): RoutineDayChoice[] {
+  const suggested = days.length ? suggestedRoutineDay(days.map((day) => day.id), done) : undefined;
+  const choices = days.map((day, index): RoutineDayChoice => {
+    const latest = done.filter((session) => session.dayId === day.id).reduce<(typeof done)[number] | undefined>((a, b) => (!a || a.startedAt < b.startedAt ? b : a), undefined);
+    return { day, colour: dayColour(days, index), exerciseCount: day.exercises.length, lastDone: latest?.localDate ?? null, suggested: day.id === suggested };
+  });
+  return [...choices.filter((choice) => choice.suggested), ...choices.filter((choice) => !choice.suggested)];
+}
+
 // The rows of an Exercise's Sets still to do when a Session starts: the last Session's Sets, with
 // the Routine Day's planned Sets filling any rows past them by repeating the last one (an empty
 // row when there was no earlier Session). If the last Session had more Sets than planned, all stay.

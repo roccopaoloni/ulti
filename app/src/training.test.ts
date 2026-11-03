@@ -674,6 +674,31 @@ test('the Suggested Day is the Routine Day done longest ago, counting every Sess
   training.close();
 });
 
+test('the Days to pick from put the Suggested Day first and show when each was last done, counting the Sessions the suggestion counts', async () => {
+  const network = server();
+  network.offline = true;
+  const phone = anasPhone(network);
+  const training = await phone.open();
+  expect(await training.dayChoices()).toEqual([]);
+
+  const legsDay = { ...pullDay, id: 'legs', name: 'Legs', exercises: [...pullDay.exercises, ...pushDay.exercises] };
+  await training.saveRoutine([pushDay, pullDay, legsDay]);
+  expect((await training.dayChoices()).map(({ day, lastDone, exerciseCount }) => [day.id, lastDone, exerciseCount])).toEqual([
+    ['push', null, 1],
+    ['pull', null, 1],
+    ['legs', null, 2],
+  ]);
+
+  const push = await training.startSession('push');
+  await training.finishSession(push.id);
+  await training.finishSession((await training.startSession()).id);
+  const choices = await training.dayChoices();
+  expect(choices.map(({ day, suggested }) => [day.id, suggested])).toEqual([['pull', true], ['push', false], ['legs', false]]);
+  expect(choices[1].lastDone).toBe(push.localDate);
+  expect(choices[0].lastDone).toBeNull();
+  training.close();
+});
+
 test("a Routine fetched from the server fills a new phone, but never replaces a later edit the phone made", async () => {
   const network = server();
   network.offline = true;

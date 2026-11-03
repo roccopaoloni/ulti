@@ -248,6 +248,10 @@ type Messages = {
     // Home's button, when the Routine suggests the next Session, and the way to log without it.
     startNext: (day: string) => string;
     startUnplanned: string;
+    pickTitle: string;
+    suggestedBadge: string;
+    dayMeta: (exercises: number, last: string) => string;
+    lastNever: string;
     startExtra: string;
     extraTitle: string;
     extraText: string;
@@ -718,6 +722,10 @@ const en: Messages = {
     calibration: 'Your first sessions set your baseline',
     startNext: (day) => `Suggested: ${day}`,
     startUnplanned: 'Log an unplanned session',
+    pickTitle: 'Which session today?',
+    suggestedBadge: 'Suggested',
+    dayMeta: (exercises, last) => `${exercises === 1 ? '1 exercise' : `${exercises} exercises`} · Last: ${last}`,
+    lastNever: 'Never',
     startExtra: 'Week done ✓ Extra session',
     extraTitle: 'Extra session',
     extraText: "You've hit your weekly target. An extra session earns no consistency points, but personal records still count. Log it anyway?",
@@ -1177,6 +1185,10 @@ const es: Messages = {
     calibration: 'Tus primeras sesiones fijan tu base',
     startNext: (day) => `Sugerida: ${day}`,
     startUnplanned: 'Registrar una sesión sin rutina',
+    pickTitle: '¿Qué sesión hacés hoy?',
+    suggestedBadge: 'Sugerida',
+    dayMeta: (exercises, last) => `${exercises === 1 ? '1 ejercicio' : `${exercises} ejercicios`} · Última: ${last}`,
+    lastNever: 'Nunca',
     startExtra: 'Semana cumplida ✓ Sesión extra',
     extraTitle: 'Sesión extra',
     extraText: 'Ya cumpliste tu objetivo semanal. Una sesión extra no suma puntos de constancia, pero los PR siguen contando. ¿La registrás igual?',
