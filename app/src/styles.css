@@ -2445,7 +2445,12 @@ prefers-reduced-motion switches every animation off, so it stays off the badge. 
 .day-row:hover {
   background: var(--surface-2);
 }
-.day-row .bar {
+.day-row .day-bar,
+.day-row .name,
+.day-row .meta {
+  display: block;
+}
+.day-row .day-bar {
   align-self: stretch;
   border-radius: 3px;
   background: var(--c);

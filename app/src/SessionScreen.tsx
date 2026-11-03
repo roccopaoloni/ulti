@@ -270,10 +270,9 @@ export function StartSession({ logging, training }: { logging: ReturnType<typeof
                   logging.start(day.id);
                 }}
               >
-                <span className="bar" />
+                <span className="day-bar" />
                 <span>
                   <span className="name">{day.name}</span>
-                  <br />
                   <span className="meta">{s.dayMeta(exerciseCount, lastDoneLabel(language, lastDone, today, s.lastNever))}</span>
                 </span>
                 {suggested ? <span className="day-badge">{s.suggestedBadge}</span> : <span />}
