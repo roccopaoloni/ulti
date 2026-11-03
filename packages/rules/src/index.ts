@@ -44,7 +44,7 @@ export type TrainingHistory = {
 };
 
 // Bump when a change to the rules changes the events they derive, so stored events show which rules made them.
-export const RULES_VERSION = 3;
+export const RULES_VERSION = 4;
 
 // A lifter's first Sessions with an Exercise only set their starting best (spec: Calibration).
 export const CALIBRATION_SESSIONS = 2;
