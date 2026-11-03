@@ -131,3 +131,60 @@ test('an Exercise is in Calibration until it has been in two Sessions', () => {
   expect(inCalibration(history(sessions[0], sessions[1]), 'back-squat')).toBe(true);
   expect(inCalibration(history(...sessions, squat('2026-10-19', 100, 6)), 'back-squat')).toBe(false);
 });
+
+// Rep PRs: Sets of more than 12 reps (calf raises, ab work), where e1RM overestimates.
+const calf = (localDate: string, weightKg: number, reps: number, extra: object = {}) =>
+  session(localDate, set('calf-raise', weightKg, reps, extra));
+const calfBaseline = [calf('2026-10-05', 100, 19), calf('2026-10-12', 100, 19)];
+const calfPointsOf = (...sessions: Session[]) => deriveScoringEvents(history(...calfBaseline, ...sessions)).map((e) => e.progressPoints);
+
+test('100 kg × 19 then 100 kg × 20 on calf raise is a Personal Record', () => {
+  const record = set('calf-raise', 100, 20);
+  const events = deriveScoringEvents(history(...calfBaseline, session('2026-10-19', record)));
+  // Epley: 100 × (1 + 19/30) = 163.33 and 100 × (1 + 20/30) = 166.67, a 2.04% gain.
+  expect(events).toEqual([expect.objectContaining({ setId: record.id, exercise: 'calf-raise', percentGain: 2.04, progressPoints: 45 })]);
+});
+
+test('a lighter Set with more reps is not a rep PR', () => {
+  expect(deriveScoringEvents(history(calf('2026-10-05', 60, 20), calf('2026-10-12', 60, 20), calf('2026-10-19', 50, 25)))).toEqual([]);
+});
+
+test('a heavier Set whose e1RM is lower is not a rep PR', () => {
+  expect(calfPointsOf(calf('2026-10-19', 110, 13))).toEqual([]);
+});
+
+test('a heavier Set with more reps than any Set at that weight or heavier is a rep PR', () => {
+  // 101 × 20 = 168.33 against 163.33, a 3.06% gain.
+  expect(calfPointsOf(calf('2026-10-19', 101, 20))).toEqual([67]);
+});
+
+test('a best of 100 × 5 then 80 × 15 is not a Personal Record', () => {
+  const fives = (date: string) => session(date, set('back-squat', 100, 5));
+  expect(deriveScoringEvents(history(fives('2026-10-05'), fives('2026-10-12'), session('2026-10-19', set('back-squat', 80, 15))))).toEqual([]);
+});
+
+test('the first Set of more than 12 reps only sets the high-rep baseline', () => {
+  const after5s = [squat('2026-10-05', 100, 5), squat('2026-10-12', 100, 5)];
+  expect(deriveScoringEvents(history(...after5s, squat('2026-10-19', 80, 15)))).toEqual([]);
+  expect(deriveScoringEvents(history(...after5s, squat('2026-10-19', 80, 15), squat('2026-10-26', 80, 16)))).toHaveLength(1);
+});
+
+test('Sets of more than 12 reps do not change how Sets of 1 to 12 reps score', () => {
+  expect(pointsOf(squat('2026-10-19', 100, 13), squat('2026-10-26', 105, 6))).toEqual([110]);
+});
+
+test('Sets in Calibration earn nothing but set the high-rep baseline', () => {
+  expect(deriveScoringEvents(history(calf('2026-10-05', 100, 19), calf('2026-10-12', 100, 25)))).toEqual([]);
+  expect(deriveScoringEvents(history(calf('2026-10-05', 100, 19), calf('2026-10-12', 100, 25), calf('2026-10-19', 100, 26)))).toHaveLength(1);
+});
+
+test('Warm-up, Custom and Deload Sets never make a rep PR', () => {
+  expect(calfPointsOf(calf('2026-10-19', 100, 25, { label: 'warm-up' }))).toEqual([]);
+  const custom = (d: string, reps: number) => session(d, set('custom-calf', 100, reps, { custom: true }));
+  expect(deriveScoringEvents(history(custom('2026-10-05', 19), custom('2026-10-12', 19), custom('2026-10-19', 25)))).toEqual([]);
+  expect(calfPointsOf({ ...calf('2026-10-19', 100, 25), deload: true })).toEqual([]);
+});
+
+test('a rep PR earns at most the per-record cap', () => {
+  expect(calfPointsOf(calf('2026-10-19', 200, 40))).toEqual([150]);
+});
