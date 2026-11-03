@@ -1,6 +1,6 @@
 import { expect, test, vi } from 'vitest';
-import { sql } from './sql';
-import { newUser } from './users';
+import { sql } from './sql.js';
+import { newUser } from './users.js';
 
 // CI starts the local stack with `supabase start`; its API listens on the port in supabase/config.toml.
 const apiUrl = process.env.SUPABASE_URL ?? 'http://127.0.0.1:54321';
