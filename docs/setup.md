@@ -2,7 +2,7 @@
 
 The steps only the project owner can do: creating accounts, choosing names and handing keys to the pipeline. Everything here is free. [ADR 0006](./adr/0006-test-phase-runs-on-free-tiers.md) explains why these services and not others.
 
-Steps 0–7 are ticket #2 and come before any code; close that issue when they're done, which lets the walking skeleton (#3) start. Step 8 comes after #3 ships, step 9 with sign-up (#4), step 10 after Groups (#20), step 11 after offline logging (#5), and step 15 with the captcha (#91).
+Steps 0–7 are ticket #2 and come before any code; close that issue when they're done, which lets the walking skeleton (#3) start. Step 8 comes after #3 ships, step 9 with sign-up (#4), step 10 after Groups (#20), step 11 after offline logging (#5), step 15 with the captcha (#91), and step 16 after the recompute secret (#146).
 
 Dashboards change their menus from time to time. If a menu named here has moved, search the dashboard for the setting's name.
 
@@ -48,6 +48,7 @@ Everything in the git history becomes visible, so look over what's committed fir
    - **Project Settings**: Read, **API Keys**: Read, **API Key Secrets**: Read (these three let `supabase link` connect)
    - **Connection Pooling**: Read (migrations are applied with the database password, but GitHub's runners have no IPv6 and the database's direct address is IPv6-only, so `supabase db push` reads the address of the IPv4 connection pooler instead)
    - **Edge Functions**: Read-write (to deploy functions)
+   - **Edge Function Secrets**: Read-write (the deploy writes the recompute function's shared secret, #146)
    - Nothing else.
 
    A scoped token starts with `sbp_fc`. Avoid one with a **Legacy** badge: that's full account access, reaching every project you'll ever have. Copy the token and keep the tab open until step 6, because it's only shown once.
@@ -265,6 +266,18 @@ The local stack and CI keep captcha off (`supabase/config.toml`), so the integra
 - [ ] `VITE_TURNSTILE_SITE_KEY` is in Vercel and `main` was redeployed
 - [ ] Supabase's captcha protection is on with the Turnstile secret key
 - [ ] Sign-up, sign-in and password reset all worked on the deployed app
+
+## 16. After the recompute secret (#146): let the deploy write Edge Function secrets
+
+The deploy job now writes the shared secret that only the database's retry job sends to `recompute`. The token from step 1 can't write Edge Function secrets, so every backend deploy fails at **Set the recompute secret on the Edge Functions** with `Missing required permission(s): edge_functions_secrets_write`. Until it's fixed, nothing merged after #151 reaches the backend: no migrations and no functions. The app on Vercel still deploys.
+
+1. Open [Access Tokens](https://supabase.com/dashboard/account/tokens) and generate a new scoped token, named `github-actions-ulti`, with the same scopes as step 1 (which now include **Edge Function Secrets: Read-write**). Delete the old token afterwards.
+2. In GitHub, **Settings → Secrets and variables → Actions**, update `SUPABASE_ACCESS_TOKEN` with the new token (or run `gh secret set SUPABASE_ACCESS_TOKEN` in your own terminal).
+3. Re-run the latest **CI** run on `main` (**Actions → CI → the newest run → Re-run failed jobs**, or tell Claude to do it). **Deploy the backend** should pass.
+4. Do the checks in step 11's item 5: `recompute_secret` in Vault, `RECOMPUTE_SECRET` under **Edge Functions → Secrets**, and `recompute-dirty-users` still active.
+
+- [ ] The new token has Edge Function Secrets: Read-write and is in `SUPABASE_ACCESS_TOKEN`
+- [ ] The backend deploy on `main` passed
 
 ## Later: moving to a real domain
 
