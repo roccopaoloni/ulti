@@ -1,5 +1,6 @@
 // ULTI's rules: pure functions shared by the client and the server, with no I/O.
 
+import { CEILINGS } from './ceilings.ts';
 import { STANDARD_PERCENTILES, STRENGTH_STANDARDS, type StandardsRow } from './strength-standards.ts';
 
 export type Set = {
@@ -43,7 +44,7 @@ export type TrainingHistory = {
 };
 
 // Bump when a change to the rules changes the events they derive, so stored events show which rules made them.
-export const RULES_VERSION = 3;
+export const RULES_VERSION = 4;
 
 // A lifter's first Sessions with an Exercise only set their starting best (spec: Calibration).
 export const CALIBRATION_SESSIONS = 2;
@@ -167,7 +168,33 @@ export function strengthLevelPercentile(exercise: string, e1rmKg: number, sex: S
   return pLo + ((pHi - pLo) * (e1rmKg - lo)) / (hi - lo);
 }
 
+export { CEILINGS } from './ceilings.ts';
+
+// Whether a Set is beyond any human (spec: Implausible Sets): its e1RM is over its catalog
+// Exercise's ceiling, whatever its label. A bodyweight Exercise is lifted at the lifter's bodyweight
+// plus the added weight, or the added weight alone when no bodyweight is logged. A Custom Exercise
+// has no ceiling, so it is never implausible.
+export function isImplausibleSet(set: Pick<Set, 'exercise' | 'custom' | 'weightKg' | 'reps' | 'bodyweight'>, bodyweightKg?: number): boolean {
+  if (set.custom) return false;
+  const ceiling = CEILINGS[set.exercise];
+  if (!ceiling) return false;
+  return e1rm(set.weightKg + (set.bodyweight ? (bodyweightKg ?? 0) : 0), set.reps) > ceiling.kg;
+}
+
+// The history without its Implausible Sets: the server scores one that reaches it as if it weren't there.
+function withoutImplausibleSets(history: TrainingHistory): TrainingHistory {
+  const weights = history.profile?.bodyweightKg ?? [];
+  return {
+    ...history,
+    sessions: history.sessions.map((session) => {
+      const bodyweightKg = session.sets.some((set) => set.bodyweight) ? averageBodyweight(weights, session.localDate) : undefined;
+      return { ...session, sets: session.sets.filter((set) => !isImplausibleSet(set, bodyweightKg)) };
+    }),
+  };
+}
+
 export function deriveScoringEvents(history: TrainingHistory): ScoringEvent[] {
+  history = withoutImplausibleSets(history);
   return [...derivePersonalRecords(history), ...deriveConsistency(history)];
 }
 

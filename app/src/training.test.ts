@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import { labelSets } from '@ulti/rules';
 import { expect, test, vi } from 'vitest';
 import { openDB } from 'idb';
-import { openTraining, type Mutation } from './training.ts';
+import { ImplausibleSet, openTraining, type Mutation } from './training.ts';
 
 // The sync endpoint, as the phone sees it. Offline, every request fails before it leaves the phone.
 function server() {
@@ -203,7 +203,7 @@ test('a deleted Set disappears from the history and is sent as a deletion', asyn
   const phone = anasPhone(network);
   const training = await phone.open();
   const session = await training.startSession();
-  const typo = await training.logSet(session.id, 'back-squat', 1000, 5);
+  const typo = await training.logSet(session.id, 'back-squat', 400, 5);
   const kept = await training.logSet(session.id, 'back-squat', 100, 5);
   await training.finishSession(session.id);
 
@@ -1420,7 +1420,7 @@ test('a Set un-logged offline and logged again syncs as the deletion plus the co
   const phone = anasPhone(network);
   const training = await phone.open();
   const session = await training.startSession();
-  const mistake = await training.logSet(session.id, 'bench-press', 800, 8, 'working');
+  const mistake = await training.logSet(session.id, 'bench-press', 180, 8, 'working');
   await training.setRir(mistake.id, 2);
 
   await training.deleteSet(mistake.id);
@@ -1561,5 +1561,28 @@ test('the Weekly Target is met by lighter Sessions in a Deload Week', async () =
   for (let i = 0; i < 3; i++) await training.logSet(session.id, 'back-squat', 60, 5);
   await training.finishSession(session.id);
   expect(await training.weeklyTargetMet()).toBe(true);
+  training.close();
+});
+
+test('a Set beyond the Exercise ceiling is refused offline, logging or editing, and nothing is saved or sent', async () => {
+  const network = server();
+  network.offline = true;
+  const phone = anasPhone(network);
+  const training = await phone.open();
+  const session = await training.startSession();
+  const set = await training.logSet(session.id, 'back-squat', 100, 5);
+
+  await expect(training.logSet(session.id, 'back-squat', 1000, 5)).rejects.toBeInstanceOf(ImplausibleSet);
+  await expect(training.editSet(set.id, 100, 500)).rejects.toBeInstanceOf(ImplausibleSet);
+
+  const inProgress = await training.sessionInProgress();
+  expect(inProgress!.sets.map(({ weightKg, reps }) => ({ weightKg, reps }))).toEqual([{ weightKg: 100, reps: 5 }]);
+  network.offline = false;
+  phone.connectivity.dispatchEvent(new Event('online'));
+  await vi.waitFor(() => expect(network.batches).toHaveLength(1));
+  expect(kindsAndValues(network.batches[0])).toEqual([
+    { kind: 'saveSession', finished: false },
+    { kind: 'saveSet', exerciseId: 'back-squat', weightKg: 100, reps: 5 },
+  ]);
   training.close();
 });

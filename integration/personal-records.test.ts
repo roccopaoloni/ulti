@@ -88,6 +88,15 @@ test('editing the Set that set a Personal Record changes the stored event, and a
   expect(await scoringEventsOf(ana)).toEqual([]);
 });
 
+test('a Set beyond the Exercise ceiling that reaches the server is scored as if absent: no Personal Record', async () => {
+  const { ana, third } = await anaWithARecord();
+
+  // 1,000 kg squat, as an old or modified app could still send it
+  await sync(ana, [rewrite(third.setRecord, { weightKg: 1000 })]);
+
+  expect(await scoringEventsOf(ana)).toEqual([]);
+});
+
 test('deleting the Set that set a Personal Record removes the event', async () => {
   const { ana, third } = await anaWithARecord();
 

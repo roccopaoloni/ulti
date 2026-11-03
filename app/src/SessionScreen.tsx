@@ -8,6 +8,7 @@ import { ExerciseBlock } from './ExerciseBlock.tsx';
 import { ExercisePicker } from './ExercisePicker.tsx';
 import { backIcon } from './icons.tsx';
 import { Info } from './Info.tsx';
+import { useImplausibleSheet } from './NoticeSheet.tsx';
 import type { Layout } from './profile.ts';
 import type { Exercise, Training } from './training.ts';
 
@@ -267,6 +268,7 @@ export function SessionScreen({ training, units, layout, onLeave }: { training: 
   // The Focus layout shows one Exercise at a time: the one picked, or else the first.
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const discardDialog = useRef<HTMLDialogElement>(null);
+  const implausible = useImplausibleSheet();
   useWakeLock();
   useEffect(() => {
     if (!banner) return;
@@ -372,7 +374,13 @@ export function SessionScreen({ training, units, layout, onLeave }: { training: 
             custom={catalog.find(({ id }) => id === exerciseId)?.custom !== false}
             asksRir={(setId) => asksRir(session.sets.map((set) => ({ ...set, exercise: set.exerciseId })), setId)}
             onLog={async (weightKg, reps, label) => {
-              const set = await training.logSet(sessionId, exerciseId, weightKg, reps, label);
+              let set;
+              try {
+                set = await training.logSet(sessionId, exerciseId, weightKg, reps, label);
+              } catch (error) {
+                if (implausible.refuse(error)) return null;
+                throw error;
+              }
               const record = (await training.scoring()).events.find((event) => event.setId === set.id);
               if (record) {
                 setBanner({ key: set.id, text: s.record(name(exerciseId), record.percentGain, record.progressPoints) });
@@ -413,6 +421,7 @@ export function SessionScreen({ training, units, layout, onLeave }: { training: 
           {s.finish}
         </button>
       </main>
+      {implausible.sheet}
       <Sheet dialog={discardDialog} label={s.discardTitle}>
         <h2 className="disp sheet-title">{s.discardTitle}</h2>
         <button
