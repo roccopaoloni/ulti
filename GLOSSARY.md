@@ -60,7 +60,7 @@ Estimated one-rep max: the heaviest single rep a Set implies the lifter could do
 _Rioplatense_: 1RM estimado
 
 **Personal Record**:
-A Set whose e1RM beats the lifter's all-time best on that Exercise.
+A Set of 1–12 reps whose e1RM beats the lifter's all-time best on that Exercise, or a rep PR: a Set of more than 12 reps at least as heavy as the lifter's heaviest earlier Set of more than 12 reps on that Exercise and with more reps than any earlier Set at that weight or heavier (e1RM overestimates at high reps, so Sets above 12 never compete with the 1–12 rep best). The first Set above 12 reps only sets that baseline.
 _Avoid_: PB, max
 _Rioplatense_: PR
 
