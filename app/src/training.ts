@@ -5,6 +5,7 @@ import {
   completeRoutine,
   deriveScoringEvents,
   findCustomExercise,
+  findJumps,
   isImplausibleSet,
   nextMonday,
   isMuscle,
@@ -36,6 +37,16 @@ import { deleteDB, openDB, type DBSchema } from 'idb';
 export class ImplausibleSet extends Error {
   constructor() {
     super('Implausible Set');
+  }
+}
+
+// Thrown instead of saving a Set that is a jump (spec: Implausible Sets), with how far over the
+// lifter's baseline it is, in percent. The screens ask; saving again with `confirmedJump` goes through.
+export class JumpSet extends Error {
+  percent: number;
+  constructor(percent: number) {
+    super('Jump');
+    this.percent = percent;
   }
 }
 
@@ -352,8 +363,13 @@ export async function openTraining(userId: string, options: Options) {
     },
 
     // `label` is the one the row showed, which the Set keeps from then on.
-    async logSet(sessionId: string, exerciseId: string, weightKg: number, reps: number, label?: SetLabel) {
+    // A jump is refused with JumpSet unless `confirmedJump` says the lifter lifted it; the ceiling never is.
+    async logSet(sessionId: string, exerciseId: string, weightKg: number, reps: number, label?: SetLabel, { confirmedJump = false } = {}) {
       await refuseImplausible(exerciseId, weightKg, reps);
+      if (!confirmedJump) {
+        const percent = findJumps(await this.history(undefined, { sessionId, exercise: exerciseId, weightKg, reps, label })).get('candidate');
+        if (percent !== undefined) throw new JumpSet(percent);
+      }
       const loggedAt = stamp();
       const set: SetRecord = { id: crypto.randomUUID(), sessionId, exerciseId, weightKg, reps, label, loggedAt, updatedAt: loggedAt };
       await write({ id: crypto.randomUUID(), kind: 'saveSet', set });
@@ -361,9 +377,13 @@ export async function openTraining(userId: string, options: Options) {
     },
 
     // Fixes a Set's weight and reps: the same Set written again, so the latest write wins.
-    async editSet(setId: string, weightKg: number, reps: number) {
+    async editSet(setId: string, weightKg: number, reps: number, { confirmedJump = false } = {}) {
       const set = (await db.get('sets', setId))!;
       await refuseImplausible(set.exerciseId, weightKg, reps);
+      if (!confirmedJump) {
+        const percent = findJumps(await this.history(undefined, { sessionId: set.sessionId, id: setId, exercise: set.exerciseId, weightKg, reps })).get(setId);
+        if (percent !== undefined) throw new JumpSet(percent);
+      }
       await write({ id: crypto.randomUUID(), kind: 'saveSet', set: { ...set, weightKg, reps, updatedAt: stamp() } });
     },
 
@@ -523,6 +543,18 @@ export async function openTraining(userId: string, options: Options) {
     // provisional until the server's recompute (spec: instant "PR!" badge), by the same rules.
     // `without` leaves one Session out, to see what it added.
     async scoring(without?: string) {
+      const history = await this.history(without);
+      const all = deriveScoringEvents(history);
+      return {
+        history,
+        events: all.filter((event) => event.kind === 'personal-record'),
+        consistency: all.filter((event) => event.kind === 'consistency'),
+      };
+    },
+
+    // The lifter's whole TrainingHistory, as the rules read it. A `candidate` Set is put in as if it
+    // were saved: the edited Set (`id`) with its new numbers, or a new one at the end of its Session.
+    async history(without?: string, candidate?: { sessionId: string; id?: string; exercise: string; weightKg: number; reps: number; label?: SetLabel }) {
       const sessions = (await db.getAll('sessions')).filter(({ id }) => id !== without);
       sessions.sort((a, b) => a.startedAt.localeCompare(b.startedAt));
       const profile = await this.profile();
@@ -536,29 +568,37 @@ export async function openTraining(userId: string, options: Options) {
           sessions.map(async ({ id, localDate, deload }) => {
             const sets = await db.getAllFromIndex('sets', 'bySession', id);
             sets.sort((a, b) => a.loggedAt.localeCompare(b.loggedAt));
-            return {
-              localDate,
-              ...(deload && { deload }),
-              sets: sets.map((set) => ({
+            const rows = sets.map((set) => {
+              const edited = candidate?.id === set.id ? candidate : undefined;
+              return {
                 id: set.id,
                 exercise: set.exerciseId,
                 custom: catalog.get(set.exerciseId)?.custom ?? false,
                 bodyweight: catalog.get(set.exerciseId)?.bodyweight ?? false,
-                weightKg: set.weightKg,
-                reps: set.reps,
+                weightKg: edited?.weightKg ?? set.weightKg,
+                reps: edited?.reps ?? set.reps,
                 label: set.label,
                 rir: set.rir,
-              })),
-            };
+              };
+            });
+            if (candidate && !candidate.id && candidate.sessionId === id) {
+              const { exercise } = candidate;
+              rows.push({
+                id: 'candidate',
+                exercise,
+                custom: catalog.get(exercise)?.custom ?? false,
+                bodyweight: catalog.get(exercise)?.bodyweight ?? false,
+                weightKg: candidate.weightKg,
+                reps: candidate.reps,
+                label: candidate.label,
+                rir: undefined,
+              });
+            }
+            return { localDate, ...(deload && { deload }), sets: rows };
           }),
         ),
       };
-      const all = deriveScoringEvents(history);
-      return {
-        history,
-        events: all.filter((event) => event.kind === 'personal-record'),
-        consistency: all.filter((event) => event.kind === 'consistency'),
-      };
+      return history;
     },
 
     // Whether this week's Weekly Target is already met, so another Session is an extra one that

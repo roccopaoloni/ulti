@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import { labelSets } from '@ulti/rules';
 import { expect, test, vi } from 'vitest';
 import { openDB } from 'idb';
-import { ImplausibleSet, openTraining, type Mutation } from './training.ts';
+import { ImplausibleSet, JumpSet, openTraining, type Mutation } from './training.ts';
 
 // The sync endpoint, as the phone sees it. Offline, every request fails before it leaves the phone.
 function server() {
@@ -1584,5 +1584,61 @@ test('a Set beyond the Exercise ceiling is refused offline, logging or editing, 
     { kind: 'saveSession', finished: false },
     { kind: 'saveSet', exerciseId: 'back-squat', weightKg: 100, reps: 5 },
   ]);
+  training.close();
+});
+
+// Ana squats 80 kg in two Calibration Sessions in early September, then opens the app on the 28th.
+async function anaAfterCalibration(network: ReturnType<typeof server>) {
+  const phone = anasPhone(network);
+  for (const day of [1, 3]) {
+    const earlier = await phone.open(Date.UTC(2026, 8, day, 15));
+    const done = await earlier.startSession();
+    await earlier.logSet(done.id, 'back-squat', 80, 1);
+    await earlier.finishSession(done.id);
+    earlier.close();
+  }
+  return { phone, training: await phone.open(Date.UTC(2026, 8, 28, 15)) };
+}
+
+test('a jump is refused offline until the lifter says they lifted it, then it is saved and synced', async () => {
+  const network = server();
+  network.offline = true;
+  const { phone, training } = await anaAfterCalibration(network);
+  const session = await training.startSession();
+
+  // 80 kg to 100 kg in a month is 25% over, past the 20% of a lifter at the 50th percentile
+  const refused = await training.logSet(session.id, 'back-squat', 100, 1).catch((error) => error);
+  expect(refused).toBeInstanceOf(JumpSet);
+  expect(refused.percent).toBe(25);
+  expect((await training.sessionInProgress())!.sets).toEqual([]);
+
+  const set = await training.logSet(session.id, 'back-squat', 100, 1, undefined, { confirmedJump: true });
+  expect((await training.sessionInProgress())!.sets.map(({ id }) => id)).toEqual([set.id]);
+  // It earns nothing, but the next Session at the same weight is not a jump again
+  expect((await training.scoring()).events).toEqual([]);
+  await training.finishSession(session.id);
+  const next = await training.startSession();
+  await expect(training.logSet(next.id, 'back-squat', 100, 1)).resolves.toBeDefined();
+
+  network.offline = false;
+  phone.connectivity.dispatchEvent(new Event('online'));
+  await vi.waitFor(() => expect(network.batches.length).toBeGreaterThan(0));
+  expect(network.batches.flat().filter((m) => m.kind === 'saveSet' && m.set.weightKg === 100).length).toBe(2);
+  training.close();
+});
+
+test('editing a Set into a jump is refused offline and saved once confirmed; a ceiling Set is never confirmable', async () => {
+  const network = server();
+  network.offline = true;
+  const { training } = await anaAfterCalibration(network);
+  const session = await training.startSession();
+  const set = await training.logSet(session.id, 'back-squat', 80, 1);
+
+  await expect(training.editSet(set.id, 100, 1)).rejects.toBeInstanceOf(JumpSet);
+  expect((await training.sessionInProgress())!.sets.map(({ weightKg }) => weightKg)).toEqual([80]);
+
+  await training.editSet(set.id, 100, 1, { confirmedJump: true });
+  expect((await training.sessionInProgress())!.sets.map(({ weightKg }) => weightKg)).toEqual([100]);
+  await expect(training.editSet(set.id, 1000, 5, { confirmedJump: true })).rejects.toBeInstanceOf(ImplausibleSet);
   training.close();
 });
