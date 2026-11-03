@@ -54,7 +54,7 @@ export function ExerciseBlock({
   // This week is a Deload Week: about half the Sets, about 10% lighter, and no go heavier or Stall advice.
   deload?: boolean;
   // Logs the Set and returns its ID.
-  onLog: (weightKg: number, reps: number, label: SetLabel) => Promise<string>;
+  onLog: (weightKg: number, reps: number, label: SetLabel) => Promise<string | null>;
   // Whether RIR is asked after this logged Set (design: Logging a Session).
   asksRir: (setId: string) => boolean;
   onSetLabel: (setId: string, label: SetLabel) => Promise<void>;

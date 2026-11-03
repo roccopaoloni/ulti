@@ -192,6 +192,9 @@ type Messages = {
     discardTitle: string;
     discardConfirm: string;
     discardKeep: string;
+    implausibleTitle: string;
+    implausibleText: string;
+    implausibleFix: string;
     empty: string;
     addExercise: string;
     chooseExercise: string;
@@ -668,6 +671,9 @@ const en: Messages = {
     discardTitle: 'Nothing logged. Discard this session?',
     discardConfirm: 'Discard session',
     discardKeep: 'Keep logging',
+    implausibleTitle: 'Nice try. Nobody lifts that.',
+    implausibleText: 'Fat-fingered it? Check the weight and reps.',
+    implausibleFix: 'Fix it',
     empty: 'Add an exercise to start logging sets.',
     addExercise: 'Add exercise',
     chooseExercise: 'Choose an exercise',
@@ -1120,6 +1126,9 @@ const es: Messages = {
     discardTitle: 'No registraste nada. ¿Descartar la sesión?',
     discardConfirm: 'Descartar sesión',
     discardKeep: 'Seguir registrando',
+    implausibleTitle: 'No me caminés, no estás levantando eso.',
+    implausibleText: '¿Se te fue el dedo? Revisá el peso y las repes.',
+    implausibleFix: 'Corregir',
     empty: 'Agregá un ejercicio para empezar a registrar series.',
     addExercise: 'Agregar ejercicio',
     chooseExercise: 'Elegí un ejercicio',

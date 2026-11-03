@@ -19,6 +19,7 @@ import { Keypad } from './ExerciseBlock.tsx';
 import { Sheet } from './GroupsScreens.tsx';
 import { useI18n } from './i18n.ts';
 import { chevronIcon, checkIcon } from './icons.tsx';
+import { useImplausibleSheet } from './NoticeSheet.tsx';
 import { historyPath, navigate, paths, sessionPath } from './navigation.ts';
 import { today } from './profile.ts';
 import { Skeleton } from './Skeleton.tsx';
@@ -365,6 +366,7 @@ function PastSet({
   // The sheet shows the form to fix the Set, or asks to confirm its deletion.
   const [confirming, setConfirming] = useState(false);
   const dialog = useRef<HTMLDialogElement>(null);
+  const implausible = useImplausibleSheet();
   const typed = String(Math.round(kgToUnits(set.weightKg, units) * 100) / 100).replace('.', language === 'es' ? ',' : '.');
   const [weight, setWeight] = useState(typed);
   const [reps, setReps] = useState(String(set.reps));
@@ -378,8 +380,14 @@ function PastSet({
   async function save(event: FormEvent) {
     event.preventDefault();
     if (!valid) return;
+    try {
+      await onEdit(weightKg, Number(reps));
+    } catch (error) {
+      // The sheet opens over this one; its button returns to the numbers.
+      if (implausible.refuse(error)) return;
+      throw error;
+    }
     dialog.current?.close();
-    await onEdit(weightKg, Number(reps));
   }
 
   const load = bodyweight
@@ -455,6 +463,7 @@ function PastSet({
           </form>
         )}
       </Sheet>
+      {implausible.sheet}
       {editing && (
         <Keypad
           label={editing === 'weight' ? (bodyweight ? t.session.addedWeight : t.session.weight) : t.session.reps}

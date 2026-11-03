@@ -5,6 +5,7 @@ import {
   completeRoutine,
   deriveScoringEvents,
   findCustomExercise,
+  isImplausibleSet,
   nextMonday,
   isMuscle,
   nextRoutineDay,
@@ -22,6 +23,7 @@ import {
   type Sex,
   type SetLabel,
   type TrainingHistory,
+  valueInForce,
 } from '@ulti/rules';
 import { deleteDB, openDB, type DBSchema } from 'idb';
 
@@ -29,6 +31,13 @@ import { deleteDB, openDB, type DBSchema } from 'idb';
 // (ADR 0003). Every write is also a mutation, with an ID made on the phone, kept in an outbox
 // until the sync endpoint has it. The endpoint ignores IDs it has already applied, so sending a
 // mutation twice is harmless.
+
+// Thrown instead of saving a Set beyond its Exercise's ceiling; the screens show the sheet.
+export class ImplausibleSet extends Error {
+  constructor() {
+    super('Implausible Set');
+  }
+}
 
 export type SessionRecord = {
   id: string;
@@ -298,6 +307,18 @@ export async function openTraining(userId: string, options: Options) {
 
   const stamp = () => options.now().toISOString();
 
+  // Saving a Set checks it first, on the phone with the rules' own function (spec: Implausible Sets).
+  async function refuseImplausible(exerciseId: string, weightKg: number, reps: number) {
+    const exercise = await db.get('exercises', exerciseId);
+    const bodyweights = (await db.getAll('profile')).filter((entry) => entry.field === 'bodyweightKg');
+    const bodyweightKg = valueInForce(
+      bodyweights.map(({ effectiveFrom, value }) => ({ effectiveFrom, value: value as number })),
+      localDate(options.now(), options.timeZone()),
+    );
+    const set = { exercise: exerciseId, custom: exercise?.custom ?? false, bodyweight: exercise?.bodyweight ?? false, weightKg, reps };
+    if (isImplausibleSet(set, bodyweightKg)) throw new ImplausibleSet();
+  }
+
   return {
     // Starts a Session, from a Routine Day or unplanned. A Routine Day's Exercises are set up in order.
     async startSession(routineDayId?: string) {
@@ -332,6 +353,7 @@ export async function openTraining(userId: string, options: Options) {
 
     // `label` is the one the row showed, which the Set keeps from then on.
     async logSet(sessionId: string, exerciseId: string, weightKg: number, reps: number, label?: SetLabel) {
+      await refuseImplausible(exerciseId, weightKg, reps);
       const loggedAt = stamp();
       const set: SetRecord = { id: crypto.randomUUID(), sessionId, exerciseId, weightKg, reps, label, loggedAt, updatedAt: loggedAt };
       await write({ id: crypto.randomUUID(), kind: 'saveSet', set });
@@ -341,6 +363,7 @@ export async function openTraining(userId: string, options: Options) {
     // Fixes a Set's weight and reps: the same Set written again, so the latest write wins.
     async editSet(setId: string, weightKg: number, reps: number) {
       const set = (await db.get('sets', setId))!;
+      await refuseImplausible(set.exerciseId, weightKg, reps);
       await write({ id: crypto.randomUUID(), kind: 'saveSet', set: { ...set, weightKg, reps, updatedAt: stamp() } });
     },
 
