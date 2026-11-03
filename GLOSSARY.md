@@ -42,6 +42,13 @@ A user's saved training plan: which Exercises to do in which Session, each with 
 _Avoid_: Program, plan, template
 _Rioplatense_: Rutina
 
+**Routine Day**:
+One of the Sessions planned in a Routine, picked when starting a Session.
+_Rioplatense_: Sesión de la rutina
+
+**Suggested Day**:
+The Routine Day done longest ago, offered first when starting a Session.
+
 **Routine Link**:
 A link that carries a copy of a user's Routine, from which another user can load it as their own. Custom Exercises in it travel by name, equipment and muscle, and loading reuses the recipient's matching Custom Exercise (same name ignoring capitals and spaces, same equipment) or creates one.
 _Rioplatense_: Link de rutina

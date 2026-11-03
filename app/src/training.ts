@@ -9,7 +9,7 @@ import {
   isImplausibleSet,
   nextMonday,
   isMuscle,
-  nextRoutineDay,
+  suggestedRoutineDay,
   recommend,
   recommendDeload,
   weekStamps,
@@ -614,13 +614,12 @@ export async function openTraining(userId: string, options: Options) {
       return all.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0] ?? null;
     },
 
-    // The Routine Day to do next, or null before there is a Routine.
+    // The Suggested Day: the Routine Day done longest ago, or null before there is a Routine.
     async nextRoutineDay() {
       const days = (await this.routine())?.days;
       if (!days?.length) return null;
-      const fromRoutine = (await db.getAll('sessions')).filter((session) => session.routineDayId);
-      const last = fromRoutine.sort((a, b) => b.startedAt.localeCompare(a.startedAt))[0];
-      const id = nextRoutineDay(days.map((day) => day.id), last?.routineDayId);
+      const done = (await db.getAll('sessions')).flatMap((session) => (session.routineDayId ? [{ dayId: session.routineDayId, startedAt: session.startedAt }] : []));
+      const id = suggestedRoutineDay(days.map((day) => day.id), done);
       return days.find((day) => day.id === id)!;
     },
 

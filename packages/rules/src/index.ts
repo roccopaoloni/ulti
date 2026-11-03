@@ -689,11 +689,17 @@ export function suggestedWeeklyTarget(routineDays: number): number {
   return Math.min(6, Math.max(2, routineDays));
 }
 
-// The Routine Day to do next: the one after the last Session done from the Routine, wrapping
-// around; the first when there is none or it was removed from the Routine.
-export function nextRoutineDay(dayIds: readonly string[], lastDoneId: string | undefined): string {
-  const last = lastDoneId === undefined ? -1 : dayIds.indexOf(lastDoneId);
-  return dayIds[(last + 1) % dayIds.length];
+// The Suggested Day: the Routine Day done longest ago, offered first when starting a Session. A Day
+// never done counts as the oldest, and ties go to Routine order. `done` is every Session started
+// from a Routine Day; those from a Day no longer in the Routine are ignored.
+export function suggestedRoutineDay(dayIds: readonly string[], done: readonly { dayId: string; startedAt: string }[]): string {
+  const latest = new Map<string, string>();
+  for (const { dayId, startedAt } of done) {
+    if ((latest.get(dayId) ?? '') < startedAt) latest.set(dayId, startedAt);
+  }
+  let oldest = dayIds[0];
+  for (const id of dayIds) if ((latest.get(id) ?? '') < (latest.get(oldest) ?? '')) oldest = id;
+  return oldest;
 }
 
 // The rows of an Exercise's Sets still to do when a Session starts: the last Session's Sets, with

@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { completeRoutine, dayColour, moveItem, nextDayColour, nextRoutineDay, plannedRows, suggestedWeeklyTarget, withDayColours } from './index.ts';
+import { completeRoutine, dayColour, moveItem, nextDayColour, plannedRows, suggestedRoutineDay, suggestedWeeklyTarget, withDayColours } from './index.ts';
 
 const blank = (ids: string[]) => ids.map((id) => ({ id, name: id, exercises: [] }));
 
@@ -45,20 +45,39 @@ test('the suggested Weekly Target stays within 2 to 6', () => {
 // Push, Pull, Legs.
 const days = ['push', 'pull', 'legs'];
 
-test('with no Session from the Routine yet, the next one is its first', () => {
-  expect(nextRoutineDay(days, undefined)).toBe('push');
+const at = (dayId: string, startedAt: string) => ({ dayId, startedAt });
+
+test('with no Session from the Routine yet, the Suggested Day is its first', () => {
+  expect(suggestedRoutineDay(days, [])).toBe('push');
 });
 
-test('the next Session is the one after the last one done', () => {
-  expect(nextRoutineDay(days, 'push')).toBe('pull');
+test('the Suggested Day is the Routine Day done longest ago', () => {
+  const done = [at('push', '2026-10-01'), at('pull', '2026-10-03'), at('legs', '2026-10-02')];
+  expect(suggestedRoutineDay(days, done)).toBe('push');
+  expect(suggestedRoutineDay(days, [...done, at('push', '2026-10-04')])).toBe('legs');
 });
 
-test('after the last Session of the Routine comes its first again', () => {
-  expect(nextRoutineDay(days, 'legs')).toBe('push');
+test('a Day done twice counts from its latest Session', () => {
+  const done = [at('push', '2026-10-01'), at('push', '2026-10-05'), at('pull', '2026-10-02'), at('legs', '2026-10-03')];
+  expect(suggestedRoutineDay(days, done)).toBe('pull');
 });
 
-test('if the last Session done is no longer in the Routine, the next one is its first', () => {
-  expect(nextRoutineDay(days, 'arms')).toBe('push');
+test('a Routine Day never done counts as the oldest', () => {
+  expect(suggestedRoutineDay(days, [at('push', '2026-10-01'), at('legs', '2026-10-02')])).toBe('pull');
+});
+
+test('Days never done tie, and the tie goes to Routine order', () => {
+  expect(suggestedRoutineDay(days, [at('push', '2026-10-01')])).toBe('pull');
+});
+
+test('with Days done in order, it matches the rotation: the Day after the last one, wrapping around', () => {
+  expect(suggestedRoutineDay(days, [at('push', '2026-10-01')])).toBe('pull');
+  expect(suggestedRoutineDay(days, [at('push', '2026-10-01'), at('pull', '2026-10-02')])).toBe('legs');
+  expect(suggestedRoutineDay(days, [at('push', '2026-10-01'), at('pull', '2026-10-02'), at('legs', '2026-10-03')])).toBe('push');
+});
+
+test('Sessions from a Day no longer in the Routine are ignored', () => {
+  expect(suggestedRoutineDay(days, [at('arms', '2026-10-09'), at('push', '2026-10-01')])).toBe('pull');
 });
 
 test('a Routine Day planning 3 Sets shows 3 rows, the ones past the last Session repeating its last Set', () => {

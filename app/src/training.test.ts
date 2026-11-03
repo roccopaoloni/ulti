@@ -238,7 +238,7 @@ test('a Session discarded offline is gone from the phone, and reaches the server
   training.close();
 });
 
-test('a Session discarded does not move the Routine to its next Day', async () => {
+test('a Session discarded does not count as its Routine Day being done', async () => {
   const network = server();
   network.offline = true;
   const phone = anasPhone(network);
@@ -637,28 +637,40 @@ test('a Session started from a Routine Day sets up its Exercises with their Sets
   training.close();
 });
 
-test('the next Session suggested is the Routine Day after the last one started from the Routine', async () => {
+test('the Suggested Day is the Routine Day done longest ago, counting every Session started from a Day but not unplanned ones', async () => {
   const network = server();
   network.offline = true;
   const phone = anasPhone(network);
   const training = await phone.open();
   expect(await training.nextRoutineDay()).toBeNull();
 
-  await training.saveRoutine([pushDay, pullDay]);
+  const legsDay = { ...pullDay, id: 'legs', name: 'Legs' };
+  await training.saveRoutine([pushDay, pullDay, legsDay]);
   expect((await training.nextRoutineDay())?.id).toBe('push');
 
-  const push = await training.startSession('push');
-  await training.finishSession(push.id);
+  // Legs, then Push: Pull has never been done, so it is the oldest.
+  await training.finishSession((await training.startSession('legs')).id);
+  expect((await training.nextRoutineDay())?.id).toBe('push');
+  await training.finishSession((await training.startSession('push')).id);
   expect((await training.nextRoutineDay())?.id).toBe('pull');
 
   // An unplanned Session in between changes nothing.
-  const unplanned = await training.startSession();
-  await training.finishSession(unplanned.id);
+  await training.finishSession((await training.startSession()).id);
   expect((await training.nextRoutineDay())?.id).toBe('pull');
 
-  const pull = await training.startSession('pull');
-  await training.finishSession(pull.id);
+  // Once Pull is done too, the Day done longest ago is Legs.
+  await training.finishSession((await training.startSession('pull')).id);
+  expect((await training.nextRoutineDay())?.id).toBe('legs');
+
+  // An extra Session of Legs (past the Weekly Target) counts as Legs done: Push is now the oldest.
+  await training.setProfile('weeklyTarget', 2);
+  await training.finishSession((await training.startSession('legs')).id);
   expect((await training.nextRoutineDay())?.id).toBe('push');
+
+  // So does a Deload Session.
+  await training.startDeload();
+  await training.finishSession((await training.startSession('push')).id);
+  expect((await training.nextRoutineDay())?.id).toBe('pull');
   training.close();
 });
 
@@ -1395,7 +1407,7 @@ test('many edits made offline send the Routine once, as it ended up', async () =
   training.close();
 });
 
-test('the next Session and the pre-filled rows follow the order of Days and Exercises after they are reordered', async () => {
+test('the Suggested Day and the pre-filled rows follow the order of Days and Exercises after they are reordered', async () => {
   const network = server();
   network.offline = true;
   const phone = anasPhone(network);
@@ -1405,6 +1417,12 @@ test('the next Session and the pre-filled rows follow the order of Days and Exer
 
   await training.saveRoutineDraft([pullDay, pushDay]);
   expect((await training.nextRoutineDay())?.id).toBe('pull');
+  // Days never done tie, so reordering moves the tie; once one is done the other is oldest.
+  await training.finishSession((await training.startSession('pull')).id);
+  expect((await training.nextRoutineDay())?.id).toBe('push');
+  await training.saveRoutineDraft([pushDay, pullDay]);
+  expect((await training.nextRoutineDay())?.id).toBe('push');
+  await training.saveRoutineDraft([pullDay, pushDay]);
 
   const press = { exerciseId: 'overhead-press', sets: 3, repMin: 8, repMax: 12 };
   await training.saveRoutineDraft([pullDay, { ...pushDay, exercises: [press, ...pushDay.exercises] }]);
