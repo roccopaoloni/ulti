@@ -91,6 +91,14 @@ export function ExerciseBlock({
     setUnlogged({ weightKg: set.weightKg, reps: set.reps, label: labels[index]! });
     await onUnlog(set.id);
   };
+  // Logging clears the un-logged row first, so the next Set is not built from it; a refused Set brings it back.
+  const logRow = async (weightKg: number, reps: number, label: SetLabel) => {
+    const kept = unlogged;
+    setUnlogged(null);
+    const id = await onLog(weightKg, reps, label);
+    if (id === null) setUnlogged(kept);
+    setAskRir(id);
+  };
   const [editingIncrement, setEditingIncrement] = useState<string | null>(null);
 
   // Past the plan, the next Set repeats the last one logged.
@@ -214,8 +222,7 @@ export function ExerciseBlock({
               units={units}
               labelFor={labelFor}
               onLog={async (weightKg, reps, label) => {
-                setUnlogged(null);
-                setAskRir(await onLog(weightKg, reps, label));
+                await logRow(weightKg, reps, label);
               }}
             />
           }
@@ -235,8 +242,7 @@ export function ExerciseBlock({
           units={units}
           labelFor={labelFor}
           onLog={async (weightKg, reps, label) => {
-            setUnlogged(null);
-            setAskRir(await onLog(weightKg, reps, label));
+            await logRow(weightKg, reps, label);
           }}
         />
       )}

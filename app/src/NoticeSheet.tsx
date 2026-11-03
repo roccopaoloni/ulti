@@ -1,7 +1,7 @@
-import { useRef, type ReactNode, type RefObject } from 'react';
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { Sheet } from './GroupsScreens.tsx';
 import { useI18n } from './i18n.ts';
-import { ImplausibleSet } from './training.ts';
+import { ImplausibleSet, JumpSet } from './training.ts';
 
 export type NoticeAction = { label: string; onClick?: () => void; variant?: 'primary' | 'ghost' };
 
@@ -40,18 +40,54 @@ export function NoticeSheet({
   );
 }
 
-// The sheet for a Set beyond any human (spec: Implausible Sets). `refuse` shows it when a save
-// failed because the Set is implausible and says whether it did; any other error is left alone.
+// The sheets for an Implausible Set (spec: Implausible Sets). `refuse` shows the one that fits a
+// failed save and resolves to what became of the Set: `null` when the error is not an Implausible
+// Set (the caller rethrows), 'refused' when the lifter goes back to the numbers (a Set beyond any
+// human always does), 'lifted' when they say they lifted a jump, which the caller then saves.
 export function useImplausibleSheet() {
   const { t } = useI18n();
-  const dialog = useRef<HTMLDialogElement>(null);
+  const ceiling = useRef<HTMLDialogElement>(null);
+  const jump = useRef<HTMLDialogElement>(null);
+  const [percent, setPercent] = useState(0);
+  const answer = useRef<((lifted: boolean) => void) | null>(null);
+  const settle = (lifted: boolean) => {
+    answer.current?.(lifted);
+    answer.current = null;
+  };
+  // Closing the sheet any other way (Escape, the backdrop) is the same as "Fix it".
+  useEffect(() => {
+    const dialog = jump.current;
+    const close = () => settle(false);
+    dialog?.addEventListener('close', close);
+    return () => dialog?.removeEventListener('close', close);
+  }, []);
   const sheet = (
-    <NoticeSheet dialog={dialog} title={t.session.implausibleTitle} text={t.session.implausibleText} actions={[{ label: t.session.implausibleFix }]} />
+    <>
+      <NoticeSheet dialog={ceiling} title={t.session.implausibleTitle} text={t.session.implausibleText} actions={[{ label: t.session.implausibleFix }]} />
+      <NoticeSheet
+        dialog={jump}
+        title={t.session.jumpTitle(percent)}
+        text={t.session.jumpText}
+        actions={[
+          { label: t.session.jumpFix, variant: 'ghost', onClick: () => settle(false) },
+          { label: t.session.jumpLifted, onClick: () => settle(true) },
+        ]}
+      />
+    </>
   );
-  function refuse(error: unknown) {
-    if (!(error instanceof ImplausibleSet)) return false;
-    dialog.current?.showModal();
-    return true;
+  function refuse(error: unknown): Promise<'refused' | 'lifted' | null> {
+    if (error instanceof ImplausibleSet) {
+      ceiling.current?.showModal();
+      return Promise.resolve('refused');
+    }
+    if (error instanceof JumpSet) {
+      setPercent(Math.round(error.percent));
+      jump.current?.showModal();
+      return new Promise((resolve) => {
+        answer.current = (lifted) => resolve(lifted ? 'lifted' : 'refused');
+      });
+    }
+    return Promise.resolve(null);
   }
   return { sheet, refuse };
 }

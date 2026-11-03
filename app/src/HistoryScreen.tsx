@@ -319,8 +319,8 @@ export function SessionDetailScreen({ training, units, sessionId }: { training: 
                     incrementKg={data.catalog.find(({ id }) => id === exerciseId)?.incrementKg ?? 2.5}
                     bodyweight={data.catalog.find(({ id }) => id === exerciseId)?.bodyweight ?? false}
                     record={data.records.get(set.id)}
-                    onEdit={async (weightKg, reps) => {
-                      await training.editSet(set.id, weightKg, reps);
+                    onEdit={async (weightKg, reps, confirmedJump) => {
+                      await training.editSet(set.id, weightKg, reps, { confirmedJump });
                       await data.reload();
                     }}
                     onDelete={async () => {
@@ -358,7 +358,7 @@ function PastSet({
   incrementKg: number;
   bodyweight: boolean;
   record: PersonalRecord | undefined;
-  onEdit: (weightKg: number, reps: number) => Promise<void>;
+  onEdit: (weightKg: number, reps: number, confirmedJump: boolean) => Promise<void>;
   onDelete: () => Promise<void>;
 }) {
   const { t, language, formatNumber } = useI18n();
@@ -381,11 +381,13 @@ function PastSet({
     event.preventDefault();
     if (!valid) return;
     try {
-      await onEdit(weightKg, Number(reps));
+      await onEdit(weightKg, Number(reps), false);
     } catch (error) {
-      // The sheet opens over this one; its button returns to the numbers.
-      if (implausible.refuse(error)) return;
-      throw error;
+      // The sheet opens over this one; its button returns to the numbers, or, for a jump, saves the Set.
+      const answer = await implausible.refuse(error);
+      if (answer === null) throw error;
+      if (answer === 'refused') return;
+      await onEdit(weightKg, Number(reps), true);
     }
     dialog.current?.close();
   }

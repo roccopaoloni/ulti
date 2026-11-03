@@ -195,6 +195,10 @@ type Messages = {
     implausibleTitle: string;
     implausibleText: string;
     implausibleFix: string;
+    jumpTitle: (percent: number) => string;
+    jumpText: string;
+    jumpFix: string;
+    jumpLifted: string;
     empty: string;
     addExercise: string;
     chooseExercise: string;
@@ -674,6 +678,10 @@ const en: Messages = {
     implausibleTitle: 'Nice try. Nobody lifts that.',
     implausibleText: 'Fat-fingered it? Check the weight and reps.',
     implausibleFix: 'Fix it',
+    jumpTitle: (percent) => `Oh really? ${percent}% up in a month?`,
+    jumpText: "If you lifted it, save it. It won't earn Points, but it becomes your new best.",
+    jumpFix: 'Fix it',
+    jumpLifted: 'I lifted it',
     empty: 'Add an exercise to start logging sets.',
     addExercise: 'Add exercise',
     chooseExercise: 'Choose an exercise',
@@ -1129,6 +1137,10 @@ const es: Messages = {
     implausibleTitle: 'No me caminés, no estás levantando eso.',
     implausibleText: '¿Se te fue el dedo? Revisá el peso y las repes.',
     implausibleFix: 'Corregir',
+    jumpTitle: (percent) => `¿Ah, sí? ¿${percent}% más en un mes?`,
+    jumpText: 'Si lo levantaste, guardala. No suma puntos, pero queda como tu nueva mejor marca.',
+    jumpFix: 'Corregir',
+    jumpLifted: 'Sí, lo levanté',
     empty: 'Agregá un ejercicio para empezar a registrar series.',
     addExercise: 'Agregar ejercicio',
     chooseExercise: 'Elegí un ejercicio',
