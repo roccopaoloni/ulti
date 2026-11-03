@@ -206,10 +206,10 @@ Nothing needs setting up. The deploy job applies the migrations, which add the 1
 2. Turn on airplane mode. **Start session**, add an Exercise, log two Sets, and close the app completely.
 3. Reopen it, still in airplane mode: the Session should be back on screen with both Sets. **Finish** it.
 4. Turn airplane mode off and open the app. In Supabase, **Table Editor → sessions** and **sets** should show the Session and its Sets, with your time zone and the local date.
-5. **Integrations → Cron → Jobs** should list `recompute-dirty-users`, active, every 5 minutes. **Integrations → Vault → Secrets** should list `functions_url`, set to `https://<project-ref>.supabase.co/functions/v1`. If it's missing, the deploy couldn't write it: add it there by hand with that name and value.
+5. **Integrations → Cron → Jobs** should list `recompute-dirty-users`, active, every 5 minutes. **Integrations → Vault → Secrets** should list `functions_url`, set to `https://<project-ref>.supabase.co/functions/v1`. If it's missing, the deploy couldn't write it: add it there by hand with that name and value. The same list should show `recompute_secret`, and **Edge Functions → Secrets** should show `RECOMPUTE_SECRET`. The deploy writes both, from a value derived from the database password, so nothing needs doing by hand. If they ever disagree, the retry job gets `401` from `recompute`: run the deploy job again.
 
 - [ ] A Session logged in airplane mode survived closing the app and reached the database once back online
-- [ ] The retry job is active and `functions_url` is in Vault
+- [ ] The retry job is active, `functions_url` and `recompute_secret` are in Vault, and `RECOMPUTE_SECRET` is an Edge Function secret
 
 ## 12. After Session history (#8) ships: fix a Set in airplane mode
 

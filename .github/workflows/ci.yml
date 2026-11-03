@@ -35,6 +35,8 @@ jobs:
         env:
           # Scheduled jobs reach the functions through the API gateway on the stack's Docker network.
           ULTI_FUNCTIONS_URL: http://kong:8000/functions/v1
+          # Shared by Vault and the recompute function; any value will do for a throwaway stack.
+          ULTI_RECOMPUTE_SECRET: local-stack-recompute-secret
       - run: npm run test:integration
       - name: Bundle Edge Functions the way deploy does
         # `supabase functions deploy` bundles each function with the edge runtime's `bundle`
@@ -73,11 +75,23 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx supabase link --project-ref "$SUPABASE_PROJECT_ID"
+      - name: Derive the recompute secret
+        # The retry job and the recompute function share a secret. Deriving it from the database
+        # password gives the same value on every deploy (nothing to rotate or store by hand), and
+        # changes it, in both places, only when the password changes.
+        run: |
+          secret=$(printf 'ulti-recompute' | openssl dgst -sha256 -hmac "$SUPABASE_DB_PASSWORD" -r | cut -d' ' -f1)
+          echo "::add-mask::$secret"
+          echo "ULTI_RECOMPUTE_SECRET=$secret" >> "$GITHUB_ENV"
+      - name: Set the recompute secret on the Edge Functions
+        # Before the migrations, so the function knows the secret by the time Vault hands it out.
+        run: npx supabase secrets set --project-ref "$SUPABASE_PROJECT_ID" RECOMPUTE_SECRET="$ULTI_RECOMPUTE_SECRET"
       - name: Apply migrations
         # Parallel branches merge migrations dated before ones already applied, so apply those too.
         run: npx supabase db push --yes --include-all
         env:
-          # Written to Vault with the migrations, for the database's scheduled jobs (config.toml).
+          # Written to Vault with the migrations, for the database's scheduled jobs (config.toml),
+          # along with ULTI_RECOMPUTE_SECRET from the step above.
           ULTI_FUNCTIONS_URL: https://${{ secrets.SUPABASE_PROJECT_ID }}.supabase.co/functions/v1
       - name: Deploy Edge Functions
         run: npx supabase functions deploy --project-ref "$SUPABASE_PROJECT_ID"
