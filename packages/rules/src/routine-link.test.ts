@@ -114,3 +114,15 @@ test("an incoming Custom Exercise matches one of the recipient's ignoring capita
   expect(findCustomExercise({ name: 'Cable fly', equipment: null, muscle: 'chest' }, own)).toBeUndefined();
   expect(findCustomExercise({ name: 'Bench', equipment: null, muscle: 'chest' }, own)).toBeUndefined();
 });
+
+test('a bodyweight Custom Exercise round-trips through a link, and matching respects its equipment', () => {
+  const rollout = { name: 'Ab wheel', equipment: 'bodyweight', muscle: 'core' } as const;
+  const data = packRoutineLink(customDays, 'Ana', new Map([['custom-1', rollout]]));
+  expect(unpackRoutineLink(data, known)?.days[0].exercises[1]).toMatchObject({ custom: rollout });
+  const own = [
+    { id: 'custom-a', nameEn: 'Ab wheel', equipment: null, custom: true },
+    { id: 'custom-b', nameEn: 'AB wheel', equipment: 'bodyweight', custom: true },
+  ];
+  expect(findCustomExercise(rollout, own)).toBe('custom-b');
+  expect(findCustomExercise(rollout, own.slice(0, 1))).toBeUndefined();
+});

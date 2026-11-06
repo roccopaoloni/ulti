@@ -511,7 +511,7 @@ export function SessionScreen({ training, units, layout, onLeave }: { training: 
         exclude={session.exerciseIds}
         multiple={false}
         onPick={([exerciseId]) => add(exerciseId)}
-        onCreate={async (exerciseName, muscle) => (await training.createExercise(exerciseName, muscle)).id}
+        onCreate={async (exerciseName, muscle, bodyweight) => (await training.createExercise(exerciseName, muscle, bodyweight)).id}
         onClose={() => setPicking(false)}
       />
     </>
