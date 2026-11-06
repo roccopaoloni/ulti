@@ -521,12 +521,13 @@ function InviteLinkCard({ userId, group }: { userId: string; group: Group }) {
 }
 
 // A bottom sheet, like the ⓘ explanations. A tap on the backdrop closes it.
-export function Sheet({ dialog, label, className, children }: { dialog: RefObject<HTMLDialogElement | null>; label: string; className?: string; children: ReactNode }) {
+export function Sheet({ dialog, label, className, focusable, children }: { dialog: RefObject<HTMLDialogElement | null>; label: string; className?: string; focusable?: boolean; children: ReactNode }) {
   return createPortal(
     <dialog
       ref={dialog}
       className={className ? `sheet ${className}` : 'sheet'}
       aria-label={label}
+      tabIndex={focusable ? -1 : undefined}
       onClick={(event) => {
         // React passes portal events up the component tree; keep clicks and submits away from the parent.
         event.stopPropagation();
