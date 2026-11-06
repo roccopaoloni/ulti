@@ -401,7 +401,7 @@ export function RankUpMoment({ from, to, tierName, plaque, strings, kicker, head
         started = true;
         audioInit();
         el.classList.add('started');
-        if (division) at(1000, impact);
+        if (division) at(90, impact);
         else hit(1);
         return;
       }
