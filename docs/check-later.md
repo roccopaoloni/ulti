@@ -48,4 +48,4 @@ Small things for the owner that didn't block a merge: decisions you may want to 
 
 ## CI flakes
 
-- **`period-finalization.test.ts` > "tied winners each get a crown, and a week nobody trained has none" timed out** on main after #153 merged: 5078 ms against vitest's default 5000 ms. It passed on the PR and on the next run. It recurred on PR #169 (5004 ms), so it now has a 30 s timeout, like the repo's other slow integration tests.
+- **`period-finalization.test.ts` > "tied winners each get a crown, and a week nobody trained has none" timed out** on main after #153 merged: 5078 ms against vitest's default 5000 ms. It passed on the PR and on the next run. It recurred on PR #169 (5004 ms), then failed on PR #174 with an extra October month crown. The cause: the scheduled `finalize-periods` job runs every five minutes at the real time, which is now past the October 2026 dates the tests use, so it could crown a test's Group mid-test. Integration runs now pause that job (`integration/global-setup.ts`), and the test also has a 30 s timeout. (#174)
