@@ -39,7 +39,7 @@ jobs:
       - run: npm test
 
   integration:
-    name: Integration tests (${{ matrix.shard }}/3)
+    name: Integration tests
     needs: changes
     if: needs.changes.outputs.server == 'true'
     runs-on: ubuntu-latest
@@ -62,7 +62,7 @@ jobs:
           ULTI_FUNCTIONS_URL: http://kong:8000/functions/v1
           # Shared by Vault and the recompute function; any value will do for a throwaway stack.
           ULTI_RECOMPUTE_SECRET: local-stack-recompute-secret
-      - run: npm run test:integration -- --shard=${{ matrix.shard }}/3
+      - run: npm test -w @ulti/integration -- --shard=${{ matrix.shard }}/3
       - name: Bundle Edge Functions the way deploy does
         # Once is enough, so only the first shard does it.
         if: matrix.shard == 1
