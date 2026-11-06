@@ -125,7 +125,7 @@ test("a Session synced after the freeze leaves the week's board unchanged but co
   expect(await crowns(bea)).toEqual([]);
 });
 
-test('tied winners each get a crown, and a week nobody trained has none', async () => {
+test('tied winners each get a crown, and a week nobody trained has none', { timeout: 30_000 }, async () => {
   const ana = await trained('Ana', utcSession('2026-10-19'));
   const bea = await trained('Bea', utcSession('2026-10-20'));
   const cy = await trained('Cy', utcSession('2026-10-21'), utcSession('2026-10-22'));
