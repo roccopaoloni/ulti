@@ -8,7 +8,11 @@ const send: Send = async (mutations) => {
   // a token refresh cooldown. That isn't being signed out: the sync fails and tries again later.
   const { data } = await supabase.auth.getSession();
   if (!data.session) throw new Error('No session to sync with yet');
-  const { data: result, error } = await supabase.functions.invoke('sync', { body: { mutations } });
+  // The database is in us-west-2 (Oregon), and a sync makes dozens of round trips to it. Left to
+  // itself, Supabase runs the function next to the phone (sa-east-1), where each round trip crosses
+  // the continent: ~9 s a sync (#181). The region goes in the query, not the `region` option, which
+  // adds an `x-region` header and so a CORS preflight the function must allow.
+  const { data: result, error } = await supabase.functions.invoke('sync?forceFunctionRegion=us-west-2', { body: { mutations } });
   if (error) throw error;
   return result;
 };
