@@ -1684,6 +1684,52 @@ test('the choice the server holds reaches a phone that is new to this user, unle
   training.close();
 });
 
+test('the Tutorial is marked seen on the phone at once, kept across a reload and synced later', async () => {
+  const network = server();
+  network.offline = true;
+  const phone = anasPhone(network);
+  const training = await phone.open();
+  expect(await training.tutorialSeen()).toBe(false);
+
+  await training.markTutorialSeen();
+  expect(await training.tutorialSeen()).toBe(true);
+  training.close();
+  const reloaded = await phone.open();
+  expect(await reloaded.tutorialSeen()).toBe(true);
+  expect(network.batches).toEqual([]);
+
+  network.offline = false;
+  phone.connectivity.dispatchEvent(new Event('online'));
+  await vi.waitFor(() => expect(network.batches).toHaveLength(1));
+  expect(network.batches[0].map((m) => m.kind)).toEqual(['saveTutorialSeen']);
+  reloaded.close();
+});
+
+test('a Tutorial left midway is not marked seen, on the phone or the server', async () => {
+  const network = server();
+  const phone = anasPhone(network);
+  const training = await phone.open();
+  training.close();
+
+  const reopened = await phone.open();
+
+  expect(await reopened.tutorialSeen()).toBe(false);
+  expect(network.batches).toEqual([]);
+  reopened.close();
+});
+
+test('a phone that downloads the account profile learns the Tutorial was seen, and sends nothing for it', async () => {
+  const network = server();
+  const training = await anasPhone(network).open();
+  expect(await training.tutorialSeen()).toBe(false);
+
+  await training.saveTutorialSeenFromServer();
+
+  expect(await training.tutorialSeen()).toBe(true);
+  expect(network.batches).toEqual([]);
+  training.close();
+});
+
 test("a Routine Day's colour is saved with the Routine, sent to the server, and comes back on a new phone", async () => {
   const network = server();
   const phone = anasPhone(network);
