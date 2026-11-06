@@ -233,6 +233,10 @@ export async function openTraining(userId: string, options: Options) {
       }
       if (oldVersion < 10) {
         db.createObjectStore('tutorial');
+        // One-off: a phone already onboarded before the Tutorial existed has seen it, as the
+        // server's migration marked the account. Not an outbox write: the server has it, and the
+        // phone may be offline when it first opens this version.
+        if (oldVersion >= 1 && (await tx.objectStore('profile').count()) > 0) await tx.objectStore('tutorial').put(true, 'seen');
       }
       if (oldVersion >= 5 && oldVersion < 9) {
         // One-off: Sessions logged before the mark existed are Deload Sessions if their week is an
