@@ -3076,3 +3076,94 @@ prefers-reduced-motion switches every animation off, so it stays off the badge. 
   color: var(--muted);
   font-weight: 800;
 }
+
+/* The spotlight: a ring around a real element, the rest dimmed, and a callout that never covers it. */
+.spot-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+}
+.spot-ring {
+  position: fixed;
+  border-radius: 16px;
+  box-shadow: 0 0 0 9999px var(--scrim);
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  transition: all 0.28s cubic-bezier(0.3, 0.9, 0.3, 1);
+  pointer-events: none;
+}
+.spot-ring.tap::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: inherit;
+  border: 2px solid var(--accent);
+  animation: spot-ping 1.4s ease-out infinite;
+}
+@keyframes spot-ping {
+  0% { opacity: 0.9; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.18); }
+}
+.spot-ring.nudge {
+  animation: spot-nudge 0.3s;
+}
+@keyframes spot-nudge {
+  30% { transform: translateX(-5px); }
+  60% { transform: translateX(5px); }
+}
+.spot-callout {
+  position: fixed;
+  left: max(14px, env(safe-area-inset-left, 0px));
+  right: max(14px, env(safe-area-inset-right, 0px));
+  max-width: 412px;
+  margin-inline: auto;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: var(--fg);
+  color: var(--bg);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.35);
+  transition: top 0.28s cubic-bezier(0.3, 0.9, 0.3, 1);
+}
+.spot-callout p {
+  margin: 0;
+  font-weight: 600;
+  font-size: 14.5px;
+  line-height: 1.4;
+}
+.spot-callout .row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.spot-callout .next {
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font: 800 12px var(--display);
+  text-transform: uppercase;
+}
+.spot-callout .cskip {
+  font: 700 12.5px var(--body);
+  opacity: 0.65;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.spot-callout .hint {
+  font: 700 12px var(--body);
+  opacity: 0.65;
+}
+@media (prefers-reduced-motion: reduce) {
+  .spot-ring,
+  .spot-callout {
+    transition: none;
+  }
+  .spot-ring.tap::after,
+  .spot-ring.nudge {
+    animation: none;
+  }
+}

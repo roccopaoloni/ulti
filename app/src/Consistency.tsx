@@ -39,7 +39,7 @@ export function WeekCard({ training, profile }: { training: Training; profile: P
   }, [training, profile]);
   if (!progress) return null;
   return (
-    <section className="card">
+    <section className="card" data-coach="week">
       <div className="eyebrow">
         {c.weeklyTarget} <Info term="weeklyTarget" />
       </div>

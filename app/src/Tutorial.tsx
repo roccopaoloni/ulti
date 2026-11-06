@@ -5,7 +5,7 @@ import { useI18n } from './i18n.ts';
 import { checkIcon, trophyIcon } from './icons.tsx';
 
 // The Tutorial: a welcome card, then five slides. Finishing and Skipping both end
-// it with `onDone`; closing the app midway ends nothing, so it starts again from the welcome card.
+// it with `onDone`; the last slide hands over to the coach marks on Home with `onShowHome`; closing the app midway ends nothing, so it starts again from the welcome card.
 
 const tiers: Tier[] = ['bronze', 'silver', 'gold', 'diamond', 'elite'];
 const roman = ['', 'I', 'II', 'III', 'IV', 'V'];
@@ -115,7 +115,7 @@ function GroupsArt() {
 
 const slideArt: ReactNode[] = [<ScoreArt />, <StampsArt />, <CalibrationArt />, <RankArt />, <GroupsArt />];
 
-export function Tutorial({ onDone }: { onDone: () => void }) {
+export function Tutorial({ onDone, onShowHome }: { onDone: () => void; onShowHome: () => void }) {
   const { t } = useI18n();
   const u = t.tutorial;
   // 0 is the welcome card, 1 to 5 the slides.
@@ -144,7 +144,7 @@ export function Tutorial({ onDone }: { onDone: () => void }) {
           <div className="tut-pager" aria-hidden="true">
             {u.slides.map((_, i) => <i key={i} className={i === slide ? 'on' : undefined} />)}
           </div>
-          <button type="button" className="btn-primary" onClick={() => (last ? onDone() : setStep(step + 1))}>
+          <button type="button" className="btn-primary" onClick={() => (last ? onShowHome() : setStep(step + 1))}>
             {last ? u.slideGo : u.next}
           </button>
         </div>

@@ -28,6 +28,8 @@ type Messages = {
     next: string;
     replay: string;
     replayBusy: string;
+    // The coach marks on Home, and the spotlight's buttons.
+    coach: { week: string; tabs: string; go: string; gotIt: string; tapHint: string };
     // The slides' pictures.
     art: { pr: string; prSub: string; show: string; showSub: string; streak: string; calib: string[]; baseline: string; calibLine: string; me: string };
   };
@@ -493,6 +495,13 @@ const en: Messages = {
     next: 'Next',
     replay: 'Replay the tutorial',
     replayBusy: 'Finish your Session first.',
+    coach: {
+      week: 'Your week: one dot per Session, up to your Weekly Target.',
+      tabs: 'Train has your Routine and History. Groups is where you compete with friends. Profile shows your Rank and Week Stamps.',
+      go: 'Ready for the real one? Tap Start session at the gym.',
+      gotIt: 'Got it',
+      tapHint: 'Tap the highlighted part',
+    },
     art: { pr: 'Personal Record', prSub: 'Bench press, 62.5 × 8', show: 'Session toward your target', showSub: '6+ Working Sets', streak: 'Streak: 4 weeks', calib: ['Session 1', 'Session 2', 'Session 3', 'Session 4'], baseline: 'baseline', calibLine: 'Your first sessions set your baseline', me: 'You' },
   },
   glossary: {
@@ -986,6 +995,13 @@ const es: Messages = {
     next: 'Siguiente',
     replay: 'Repetir el tutorial',
     replayBusy: 'Terminá tu sesión primero.',
+    coach: {
+      week: 'Tu semana: un punto por sesión, hasta tu objetivo semanal.',
+      tabs: 'En Entrenar están tu rutina y tu historial. En Grupos competís con amigos. En Perfil ves tu rango y tus sellos.',
+      go: '¿Vamos con la de verdad? Tocá Empezar sesión en el gimnasio.',
+      gotIt: 'Entendido',
+      tapHint: 'Tocá la parte marcada',
+    },
     art: { pr: 'PR', prSub: 'Press banca, 62,5 × 8', show: 'Sesión hacia tu objetivo', showSub: '6+ series efectivas', streak: 'Racha: 4 semanas', calib: ['Sesión 1', 'Sesión 2', 'Sesión 3', 'Sesión 4'], baseline: 'base', calibLine: 'Tus primeras sesiones fijan tu base', me: 'Vos' },
   },
   glossary: {
