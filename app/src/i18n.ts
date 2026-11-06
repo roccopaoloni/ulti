@@ -22,6 +22,10 @@ type Messages = {
     welcomeTitle: string;
     welcomeText: string;
     welcomeGo: string;
+    // The Practice Session: the tag on its screens, its Routine Day and the summary's note.
+    practice: string;
+    practiceDay: string;
+    practiceNotCounted: string;
     slides: { title: string; text: string }[];
     slideGo: string;
     skip: string;
@@ -483,6 +487,9 @@ const en: Messages = {
     welcomeTitle: 'Practice first',
     welcomeText: 'Let’s log a practice Session together, so your first real one is easy. Nothing here is saved or counted. About 3 minutes.',
     welcomeGo: 'Start practice',
+    practice: 'Practice',
+    practiceDay: 'Practice day',
+    practiceNotCounted: 'Practice — not counted',
     slides: [
       { title: 'Two ways to score', text: 'Beat your best on an exercise and you earn Progress Points. Show up toward your Weekly Target and you earn Consistency Points. PRs are weighed against how advanced you are, so it’s fair whoever you’re up against.' },
       { title: 'Stamps and Streaks', text: 'Meet your Weekly Target and the week gets a Week Stamp. Stamp week after week and your Streak grows.' },
@@ -983,6 +990,9 @@ const es: Messages = {
     welcomeTitle: 'Primero, práctica',
     welcomeText: 'Registremos juntos una sesión de práctica, así la primera de verdad te sale fácil. Nada de esto se guarda ni cuenta. Unos 3 minutos.',
     welcomeGo: 'Empezar práctica',
+    practice: 'Práctica',
+    practiceDay: 'Día de práctica',
+    practiceNotCounted: 'Práctica: no cuenta',
     slides: [
       { title: 'Dos formas de sumar', text: 'Superá tu mejor marca en un ejercicio y ganás Puntos de progreso. Cumplí con tu objetivo semanal y ganás Puntos de constancia. Los PRs se miden según tu nivel, así que es parejo contra quien sea.' },
       { title: 'Sellos y rachas', text: 'Cumplí tu objetivo semanal y la semana gana un sello. Sellá semana tras semana y tu racha crece.' },

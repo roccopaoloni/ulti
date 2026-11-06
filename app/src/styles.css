@@ -3077,6 +3077,34 @@ prefers-reduced-motion switches every animation off, so it stays off the badge. 
   font-weight: 800;
 }
 
+/* The Practice Session (Tutorial): its screens sit in the app's own column, under the Skip pill, and a dashed tag marks them. */
+.tutorial.tut-practice {
+  max-width: 440px;
+  margin-inline: auto;
+  overflow: hidden;
+  --gutter-left: max(16px, env(safe-area-inset-left, 0px));
+  --gutter-right: max(16px, env(safe-area-inset-right, 0px));
+  padding: env(safe-area-inset-top, 0px) var(--gutter-right) 0 var(--gutter-left);
+}
+.tut-practice .tut-skip {
+  position: static;
+  align-self: flex-end;
+  flex-shrink: 0;
+  margin-top: 10px;
+}
+.practice-tag {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1.5px dashed var(--accent-text);
+  color: var(--accent-text);
+  font: 800 11px var(--body);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
 /* The spotlight: a ring around a real element, the rest dimmed, and a callout that never covers it. */
 .spot-layer {
   position: fixed;

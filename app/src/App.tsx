@@ -98,6 +98,8 @@ function Tabs({ userId }: { userId: string }) {
   if (training && onboarded && !touring && (replaying || tutorialSeen === false)) {
     return (
       <Tutorial
+        training={training}
+        units={units}
         onShowHome={() => {
           setTouring(true);
           if (replaying) navigate(paths.home);
