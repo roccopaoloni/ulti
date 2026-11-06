@@ -11,6 +11,10 @@ One visit to the gym, logged as a sequence of Sets.
 _Avoid_: Workout, training, visit
 _Rioplatense_: Sesión
 
+**Practice Session**:
+A demo Session in the Tutorial, logged on the real Session screen but never saved, sent or scored.
+_Rioplatense_: Sesión de práctica
+
 **Set**:
 One bout of an Exercise, recorded as weight × reps, optionally with RIR.
 _Rioplatense_: Serie

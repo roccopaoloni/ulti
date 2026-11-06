@@ -3076,3 +3076,27 @@ prefers-reduced-motion switches every animation off, so it stays off the badge. 
   color: var(--muted);
   font-weight: 800;
 }
+
+/* The Practice Session (Tutorial): its screens fill the Tutorial's, and a dashed tag marks them. */
+.tutorial.tut-practice {
+  padding: 0;
+}
+.practice-tag {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1.5px dashed var(--accent-text);
+  color: var(--accent-text);
+  font: 800 11px var(--body);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.practice-home {
+  padding-top: 60px;
+}
+/* On the Session screen the Skip pill sits under the header, clear of Finish. */
+.tut-practice:has(.s-head) .tut-skip {
+  top: calc(66px + env(safe-area-inset-top, 0px));
+}

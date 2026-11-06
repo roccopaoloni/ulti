@@ -1,10 +1,13 @@
-import { useState, type ReactNode } from 'react';
-import type { Rank, Tier } from '@ulti/rules';
+import { useEffect, useState, type ReactNode } from 'react';
+import type { Rank, Tier, Units } from '@ulti/rules';
 import { Badge } from './Badge.tsx';
 import { useI18n } from './i18n.ts';
 import { checkIcon, trophyIcon } from './icons.tsx';
+import { Practice } from './Practice.tsx';
+import { deleteLeftoverPractice } from './practice.ts';
+import type { Training } from './training.ts';
 
-// The Tutorial: a welcome card, then five slides. Finishing and Skipping both end
+// The Tutorial: a welcome card, a Practice Session, then five slides. Finishing and Skipping both end
 // it with `onDone`; closing the app midway ends nothing, so it starts again from the welcome card.
 
 const tiers: Tier[] = ['bronze', 'silver', 'gold', 'diamond', 'elite'];
@@ -115,24 +118,38 @@ function GroupsArt() {
 
 const slideArt: ReactNode[] = [<ScoreArt />, <StampsArt />, <CalibrationArt />, <RankArt />, <GroupsArt />];
 
-export function Tutorial({ onDone }: { onDone: () => void }) {
+export function Tutorial({ training, units, onDone }: { training: Training; units: Units; onDone: () => void }) {
   const { t } = useI18n();
   const u = t.tutorial;
   // 0 is the welcome card, 1 to 5 the slides.
   const [step, setStep] = useState(0);
+  const [practicing, setPracticing] = useState(false);
+  // A Practice Session left by a tab closed midway is deleted when the Tutorial starts.
+  useEffect(() => {
+    deleteLeftoverPractice();
+  }, []);
   const slide = step - 1;
   const last = slide === u.slides.length - 1;
   return (
-    <div className="tutorial">
+    <div className={practicing ? 'tutorial tut-practice' : 'tutorial'}>
       <button type="button" className="tut-skip" onClick={onDone}>
         {u.skip}
       </button>
-      {step === 0 ? (
+      {practicing ? (
+        <Practice
+          real={training}
+          units={units}
+          onDone={() => {
+            setPracticing(false);
+            setStep(1);
+          }}
+        />
+      ) : step === 0 ? (
         <div className="tut-welcome">
           <Welcome />
           <h1 className="disp">{u.welcomeTitle}</h1>
           <p>{u.welcomeText}</p>
-          <button type="button" className="btn-primary" onClick={() => setStep(1)}>
+          <button type="button" className="btn-primary" onClick={() => setPracticing(true)}>
             {u.welcomeGo}
           </button>
         </div>

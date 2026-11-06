@@ -87,8 +87,9 @@ function useWakeLock() {
 }
 
 // The button on Home that starts a Session, or returns to the one in progress.
-// The Routine's next Session is suggested, with a way to log an unplanned one instead.
-export function StartSession({ logging, training }: { logging: ReturnType<typeof useLogging>; training: Training }) {
+// The Routine's next Session is suggested, with a way to log an unplanned one instead. The Practice
+// Session (Tutorial) always asks which Day, even with one, and offers neither unplanned nor Deload.
+export function StartSession({ logging, training, practice = false }: { logging: ReturnType<typeof useLogging>; training: Training; practice?: boolean }) {
   const { t, language } = useI18n();
   const s = t.session;
   const { inProgress } = logging;
@@ -118,7 +119,7 @@ export function StartSession({ logging, training }: { logging: ReturnType<typeof
   // tapped, so a choice that just arrived from the server counts.
   const chooseDay = async (isExtra = false) => {
     const days = await training.dayChoices();
-    if (days.length > 1) {
+    if (days.length > 1 || practice) {
       setChoices(days);
       pick.current?.showModal();
       // Focus starts on the sheet itself, so no row shows a focus ring until Tab moves into them.
@@ -283,27 +284,29 @@ export function StartSession({ logging, training }: { logging: ReturnType<typeof
             ))}
           </div>
         </div>
-        <button
-          type="button"
-          className="btn-link"
-          onClick={() => {
-            pick.current?.close();
-            logging.start();
-          }}
-        >
-          {s.startUnplanned}
-        </button>
+        {!practice && (
+          <button
+            type="button"
+            className="btn-link"
+            onClick={() => {
+              pick.current?.close();
+              logging.start();
+            }}
+          >
+            {s.startUnplanned}
+          </button>
+        )}
       </Sheet>
       <button type="button" className="btn-start" onClick={start}>
         <span className="disp">{inProgress ? s.resume : met ? s.startExtra : s.start}</span>
         <small>{inProgress ? s.logged(inProgress.sets.length) : met ? s.extraHint : next ? s.startNext(next.name) : s.startHint}</small>
       </button>
-      {choices.length === 1 && !met && !inProgress && (
+      {choices.length === 1 && !met && !inProgress && !practice && (
         <button type="button" className="btn-link" onClick={() => logging.start()}>
           {s.startUnplanned}
         </button>
       )}
-      {deload?.canStart && !deload.suggestion && (
+      {deload?.canStart && !deload.suggestion && !practice && (
         <button
           type="button"
           className="btn-link"
@@ -318,7 +321,9 @@ export function StartSession({ logging, training }: { logging: ReturnType<typeof
 
 // The Session in progress takes over the whole screen (design: Logging a Session): Exercises
 // added one by one, each with its Sets as weight × reps. Weights are entered and shown in the user's units and kept in kg.
-export function SessionScreen({ training, units, layout, onLeave }: { training: Training; units: Units; layout: Layout; onLeave: () => void }) {
+// The Practice Session (Tutorial) is tagged, and always in List whatever layout the lifter chose.
+export function SessionScreen({ training, units, layout: chosen, practice = false, onLeave }: { training: Training; units: Units; layout: Layout; practice?: boolean; onLeave: () => void }) {
+  const layout = practice ? 'list' : chosen;
   const { t, language } = useI18n();
   const s = t.session;
   const [session, setSession] = useState<InProgress | null>(null);
@@ -348,7 +353,7 @@ export function SessionScreen({ training, units, layout, onLeave }: { training: 
     training.exercises().then(setCatalog);
   }, [training, reload]);
 
-  if (summary) return <SessionSummary {...summary} onClose={onLeave} />;
+  if (summary) return <SessionSummary {...summary} practice={practice} onClose={onLeave} />;
   if (!session) return null;
   const sessionId = session.session.id;
   const focused = session.exerciseIds.includes(focusedId ?? '') ? focusedId : session.exerciseIds[0];
@@ -387,6 +392,7 @@ export function SessionScreen({ training, units, layout, onLeave }: { training: 
         <div>
           <h1 className="s-title">
             {s.title} <Info term="session" />
+            {practice && <span className="practice-tag">{t.tutorial.practice}</span>}
           </h1>
           <div className="s-sub">{s.sets(session.sets.length)}</div>
         </div>

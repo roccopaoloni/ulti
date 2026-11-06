@@ -52,12 +52,13 @@ export function WeekCard({ training, profile }: { training: Training; profile: P
 }
 
 // Shown when a Session is finished: progress toward the Weekly Target and the points it earned.
-export function SessionSummary({ progress, earned, onClose }: { progress: WeekProgress; earned: number; onClose: () => void }) {
+export function SessionSummary({ progress, earned, practice = false, onClose }: { progress: WeekProgress; earned: number; practice?: boolean; onClose: () => void }) {
   const { t } = useI18n();
   const c = t.consistency;
   return (
     <main className="screen">
       <section className="card">
+        {practice && <span className="practice-tag summary-tag">{t.tutorial.practiceNotCounted}</span>}
         <h1 className="disp title">{c.summaryTitle}</h1>
         <Dots done={progress.done} target={progress.target} pop={earned > 0} />
         <p className="muted">{c.progress(progress.done, progress.target)}</p>

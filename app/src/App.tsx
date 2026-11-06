@@ -88,6 +88,8 @@ function Tabs({ userId }: { userId: string }) {
   if (training && onboarded && (replaying || tutorialSeen === false)) {
     return (
       <Tutorial
+        training={training}
+        units={units}
         onDone={async () => {
           if (!tutorialSeen) {
             await training.markTutorialSeen();
