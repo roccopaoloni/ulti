@@ -6,11 +6,10 @@ import { groupSettingsFromPath, memberFromPath, newGroupPath, usePendingInvite }
 import { CreateGroup, GroupSettingsScreen, GroupsTab, JoinInvite, ProfileSummary } from './GroupsScreens.tsx';
 import { StampsCard, WeekCard } from './Consistency.tsx';
 import { HistoryScreen, RecentSessions, SessionDetailScreen } from './HistoryScreen.tsx';
-import { useI18n, type Term } from './i18n.ts';
+import { useI18n } from './i18n.ts';
 import { gearIcon, tabIcons } from './icons.tsx';
-import { Info } from './Info.tsx';
 import { InstallCard } from './InstallApp.tsx';
-import { historyPath, navigate, paths, routineLinkPath, routinePath, sessionFromPath, settingsPath, tabs, useCurrentTab, usePathname, type Tab } from './navigation.ts';
+import { historyPath, navigate, paths, routineLinkPath, routinePath, sessionFromPath, settingsPath, tabs, useCurrentTab, usePathname } from './navigation.ts';
 import { hasEverything, useBodyProfile, useLayout, useUnits } from './profile.ts';
 import { RankCard } from './RankCard.tsx';
 import { CrownGate } from './CrownGate.tsx';
@@ -22,14 +21,6 @@ import { RoutineLinkScreen } from './RoutineLink.tsx';
 import { dropRoutineLink } from './routineLinkDraft.ts';
 import { SessionInProgressBar, SessionScreen, StartSession, useLogging } from './SessionScreen.tsx';
 import { useTraining } from './useTraining.ts';
-
-// The glossary term each empty screen introduces.
-const screenTerms: Record<Tab, Term> = {
-  home: 'weeklyTarget',
-  train: 'routine',
-  groups: 'group',
-  profile: 'rank',
-};
 
 // Signing in is required to reach the tabs. A password reset's code signs the user in before the
 // new password is saved, so the reset screen stays until it is. An invite link kept from before
@@ -59,7 +50,6 @@ function Tabs({ userId }: { userId: string }) {
   const routineLinkOpen = pathname === routineLinkPath;
   const historyOpen = pathname === historyPath;
   const sessionId = sessionFromPath(pathname);
-  const { label, text } = t.screens[current];
   const { training, downloads } = useTraining(userId);
   const logging = useLogging(training);
   const { profile, ready, downloaded, reload } = useBodyProfile(userId, training);
@@ -122,18 +112,7 @@ function Tabs({ userId }: { userId: string }) {
               </div>
             )}
             {current === 'profile' && <ProfileSummary userId={userId} />}
-            {current === 'groups' ? (
-              <GroupsTab userId={userId} training={training} />
-            ) : (
-              current !== 'profile' && current !== 'train' && (
-                <section className="card">
-                  <div className="eyebrow">
-                    {label} <Info term={screenTerms[current]} />
-                  </div>
-                  <p className="muted">{text}</p>
-                </section>
-              )
-            )}
+            {current === 'groups' && <GroupsTab userId={userId} training={training} />}
             {current === 'home' && training && profile && promptDue && (
               <BodyweightPrompt
                 training={training}
@@ -145,9 +124,9 @@ function Tabs({ userId }: { userId: string }) {
                 }}
               />
             )}
-            {current === 'home' && <SinceLastVisit userId={userId} />}
             {current === 'home' && training && profile && <WeekCard training={training} profile={profile} />}
             {current === 'home' && training && <StartSession logging={logging} training={training} />}
+            {current === 'home' && <SinceLastVisit userId={userId} />}
             {current === 'home' && <RaceCards userId={userId} />}
             {current === 'home' && <FriendsTrainedToday userId={userId} />}
             {current === 'home' && <InstallCard />}

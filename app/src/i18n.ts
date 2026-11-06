@@ -11,7 +11,7 @@ export type Term = 'weeklyTarget' | 'strengthLevel' | 'routine' | 'group' | 'ran
 type Messages = {
   tagline: string;
   tabs: Record<Tab, string>;
-  screens: Record<Tab, { label: string; text: string }>;
+  screens: Record<Exclude<Tab, 'home'>, { label: string; text: string }>;
   close: string;
   back: string;
   settings: { title: string; open: string; nameOffline: string; you: string; app: string; privacy: string; account: string };
@@ -357,6 +357,7 @@ type Messages = {
   // Consistency Points, Week Stamps and the Streak.
   consistency: {
     thisWeek: string;
+    weeklyTarget: string;
     // "2 of 3 sessions" under the dots.
     progress: (done: number, target: number) => string;
     points: (points: number) => string;
@@ -438,7 +439,6 @@ const en: Messages = {
   tagline: 'one more.',
   tabs: { home: 'Home', train: 'Train', groups: 'Groups', profile: 'Profile' },
   screens: {
-    home: { label: 'Your Weekly Target', text: 'Your week will show up here.' },
     train: { label: 'Your Routines', text: 'Your training plan and your history will show up here.' },
     groups: { label: 'Your Groups', text: 'Create a Group and invite your friends, or open the invite link a friend sent you.' },
     profile: { label: 'Your Rank', text: "How far you've climbed will show up here." },
@@ -810,6 +810,7 @@ const en: Messages = {
   },
   consistency: {
     thisWeek: 'This week',
+    weeklyTarget: 'Your Weekly Target',
     progress: (done, target) => `${done} of ${target} sessions`,
     points: (points) => `${points} pts this week`,
     filled: 'You showed up. That is what counts.',
@@ -905,7 +906,6 @@ const es: Messages = {
   tagline: 'una más.',
   tabs: { home: 'Inicio', train: 'Entrenar', groups: 'Grupos', profile: 'Perfil' },
   screens: {
-    home: { label: 'Tu objetivo semanal', text: 'Acá vas a ver cómo va tu semana.' },
     train: { label: 'Tus rutinas', text: 'Acá vas a ver tu plan de entrenamiento y todo lo que entrenaste.' },
     groups: { label: 'Tus grupos', text: 'Creá un grupo e invitá a tus amigos, o abrí el link de invitación que te mandó un amigo.' },
     profile: { label: 'Tu rango', text: 'Acá vas a ver hasta dónde llegaste.' },
@@ -1273,6 +1273,7 @@ const es: Messages = {
   },
   consistency: {
     thisWeek: 'Esta semana',
+    weeklyTarget: 'Tu objetivo semanal',
     progress: (done, target) => `${done} de ${target} sesiones`,
     points: (points) => `${points} pts esta semana`,
     filled: 'Fuiste. Eso es lo que cuenta.',
