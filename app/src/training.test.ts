@@ -507,6 +507,32 @@ test("a Set dragged in front of a Warm-up Set becomes the lifter's own Warm-up S
   training.close();
 });
 
+test("a Set dragged in a finished Session is saved there, goes out with the Set, and History reads the new order", async () => {
+  const network = server();
+  network.offline = true;
+  const phone = anasPhone(network);
+  const training = await phone.open();
+  const session = await training.startSession();
+  const a = await training.logSet(session.id, 'back-squat', 100, 5);
+  const b = await training.logSet(session.id, 'back-squat', 100, 5);
+  const late = await training.logSet(session.id, 'back-squat', 60, 5);
+  await training.finishSession(session.id);
+
+  await training.moveSet(late.id, 0);
+
+  const [past] = await training.pastSessions();
+  expect(past.sets.map(({ id }) => id)).toEqual([late.id, a.id, b.id]);
+  expect(past.sets.map(({ position }) => position)).toEqual([0, 1, 2]);
+  expect(labelSets(past.sets)).toEqual(['warm-up', 'working', 'working']);
+
+  network.offline = false;
+  phone.connectivity.dispatchEvent(new Event('online'));
+  await vi.waitFor(() => expect(network.batches).toHaveLength(1));
+  const sent = new Map(network.batches[0].flatMap((m) => (m.kind === 'saveSet' ? [[m.set.id, m.set] as const] : [])));
+  expect([a.id, b.id, late.id].map((id) => sent.get(id)?.position)).toEqual([1, 2, 0]);
+  training.close();
+});
+
 test('a Set logged after a drag comes last, and next Session, History and the rules follow the new order', async () => {
   const phone = anasPhone(server());
   const training = await phone.open();
