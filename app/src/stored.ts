@@ -19,3 +19,9 @@ export function useStored<T>(key: string): T | null {
   const stored = useSyncExternalStore(subscribe, () => localStorage.getItem(key));
   return useMemo(() => (stored === null ? null : (JSON.parse(stored) as T)), [stored]);
 }
+
+// The same for a list of keys, in order.
+export function useStoredMany<T>(keys: string[]): (T | null)[] {
+  const stored = useSyncExternalStore(subscribe, () => JSON.stringify(keys.map((key) => localStorage.getItem(key))));
+  return useMemo(() => (JSON.parse(stored) as (string | null)[]).map((item) => (item === null ? null : (JSON.parse(item) as T))), [stored]);
+}

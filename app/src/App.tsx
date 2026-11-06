@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useUser } from './auth.ts';
 import { AuthScreens, useAuthFlow } from './AuthScreens.tsx';
-import { FriendsTrainedToday, MemberProfileScreen, RaceCards, SinceLastVisit } from './Boards.tsx';
+import { FriendsTrainedToday, GroupsPanel, MemberProfileScreen } from './Boards.tsx';
 import { groupSettingsFromPath, memberFromPath, newGroupPath, usePendingInvite } from './groups.ts';
 import { CreateGroup, GroupSettingsScreen, GroupsTab, JoinInvite, ProfileSummary } from './GroupsScreens.tsx';
 import { StampsCard, WeekCard } from './Consistency.tsx';
@@ -126,8 +126,7 @@ function Tabs({ userId }: { userId: string }) {
             )}
             {current === 'home' && training && profile && <WeekCard training={training} profile={profile} />}
             {current === 'home' && training && <StartSession logging={logging} training={training} />}
-            {current === 'home' && <SinceLastVisit userId={userId} />}
-            {current === 'home' && <RaceCards userId={userId} />}
+            {current === 'home' && <GroupsPanel userId={userId} />}
             {current === 'home' && <FriendsTrainedToday userId={userId} />}
             {current === 'home' && <InstallCard />}
             {current === 'train' && training && <StartSession logging={logging} training={training} />}

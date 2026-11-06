@@ -723,21 +723,93 @@ Position, avatar, points and › share the row's vertical centre. */
   flex: none;
   color: var(--muted);
 }
-/* Home's race card, a button that opens its Group: the text, and the › as on the board rows. */
-.race-card {
-  flex-direction: row;
-  align-items: center;
+/* Home's Groups panel: a page per Group, scroll-snapped sideways, dots under it. */
+.gpanel {
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+}
+.gpages {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  overflow-anchor: none;
+  scrollbar-width: none;
+}
+.gpages::-webkit-scrollbar {
+  display: none;
+}
+.gpage {
+  flex: 0 0 100%;
+  min-width: 0;
+  scroll-snap-align: start;
+}
+.gpage-link {
+  display: flex;
+  flex-direction: column;
   gap: 12px;
   width: 100%;
+  padding: 16px;
   text-align: start;
   color: inherit;
 }
-.race-main {
-  flex: 1;
-  min-width: 0;
+.gpage-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+.gname {
+  font-weight: 800;
+  font-size: 17px;
+}
+.race {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 3px;
+}
+.race .disp {
+  font-size: calc(30px * var(--ds));
+}
+.news {
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.news .eyebrow {
+  font-size: 11px;
+}
+.news-line {
+  font-weight: 700;
+}
+.pager {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 0 12px;
+}
+.pager i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--line);
+  transition: width 0.2s, background 0.2s;
+}
+.pager i.on {
+  background: var(--fg);
+  width: 18px;
+  border-radius: 4px;
+}
+.newsdot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  display: inline-block;
+  margin-inline-start: 6px;
+  vertical-align: middle;
 }
 .profile-rows {
   list-style: none;
