@@ -287,7 +287,7 @@ button {
   display: none;
 }
 .back {
-  margin-inline: -8px;
+  margin-left: -8px;
 }
 .auth-h {
   font-size: calc(40px * var(--ds));
