@@ -2502,3 +2502,24 @@ prefers-reduced-motion switches every animation off, so it stays off the badge. 
     color: #fff;
   }
 }
+/* The Season countdown under the Rank. */
+.season-end {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  font-weight: 700;
+  font-size: 14px;
+}
+.season-end svg {
+  width: 18px;
+  height: 18px;
+  color: var(--muted);
+  flex: none;
+}
+.season-end.soon,
+.season-end.soon svg {
+  color: var(--accent-text);
+}
