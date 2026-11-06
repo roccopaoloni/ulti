@@ -2416,8 +2416,6 @@ prefers-reduced-motion switches every animation off, so it stays off the badge. 
 .sheet.pick .sheet-body {
   flex: 0 1 auto;
   min-height: 0;
-}
-.sheet.pick .sheet-body {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 .sheet.pick .btn-link {
