@@ -2743,3 +2743,336 @@ prefers-reduced-motion switches every animation off, so it stays off the badge. 
   font-size: 13px;
   font-weight: 600;
 }
+
+/* The Tutorial: a welcome card and five slides over the whole screen. */
+.tutorial {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: env(safe-area-inset-top, 0px) max(24px, env(safe-area-inset-right, 0px)) max(24px, env(safe-area-inset-bottom, 0px)) max(24px, env(safe-area-inset-left, 0px));
+}
+.tut-skip {
+  position: fixed;
+  top: calc(14px + env(safe-area-inset-top, 0px));
+  right: max(16px, env(safe-area-inset-right, 0px));
+  z-index: 41;
+  padding: 7px 13px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 85%, transparent);
+  border: 1px solid var(--line);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--muted);
+}
+.tut-welcome {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 22px;
+  padding-block: 40px 4px;
+}
+.tut-welcome h1 {
+  font-size: calc(48px * var(--ds));
+  line-height: 1.05;
+  margin: 0;
+}
+.tut-welcome p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 16px;
+}
+.tut-welcome-art {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 14px 64px 56px;
+  align-items: center;
+  gap: 6px;
+  min-height: 62px;
+  padding: 6px;
+  border-radius: 14px;
+  background: var(--surface-2);
+}
+.tut-tag {
+  text-align: center;
+  font: 700 calc(20px * var(--ds)) var(--display);
+  color: var(--muted);
+}
+.tut-cell {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 3px;
+  padding-top: 8px;
+  height: 48px;
+  font: 700 calc(28px * var(--ds)) var(--body);
+  white-space: nowrap;
+}
+.tut-cell small {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.tut-x {
+  text-align: center;
+  font-size: 14px;
+  color: var(--muted);
+}
+.tut-check {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.tut-check svg {
+  width: 24px;
+  height: 24px;
+}
+.tut-slide {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding-top: 56px;
+}
+.tut-slide h1 {
+  font-size: calc(40px * var(--ds));
+  line-height: 1.08;
+  margin: 0;
+}
+.tut-slide p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 15.5px;
+}
+.tut-art {
+  flex: 1;
+  min-height: 220px;
+  display: grid;
+  place-items: center;
+  border-radius: 24px;
+  background: radial-gradient(120% 90% at 50% 20%, var(--surface-2), var(--surface));
+  border: 1px solid var(--line);
+  padding: 18px;
+}
+.tut-pager {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+}
+.tut-pager i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--line);
+}
+.tut-pager i.on {
+  width: 22px;
+  border-radius: 4px;
+  background: var(--accent);
+}
+.tut-score {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+.tut-chip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.tut-chip .trophy {
+  width: 28px;
+  height: 28px;
+  color: var(--gold);
+  flex: none;
+}
+.tut-chip .dot {
+  flex: none;
+}
+.tut-chip b {
+  display: block;
+  font-size: 15px;
+}
+.tut-chip small {
+  color: var(--muted);
+  font-weight: 600;
+}
+.tut-plus {
+  margin-left: auto;
+  font: 800 16px var(--display);
+  color: var(--accent-text);
+}
+.tut-stamps {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+.tut-stamps-row {
+  display: flex;
+  gap: 8px;
+}
+.tut-stamp {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: 2.5px solid var(--accent);
+  color: var(--accent-text);
+  font: 800 11px var(--display);
+  transform: rotate(-8deg);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.tut-stamp:nth-child(2n) {
+  transform: rotate(6deg);
+}
+.tut-stamp.empty {
+  border-style: dashed;
+  border-color: var(--line);
+  color: var(--muted);
+  background: none;
+}
+.tut-streak {
+  font-size: calc(30px * var(--ds));
+}
+.tut-calib {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.tut-calib-line {
+  margin: 0;
+  font-size: 12px;
+}
+.tut-calib-steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.tut-calib-steps div {
+  padding: 10px 4px;
+  border-radius: 12px;
+  text-align: center;
+  font: 700 11.5px var(--body);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+.tut-calib-steps div span {
+  font-weight: 600;
+}
+.tut-calib-steps div.pr {
+  border-color: var(--gold);
+  color: var(--fg);
+}
+.tut-calib-steps div .trophy {
+  width: 16px;
+  height: 16px;
+  color: var(--gold);
+  display: block;
+  margin: 0 auto 2px;
+}
+.tut-crests {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.tut-crest-row {
+  display: flex;
+  align-items: center;
+}
+.tut-crest-row svg {
+  width: 60px;
+  height: 60px;
+}
+.tut-crest-row.gold span {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.tut-crest-row.gold svg {
+  width: 54px;
+  height: 54px;
+}
+.tut-crest-row.gold b {
+  font: 800 11px var(--display);
+  color: var(--muted);
+}
+.tut-groups {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tut-board-row {
+  display: grid;
+  grid-template-columns: 22px 34px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.tut-board-row.me {
+  border-color: var(--accent);
+}
+.tut-board-row .pos {
+  font: 800 14px var(--display);
+  color: var(--muted);
+}
+.tut-board-row .av {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font: 800 13px var(--body);
+  color: #1a1433;
+}
+.tut-board-row b {
+  font-size: 14.5px;
+}
+.tut-board-row .pts {
+  font: 800 14px var(--display);
+}
+
+/* Settings, App: the Replay the tutorial row. */
+.replay-row {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  text-align: left;
+  font-weight: 700;
+  color: var(--accent-text);
+}
+.replay-row:disabled {
+  color: var(--muted);
+}
+.replay-row small {
+  display: block;
+  font-weight: 600;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+.replay-row .chev {
+  color: var(--muted);
+  font-weight: 800;
+}

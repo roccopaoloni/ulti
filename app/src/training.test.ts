@@ -59,7 +59,7 @@ const kindsAndValues = (batch: Mutation[]) =>
       ? { kind: m.kind, finished: m.session.finishedAt !== null }
       : m.kind === 'saveSet'
         ? { kind: m.kind, exerciseId: m.set.exerciseId, weightKg: m.set.weightKg, reps: m.set.reps }
-        : m.kind === 'saveProfileEntry' || m.kind === 'saveRoutine' || m.kind === 'saveIncrement' || m.kind === 'saveDeload' || m.kind === 'saveNoRoutine'
+        : m.kind === 'saveProfileEntry' || m.kind === 'saveRoutine' || m.kind === 'saveIncrement' || m.kind === 'saveDeload' || m.kind === 'saveNoRoutine' || m.kind === 'saveTutorialSeen'
           ? { kind: m.kind }
           : { kind: m.kind, exerciseId: m.exercise.id },
   );

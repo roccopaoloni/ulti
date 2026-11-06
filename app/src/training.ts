@@ -148,6 +148,8 @@ export type Mutation =
   | { id: string; kind: 'saveProfileEntry'; entry: ProfileEntry }
   | { id: string; kind: 'saveRoutine'; routine: RoutineRecord }
   | { id: string; kind: 'saveNoRoutine'; noRoutine: NoRoutineRecord }
+  // The lifter finished or skipped the Tutorial. It only ever turns to seen.
+  | { id: string; kind: 'saveTutorialSeen' }
   | { id: string; kind: 'saveIncrement'; increment: IncrementOverride };
 
 // The sync endpoint: it resolves once the server has the batch, and throws otherwise.
@@ -184,6 +186,8 @@ interface Store extends DBSchema {
   // The Routine as the lifter is editing it, kept only while it is not whole (so not the Routine yet).
   routineDraft: { key: 'days'; value: RoutineDay[] };
   noRoutine: { key: 'choice'; value: NoRoutineRecord };
+  // Whether the Tutorial was seen: present once it has been, here or on another phone.
+  tutorial: { key: 'seen'; value: true };
 }
 
 // The Session being logged and the Exercises added to it, in order, including any with no Sets yet,
@@ -196,7 +200,7 @@ const DEFAULT_INCREMENT_KG = 2.5;
 export type Training = Awaited<ReturnType<typeof openTraining>>;
 
 export async function openTraining(userId: string, options: Options) {
-  const db = await openDB<Store>(`ulti-${userId}`, 9, {
+  const db = await openDB<Store>(`ulti-${userId}`, 10, {
     async upgrade(db, oldVersion, _newVersion, tx) {
       if (oldVersion < 1) {
         db.createObjectStore('sessions', { keyPath: 'id' });
@@ -227,6 +231,9 @@ export async function openTraining(userId: string, options: Options) {
       if (oldVersion < 8) {
         db.createObjectStore('noRoutine');
       }
+      if (oldVersion < 10) {
+        db.createObjectStore('tutorial');
+      }
       if (oldVersion >= 5 && oldVersion < 9) {
         // One-off: Sessions logged before the mark existed are Deload Sessions if their week is an
         // accepted Deload Week, as the server's migration did. Not an outbox write: the server has it.
@@ -241,9 +248,10 @@ export async function openTraining(userId: string, options: Options) {
   // Saves a record and queues its mutation in one transaction, with the Session in progress when
   // it changes: none of them exists without the others.
   async function write(mutation: Mutation, inProgress?: InProgress | null) {
-    const tx = db.transaction(['sessions', 'sets', 'exercises', 'outbox', 'state', 'profile', 'routines', 'increments', 'deloads', 'noRoutine'], 'readwrite');
+    const tx = db.transaction(['sessions', 'sets', 'exercises', 'outbox', 'state', 'profile', 'routines', 'increments', 'deloads', 'noRoutine', 'tutorial'], 'readwrite');
     if (mutation.kind === 'saveDeload') await tx.objectStore('deloads').put(mutation.deload);
     else if (mutation.kind === 'saveNoRoutine') await tx.objectStore('noRoutine').put(mutation.noRoutine, 'choice');
+    else if (mutation.kind === 'saveTutorialSeen') await tx.objectStore('tutorial').put(true, 'seen');
     else if (mutation.kind === 'saveSession') {
       if (mutation.session.deleted) await tx.objectStore('sessions').delete(mutation.session.id);
       else await tx.objectStore('sessions').put(mutation.session);
@@ -676,6 +684,21 @@ export async function openTraining(userId: string, options: Options) {
     async saveNoRoutineFromServer(choice: NoRoutineRecord) {
       const kept = await db.get('noRoutine', 'choice');
       if (!kept || Date.parse(kept.updatedAt) < Date.parse(choice.updatedAt)) await db.put('noRoutine', choice, 'choice');
+    },
+
+    // Whether the Tutorial was seen on this account. Finishing or skipping it marks it seen; leaving
+    // it midway does not.
+    async tutorialSeen() {
+      return (await db.get('tutorial', 'seen')) === true;
+    },
+
+    async markTutorialSeen() {
+      await write({ id: crypto.randomUUID(), kind: 'saveTutorialSeen' });
+    },
+
+    // As on a phone that is new to this user: the server already has it, so nothing is queued.
+    async saveTutorialSeenFromServer() {
+      await db.put('tutorial', true, 'seen');
     },
 
     // What the Routine editor shows: the draft the lifter left unfinished, else the Routine.

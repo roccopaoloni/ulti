@@ -35,6 +35,8 @@ export function usePathname() {
 // Screens that open on top of a tab (see SubScreen.tsx) live under that tab's path, so the tab
 // stays the current one. Reloading on their URL reopens them.
 export const settingsPath = `${paths.profile}/settings`;
+// The Tutorial, replayed from Settings. Its first run shows without a path of its own.
+export const tutorialPath = `${paths.profile}/tutorial`;
 export const routinePath = `${paths.train}/routine`;
 
 // A Routine Link opens here; the Routine itself is in the URL fragment.

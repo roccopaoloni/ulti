@@ -32,7 +32,7 @@ export const setLanguage = (language: Language) => write(languageKey, language);
 async function pull(userId: string, training: Training) {
   const [history, profile] = await Promise.all([
     supabase.from('profile_history').select('field, effective_from, value'),
-    supabase.from('profiles').select('units, no_routine, no_routine_at').maybeSingle(),
+    supabase.from('profiles').select('units, no_routine, no_routine_at, tutorial_seen').maybeSingle(),
   ]);
   if (history.error) throw history.error;
   await training.saveProfileHistory(
@@ -41,6 +41,7 @@ async function pull(userId: string, training: Training) {
   if (profile.data?.no_routine_at) {
     await training.saveNoRoutineFromServer({ value: profile.data.no_routine, updatedAt: profile.data.no_routine_at });
   }
+  if (profile.data?.tutorial_seen) await training.saveTutorialSeenFromServer();
   if (profile.data?.units && localStorage.getItem(unitsKey(userId)) === null) write(unitsKey(userId), profile.data.units);
 }
 
