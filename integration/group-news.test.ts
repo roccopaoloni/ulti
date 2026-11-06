@@ -55,7 +55,7 @@ async function groupOf(owner: Lifter, ...others: Lifter[]) {
 }
 
 type Who = { display_name: string; me: boolean };
-type News = { trained_today: { display_name: string; avatar_color: string }[]; passes: { passer: Who; passed: Who }[] };
+type News = { trained_today: { user_id: string; display_name: string; avatar_color: string }[]; passes: { passer: Who; passed: Who }[] };
 async function news(who: Lifter, groupId: string, since: string, onDate: string) {
   const { data, error } = await who.client.rpc('group_news', { group_id: groupId, since, on_date: onDate });
   expect(error).toBeNull();
@@ -77,7 +77,7 @@ test("friends who trained today are the other members with a qualifying Session 
   const { trained_today } = await news(dee, gymCrew, wednesday, wednesday);
 
   // Not Bea (yesterday), not Cy (a Session too short to qualify), not Dee herself.
-  expect(trained_today).toEqual([{ display_name: 'Ana', avatar_color: '#6fb6f7' }]);
+  expect(trained_today).toEqual([{ user_id: ana.id, display_name: 'Ana', avatar_color: '#6fb6f7' }]);
 });
 
 test('a friend past their Weekly Target still trained today', async () => {
@@ -89,7 +89,7 @@ test('a friend past their Weekly Target still trained today', async () => {
   const dee = await lifter('Dee');
   const gymCrew = await groupOf(ana, dee);
 
-  expect((await news(dee, gymCrew, wednesday, wednesday)).trained_today).toEqual([{ display_name: 'Ana', avatar_color: '#6fb6f7' }]);
+  expect((await news(dee, gymCrew, wednesday, wednesday)).trained_today).toEqual([{ user_id: ana.id, display_name: 'Ana', avatar_color: '#6fb6f7' }]);
 });
 
 test('since the last visit, the news says who passed whom in the week, and only that', async () => {
@@ -104,7 +104,7 @@ test('since the last visit, the news says who passed whom in the week, and only 
   expect(seenByAna.passes).toEqual([{ passer: { display_name: 'Bea', me: false }, passed: { display_name: 'Ana', me: true } }]);
   // Everything the news holds is a name, a colour or a flag: no points, weights, reps or dates.
   expect(Object.keys(seenByAna).sort()).toEqual(['passes', 'trained_today']);
-  expect(seenByAna.trained_today).toEqual([{ display_name: 'Bea', avatar_color: '#6fb6f7' }]);
+  expect(seenByAna.trained_today).toEqual([{ user_id: bea.id, display_name: 'Bea', avatar_color: '#6fb6f7' }]);
 });
 
 test('a visit before the week began has no passes: the week starts from nothing', async () => {
