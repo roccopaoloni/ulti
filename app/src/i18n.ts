@@ -223,6 +223,7 @@ type Messages = {
     reps: string;
     logSet: string;
     unlogSet: string;
+    personalRecord: string;
     // Focus layout: the Set shown, the chips' group, and the controls around the big numbers.
     focusSet: (number: number) => string;
     focusSets: string;
@@ -704,6 +705,7 @@ const en: Messages = {
     reps: 'Reps',
     logSet: 'Log set',
     unlogSet: 'Un-log set',
+    personalRecord: 'Personal Record',
     focusSet: (number) => `Set ${number}`,
     focusSets: 'Sets',
     focusExercises: 'Exercises',
@@ -1167,6 +1169,7 @@ const es: Messages = {
     reps: 'Repeticiones',
     logSet: 'Registrar serie',
     unlogSet: 'Deshacer serie',
+    personalRecord: 'Récord personal',
     focusSet: (number) => `Serie ${number}`,
     focusSets: 'Series',
     focusExercises: 'Ejercicios',

@@ -64,6 +64,14 @@ export const checkIcon = (
   </svg>
 );
 
+// The trophy that marks a Personal Record Set. Decorative: label it where the text doesn't say "PR".
+export const trophyIcon = (
+  <svg className="trophy" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M7 4h10v5a5 5 0 0 1-10 0V4Z" fill="currentColor" fillOpacity=".25" />
+    <path d="M7 6H4.5a2.5 2.5 0 0 0 2.6 3.9M17 6h2.5a2.5 2.5 0 0 1-2.6 3.9M12 14v3.5M8.5 20.5h7M9.5 20.5c0-1.8 1.1-3 2.5-3s2.5 1.2 2.5 3" />
+  </svg>
+);
+
 // The undo arrow of Un-log set.
 export const undoIcon = (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
