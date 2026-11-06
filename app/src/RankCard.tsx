@@ -1,8 +1,9 @@
-import { rankOf, rankProgress, showsPosition, type Rank, type Tier } from '@ulti/rules';
+import { endOfLocalDay, rankOf, rankProgress, seasonOf, showsPosition, timeLeft, type Rank, type Tier } from '@ulti/rules';
 import { useEffect, useState, type CSSProperties } from 'react';
 import { supabase } from './auth.ts';
 import { Badge } from './Badge.tsx';
 import { useI18n } from './i18n.ts';
+import { today } from './profile.ts';
 import { useSeasonStanding } from './season.ts';
 import { Skeleton } from './Skeleton.tsx';
 import type { Training } from './training.ts';
@@ -34,6 +35,8 @@ export function RankCard({ training }: { training: Training }) {
   const rank = rankOf(seasonPoints);
   const progress = rankProgress(seasonPoints);
   const tierIndex = tiers.indexOf(rank.tier);
+  // Worked out when the card renders, from the phone's clock and time zone: it works offline.
+  const left = timeLeft(new Date(), endOfLocalDay(seasonOf(today()).end, Intl.DateTimeFormat().resolvedOptions().timeZone));
   const hasStanding = standing?.position != null && standing.top_percent != null;
   const plaque = hasStanding
     ? showsPosition(rank, standing.position!)
@@ -53,6 +56,13 @@ export function RankCard({ training }: { training: Training }) {
             </p>
           )}
         </div>
+      </div>
+      <div className={`season-end${left.unit === 'days' ? '' : ' soon'}`}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+          <circle cx="12" cy="13" r="8" />
+          <path d="M12 9v4l2.5 2M9.5 2.5h5" />
+        </svg>
+        <span>{r.seasonEnds(left)}</span>
       </div>
       {progress && (
         <div className="bar" role="progressbar" aria-label={r.title} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress.fraction * 100)}>
