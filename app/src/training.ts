@@ -85,7 +85,7 @@ export type SetRecord = {
 };
 
 // An Exercise, as the phone keeps it for picking one offline: from the catalog, or a Custom Exercise
-// of this user's (spec: Catalog seed). A Custom Exercise has one name and no equipment.
+// of this user's (spec: Catalog seed). A Custom Exercise has one name and no equipment, unless it is bodyweight.
 export type Exercise = {
   id: string;
   nameEn: string;
@@ -140,7 +140,7 @@ export type Mutation =
   | { id: string; kind: 'saveDeload'; deload: DeloadRecord }
   | { id: string; kind: 'saveSession'; session: SessionRecord }
   | { id: string; kind: 'saveSet'; set: SetRecord }
-  | { id: string; kind: 'saveExercise'; exercise: { id: string; name: string; muscle: Muscle } }
+  | { id: string; kind: 'saveExercise'; exercise: { id: string; name: string; muscle: Muscle; equipment?: 'bodyweight' } }
   | { id: string; kind: 'saveProfileEntry'; entry: ProfileEntry }
   | { id: string; kind: 'saveRoutine'; routine: RoutineRecord }
   | { id: string; kind: 'saveNoRoutine'; noRoutine: NoRoutineRecord }
@@ -255,8 +255,8 @@ export async function openTraining(userId: string, options: Options) {
       if (mutation.set.deleted) await tx.objectStore('sets').delete(mutation.set.id);
       else await tx.objectStore('sets').put(mutation.set);
     } else {
-      const { id, name, muscle } = mutation.exercise;
-      await tx.objectStore('exercises').put({ id, nameEn: name, nameEs: name, equipment: null, custom: true, incrementKg: 2.5, bodyweight: false, muscle });
+      const { id, name, muscle, equipment } = mutation.exercise;
+      await tx.objectStore('exercises').put({ id, nameEn: name, nameEs: name, equipment: equipment ?? null, custom: true, incrementKg: 2.5, bodyweight: equipment === 'bodyweight', muscle });
     }
     await tx.objectStore('outbox').add(mutation);
     if (inProgress) await tx.objectStore('state').put(inProgress, 'sessionInProgress');
@@ -807,11 +807,12 @@ export async function openTraining(userId: string, options: Options) {
     },
 
     // The lifter's own Exercise, for what the catalog doesn't have, filed under a main muscle so the
-    // picker can find it. Logged as weight × reps.
-    async createExercise(name: string, muscle: Muscle) {
+    // picker can find it. Logged as weight × reps, or as reps with optional added weight when it is
+    // bodyweight. That is chosen here and never changes, as it would change what logged Sets mean.
+    async createExercise(name: string, muscle: Muscle, bodyweight = false) {
       if (!isMuscle(muscle)) throw new Error('A Custom Exercise needs a muscle');
       const id = `custom-${crypto.randomUUID()}`;
-      await write({ id: crypto.randomUUID(), kind: 'saveExercise', exercise: { id, name: name.trim(), muscle } });
+      await write({ id: crypto.randomUUID(), kind: 'saveExercise', exercise: { id, name: name.trim(), muscle, ...(bodyweight ? { equipment: 'bodyweight' as const } : {}) } });
       return { id };
     },
 
@@ -830,9 +831,10 @@ export async function openTraining(userId: string, options: Options) {
           }
           const { custom, ...plan } = e;
           let exerciseId = findCustomExercise(custom, own);
+          const bodyweight = custom.equipment === 'bodyweight';
           if (!exerciseId) {
-            exerciseId = (await this.createExercise(custom.name, custom.muscle)).id;
-            own.push({ id: exerciseId, nameEn: custom.name.trim(), nameEs: custom.name.trim(), equipment: null, custom: true, incrementKg: 2.5, bodyweight: false, muscle: custom.muscle });
+            exerciseId = (await this.createExercise(custom.name, custom.muscle, bodyweight)).id;
+            own.push({ id: exerciseId, nameEn: custom.name.trim(), nameEs: custom.name.trim(), equipment: bodyweight ? 'bodyweight' : null, custom: true, incrementKg: 2.5, bodyweight, muscle: custom.muscle });
           }
           exercises.push({ ...plan, exerciseId });
         }

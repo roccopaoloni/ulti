@@ -1,7 +1,7 @@
 import { createContext, useContext } from 'react';
 import type { AvatarColor } from './groups.ts';
 import type { Tab } from './navigation.ts';
-import type { Chip, Headline, Kicker, Muscle, Tier } from '@ulti/rules';
+import type { Chip, Headline, Kicker, Muscle, TimeLeft, Tier } from '@ulti/rules';
 
 export type Language = 'en' | 'es';
 
@@ -11,7 +11,7 @@ export type Term = 'weeklyTarget' | 'strengthLevel' | 'routine' | 'group' | 'ran
 type Messages = {
   tagline: string;
   tabs: Record<Tab, string>;
-  screens: Record<Tab, { label: string; text: string }>;
+  screens: Record<Exclude<Tab, 'home'>, { label: string; text: string }>;
   close: string;
   back: string;
   settings: { title: string; open: string; nameOffline: string; you: string; app: string; privacy: string; account: string };
@@ -214,6 +214,9 @@ type Messages = {
     addPicked: (count: number) => string;
     // Asks which muscle a new Custom Exercise is for.
     chooseMuscle: (name: string) => string;
+    // The switch beside it that makes the new Custom Exercise bodyweight, and its hint.
+    bodyweightSwitch: string;
+    bodyweightHint: string;
     // Creates a Custom Exercise named as typed in the search, logged as weight × reps.
     createCustom: (name: string) => string;
     weight: string;
@@ -358,6 +361,7 @@ type Messages = {
   // Consistency Points, Week Stamps and the Streak.
   consistency: {
     thisWeek: string;
+    weeklyTarget: string;
     // "2 of 3 sessions" under the dots.
     progress: (done: number, target: number) => string;
     points: (points: number) => string;
@@ -380,6 +384,7 @@ type Messages = {
     position: (position: number) => string;
     toNext: (points: number, next: string) => string;
     maxed: string;
+    seasonEnds: (left: TimeLeft) => string;
     pastSeasons: string;
   };
   // The Rank-up moment (design: The Rank-up moment).
@@ -439,7 +444,6 @@ const en: Messages = {
   tagline: 'one more.',
   tabs: { home: 'Home', train: 'Train', groups: 'Groups', profile: 'Profile' },
   screens: {
-    home: { label: 'Your Weekly Target', text: 'Your week will show up here.' },
     train: { label: 'Your Routines', text: 'Your training plan and your history will show up here.' },
     groups: { label: 'Your Groups', text: 'Create a Group and invite your friends, or open the invite link a friend sent you.' },
     profile: { label: 'Your Rank', text: "How far you've climbed will show up here." },
@@ -698,6 +702,8 @@ const en: Messages = {
     noMatches: 'No exercise matches.',
     addPicked: (count) => `Add ${count}`,
     chooseMuscle: (name) => `Which muscle is "${name}" for?`,
+    bodyweightSwitch: 'Bodyweight',
+    bodyweightHint: 'You log reps; any added weight is optional.',
     createCustom: (name) => `Create custom exercise "${name}"`,
     weight: 'Weight',
     addedWeight: 'Added weight',
@@ -812,6 +818,7 @@ const en: Messages = {
   },
   consistency: {
     thisWeek: 'This week',
+    weeklyTarget: 'Your Weekly Target',
     progress: (done, target) => `${done} of ${target} sessions`,
     points: (points) => `${points} pts this week`,
     filled: 'You showed up. That is what counts.',
@@ -830,6 +837,7 @@ const en: Messages = {
     position: (position) => `#${position} this Season`,
     toNext: (points, next) => `${points} pts to ${next}`,
     maxed: 'Top Tier reached',
+    seasonEnds: (left) => `Season ends in ${left.unit === 'days' ? `${left.count} days` : left.unit === 'hours' ? `${left.count} h` : 'less than an hour'}`,
     pastSeasons: 'Past Seasons',
   },
   rankUp: {
@@ -907,7 +915,6 @@ const es: Messages = {
   tagline: 'una más.',
   tabs: { home: 'Inicio', train: 'Entrenar', groups: 'Grupos', profile: 'Perfil' },
   screens: {
-    home: { label: 'Tu objetivo semanal', text: 'Acá vas a ver cómo va tu semana.' },
     train: { label: 'Tus rutinas', text: 'Acá vas a ver tu plan de entrenamiento y todo lo que entrenaste.' },
     groups: { label: 'Tus grupos', text: 'Creá un grupo e invitá a tus amigos, o abrí el link de invitación que te mandó un amigo.' },
     profile: { label: 'Tu rango', text: 'Acá vas a ver hasta dónde llegaste.' },
@@ -1162,6 +1169,8 @@ const es: Messages = {
     noMatches: 'Ningún ejercicio coincide.',
     addPicked: (count) => `Agregar ${count}`,
     chooseMuscle: (name) => `¿Para qué músculo es "${name}"?`,
+    bodyweightSwitch: 'Peso corporal',
+    bodyweightHint: 'Registrás repeticiones; el peso que agregues es opcional.',
     createCustom: (name) => `Crear ejercicio personalizado "${name}"`,
     weight: 'Peso',
     addedWeight: 'Peso añadido',
@@ -1276,6 +1285,7 @@ const es: Messages = {
   },
   consistency: {
     thisWeek: 'Esta semana',
+    weeklyTarget: 'Tu objetivo semanal',
     progress: (done, target) => `${done} de ${target} sesiones`,
     points: (points) => `${points} pts esta semana`,
     filled: 'Fuiste. Eso es lo que cuenta.',
@@ -1294,6 +1304,7 @@ const es: Messages = {
     position: (position) => `#${position} esta temporada`,
     toNext: (points, next) => `${points} pts para ${next}`,
     maxed: 'Llegaste a la liga más alta',
+    seasonEnds: (left) => `La temporada termina en ${left.unit === 'days' ? `${left.count} días` : left.unit === 'hours' ? `${left.count} h` : 'menos de una hora'}`,
     pastSeasons: 'Temporadas anteriores',
   },
   rankUp: {
