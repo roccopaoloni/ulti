@@ -12,7 +12,7 @@ const roman = ['', 'I', 'II', 'III', 'IV', 'V'];
 
 function Welcome() {
   return (
-    <div className="tut-art tut-welcome-art" aria-hidden="true">
+    <div className="tut-welcome-art" aria-hidden="true">
       <span className="tut-tag">1</span>
       <span className="tut-cell">60<small>kg</small></span>
       <span className="tut-x">×</span>
