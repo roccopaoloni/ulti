@@ -234,7 +234,7 @@ test("Ana's Custom Exercise syncs with her Sets, and only she can see it", async
 
 test('a bodyweight Custom Exercise is stored and returned as bodyweight, with equipment bodyweight', async () => {
   const ana = await lifter('ana');
-  const rollout = customExercise('Ab wheel rollout', 'abs', 'bodyweight');
+  const rollout = customExercise('Ab wheel rollout', 'core', 'bodyweight');
 
   expect(await sync(ana, [rollout])).toEqual({ rejected: [] });
 
