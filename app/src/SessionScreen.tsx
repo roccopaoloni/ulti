@@ -297,7 +297,7 @@ export function StartSession({ logging, training, practice = false }: { logging:
           </button>
         )}
       </Sheet>
-      <button type="button" className="btn-start" onClick={start}>
+      <button type="button" className="btn-start" data-coach="start" onClick={start}>
         <span className="disp">{inProgress ? s.resume : met ? s.startExtra : s.start}</span>
         <small>{inProgress ? s.logged(inProgress.sets.length) : met ? s.extraHint : next ? s.startNext(next.name) : s.startHint}</small>
       </button>
