@@ -13,18 +13,19 @@ import {
   type SetLabel,
   type Units,
 } from '@ulti/rules';
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type FormEvent, type HTMLAttributes, type ReactNode } from 'react';
 import { dayColourVar } from './dayColour.ts';
 import { Keypad } from './ExerciseBlock.tsx';
 import { Sheet } from './GroupsScreens.tsx';
 import { useI18n } from './i18n.ts';
-import { chevronIcon, checkIcon, trophyIcon } from './icons.tsx';
+import { chevronIcon, checkIcon, gripIcon, trophyIcon } from './icons.tsx';
 import { useImplausibleSheet } from './NoticeSheet.tsx';
 import { historyPath, navigate, paths, sessionPath } from './navigation.ts';
 import { today } from './profile.ts';
 import { Skeleton } from './Skeleton.tsx';
 import { SubScreen } from './SubScreen.tsx';
 import type { Exercise, SetRecord, Training } from './training.ts';
+import { useSortable } from './useSortable.ts';
 
 type Past = Awaited<ReturnType<Training['pastSessions']>>[number];
 
@@ -262,6 +263,10 @@ export function SessionDetailScreen({ training, units, sessionId }: { training: 
   const progress =
     sets.reduce((sum, set) => sum + (data.records.get(set.id)?.progressPoints ?? 0), 0) + (data.sessionPoints.get(sets[0]!.id) ?? 0);
   const exerciseIds = [...new Set(sets.map((set) => set.exerciseId))];
+  const moveSet = async (setId: string, toIndex: number) => {
+    await training.moveSet(setId, toIndex);
+    await data.reload();
+  };
   // The one muted line under the title: the numbers bold, the words muted. PRs and points only when there are some.
   const prs = sets.filter((set) => data.records.has(set.id)).length;
   const points = Math.round(progress);
@@ -305,31 +310,35 @@ export function SessionDetailScreen({ training, units, sessionId }: { training: 
                 <h2>{name(exerciseId)}</h2>
                 <small>{t.session.sets(exerciseSets.length)}</small>
               </div>
-              {exerciseSets.map((set) => {
-                const label = labels.get(set.id)!;
-                if (label !== 'warm-up') working++;
-                return (
-                  <PastSet
-                    key={set.id}
-                    set={set}
-                    label={label}
-                    number={working}
-                    exerciseName={name(exerciseId)}
-                    units={units}
-                    incrementKg={data.catalog.find(({ id }) => id === exerciseId)?.incrementKg ?? 2.5}
-                    bodyweight={data.catalog.find(({ id }) => id === exerciseId)?.bodyweight ?? false}
-                    record={data.records.get(set.id)}
-                    onEdit={async (weightKg, reps, confirmedJump) => {
-                      await training.editSet(set.id, weightKg, reps, { confirmedJump });
-                      await data.reload();
-                    }}
-                    onDelete={async () => {
-                      await training.deleteSet(set.id);
-                      await data.reload();
-                    }}
-                  />
-                );
-              })}
+              <SortableSets ids={exerciseSets.map((set) => set.id)} onMove={moveSet}>
+                {(index, row) => {
+                  const set = exerciseSets[index]!;
+                  const label = labels.get(set.id)!;
+                  if (label !== 'warm-up') working++;
+                  return (
+                    <PastSet
+                      key={set.id}
+                      row={row}
+                      set={set}
+                      label={label}
+                      number={working}
+                      exerciseName={name(exerciseId)}
+                      units={units}
+                      incrementKg={data.catalog.find(({ id }) => id === exerciseId)?.incrementKg ?? 2.5}
+                      bodyweight={data.catalog.find(({ id }) => id === exerciseId)?.bodyweight ?? false}
+                      record={data.records.get(set.id)}
+                      onEdit={async (weightKg, reps, confirmedJump) => {
+                        await training.editSet(set.id, weightKg, reps, { confirmedJump });
+                        await data.reload();
+                      }}
+                      onDelete={async () => {
+                        await training.deleteSet(set.id);
+                        await data.reload();
+                      }}
+                    />
+                  );
+                }}
+              </SortableSets>
             </section>
           );
         })}
@@ -338,7 +347,28 @@ export function SessionDetailScreen({ training, units, sessionId }: { training: 
   );
 }
 
+// An Exercise's Set rows, each with a ≡ handle to drag it within the Exercise: the same gesture as the live Session's List.
+function SortableSets({
+  ids,
+  onMove,
+  children,
+}: {
+  ids: string[];
+  onMove: (setId: string, toIndex: number) => Promise<void>;
+  children: (index: number, row: SetRow) => ReactNode;
+}) {
+  const sortable = useSortable((from, to) => onMove(ids[from]!, to), 0);
+  return (
+    <div ref={sortable.list}>
+      {ids.map((_, index) => children(index, { item: sortable.item(index), handle: sortable.handle(index) }))}
+    </div>
+  );
+}
+
+type SetRow = { item: HTMLAttributes<HTMLElement>; handle: HTMLAttributes<HTMLElement> };
+
 function PastSet({
+  row,
   set,
   label,
   number,
@@ -350,6 +380,7 @@ function PastSet({
   onEdit,
   onDelete,
 }: {
+  row: SetRow;
   set: SetRecord;
   label: SetLabel;
   number: number;
@@ -397,7 +428,10 @@ function PastSet({
     : `${formatNumber(kgToUnits(set.weightKg, units), 2)} ${units}`;
 
   return (
-    <>
+    <div className="hrow" {...row.item}>
+      <span className="grip" role="button" aria-label={t.session.moveSet} {...row.handle}>
+        {gripIcon}
+      </span>
       <button
         type="button"
         className={`hset${record ? ' is-pr' : ''}${label === 'warm-up' ? ' wu' : ''}`}
@@ -476,6 +510,6 @@ function PastSet({
           onClose={() => setEditing(null)}
         />
       )}
-    </>
+    </div>
   );
 }

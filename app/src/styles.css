@@ -1452,6 +1452,18 @@ button.cell {
   border-radius: 10px;
   text-align: left;
 }
+.hrow {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-inline: -8px;
+}
+.hrow .hset {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+  margin-inline: 0;
+}
 .hset .n {
   color: var(--muted);
   font-weight: 800;
