@@ -3103,6 +3103,8 @@ prefers-reduced-motion switches every animation off, so it stays off the badge. 
   font: 800 11px var(--body);
   text-transform: uppercase;
   letter-spacing: 0.06em;
+}
+
 /* The spotlight: a ring around a real element, the rest dimmed, and a callout that never covers it. */
 .spot-layer {
   position: fixed;
