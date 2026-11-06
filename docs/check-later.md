@@ -19,6 +19,10 @@ Small things for the owner that didn't block a merge: decisions you may want to 
 - **Jump limit boundaries and buttons** (#148, PR #154). The bands are below the 25th, the 25th to 75th inclusive, and above the 75th, and exactly +20% passes. The 28 days count back from the Set's own Session date. On the sheet, "I lifted it" is the pink primary button and "Fix it" the outlined one. Escape or tapping outside counts as "Fix it".
 - **Bodyweight Exercises always get the +20% jump limit** (#148, PR #154): their Strength Level is taken as the 50th percentile.
 
+- **History's Personal Record chip has a dark trophy, not gold** (#165, PR #173). The chip is solid pink, and gold on it was nearly invisible, so the trophy takes the chip's ink like the logged-Set button. Everywhere else it's gold. Delete the `.pr .trophy` rule to make it gold.
+- **A bodyweight Custom Exercise is tagged "Custom · Bodyweight"** (#164, PR #172) in the picker and the Routine editor, so it still reads as the lifter's own.
+- **Trained-today avatars overlap by 6px, not the mockup's 10px** (#167, PR #176). At 10px the 34px avatars cut each other's initials.
+
 ## Check after deploy
 
 - **Done: the Supabase token now writes Edge Function secrets** (#146, PR #150, `docs/setup.md` §16). The deploys of #150 and #152 failed without it. After the owner widened the token, the deploy of #154 passed and brought the backend up to date with main.
@@ -30,12 +34,23 @@ Small things for the owner that didn't block a merge: decisions you may want to 
 - **The "Nobody lifts that" sheet** (#147, PR #152). Only the List layout was screenshotted. Focus's Done and the Session detail edit sheet, where it opens over the edit sheet, run the same code but were never seen. Try a 1000 kg squat in each.
 - **The "Oh really? X% up in a month?" sheet** (#148, PR #154). It was only seen in headless Chromium, in the List layout. Never seen live: Focus's Done, the Session detail edit, where it opens over the edit sheet and "I lifted it" then saves the edit, and iOS. Try a Set 25% over your best in each.
 
+- **The Day sheet's bottom gap** (#161, PR #169). Your iPhone screenshot showed about 60pt of blank space, which was the home-indicator inset with the sheet's padding stacked on top. Every bottom sheet now pads `max(14px, inset)` instead of `14px + inset`, and the Day sheet's last row sits on the inset. It was only checked with an emulated 34px inset. Open the Day sheet and an ⓘ sheet on the iPhone.
+- **The Groups panel's swipe** (#166, PR #177). It's CSS scroll-snap, only scrolled programmatically in headless Chromium. Swipe it on the iPhone and check the dots follow.
+
 ## Robustness nits
 
 - **The phone and the server use different bodyweights for the ceiling** (#147, PR #152). The phone checks bodyweight Exercises against the latest logged bodyweight, while the server uses the 28-day average. A bodyweight Set right at the ceiling can save on the phone and then be dropped by the server.
 - **A refused Set forgets its remembered label** (#147, PR #152). `ExerciseBlock` clears `unlogged` before calling `onLog`, so when a Set that was un-logged and re-typed is refused, its Warm-up/Working choice is lost. #148's implementer was asked to fix it if it's trivial.
 - **The Calibration hint stays up at the start of the third Session** (seen in #148's screenshots, from before it). `inCalibration` counts the Session in progress only once it holds a Working Set, so "Your first sessions set your baseline" shows on the third Session until its first Set is logged.
 - **The retry job's HTTP call times out after 5 s while the recompute keeps going** (#146 era, seen Nov 3). When every user is dirty after a rescore migration, `recompute` takes more than 5 s, so `net._http_response` logs "Timeout of 5000 ms reached". The function still finishes and the users are cleared. Harmless now; as users grow, pass a larger `timeout_milliseconds` to `net.http_post` in the cron job, or recompute in batches.
+
+- **The Calibration hint shows on Custom Exercises** (seen in #164's screenshots, from before it). "Your first sessions set your baseline" appears under a Custom Exercise, which never earns Personal Records.
+- **History's PR chip cuts the exercise name sooner** (#165, PR #173). The trophy takes about 17px, so on a 390px screen "Bench press +3%" ellipsizes to "Bench pres…". The List layout's logged-Set button also wraps "+65 pts" onto two lines beside the trophy.
+- **The Groups panel is as tall as its tallest page** (#166, PR #177), so a Group with no news shows blank space under its race line when another Group has news.
+- **`Boards.tsx` and `GroupsScreens.tsx` import each other** (#167, PR #176): Boards now takes `Sheet` from GroupsScreens. It's used only at render time, so it works. Moving `Sheet` to its own file would break the cycle.
+- **Trained today waits for fresh news after the deploy** (#167, PR #176). News cached before the server sent user ids is skipped, so the card is empty on a phone until its next news refresh (opening Home online).
+- **ES Season countdown wraps under an hour** (#163, PR #170): "La temporada termina en menos de una hora" takes two lines at 390px. The row grows, which looks fine.
+- **`screens.train` and `screens.profile` look unused** (#162, PR #171). The Home placeholder they were for is gone; only `screens.groups` is read. Left in place.
 
 ## Test gaps
 
