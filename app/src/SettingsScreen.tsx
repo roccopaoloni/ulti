@@ -1,11 +1,11 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import type { Units } from '@ulti/rules';
 import { signOut } from './auth.ts';
 import { DeleteAccount, errorText, useNameForm } from './GroupsScreens.tsx';
 import { GroupsError } from './groups.ts';
 import { InstallSettings } from './InstallApp.tsx';
 import { useI18n } from './i18n.ts';
-import { paths } from './navigation.ts';
+import { navigate, paths, tutorialPath } from './navigation.ts';
 import { AppSettings, useBodyForm, VisibilityCard } from './ProfileScreens.tsx';
 import { SubScreen } from './SubScreen.tsx';
 import type { Profile, Training } from './training.ts';
@@ -59,6 +59,25 @@ function YouSettings({ userId, training, profile, units, onSaved }: { userId: st
   );
 }
 
+// Settings, App: Replay the tutorial. A real Session in progress has the screen's attention, so
+// the row waits for it to finish.
+function ReplayTutorial({ training }: { training: Training | null }) {
+  const { t } = useI18n();
+  const [busy, setBusy] = useState(true);
+  useEffect(() => {
+    training?.sessionInProgress().then((found) => setBusy(found !== null));
+  }, [training]);
+  return (
+    <button type="button" className="card replay-row" disabled={busy} onClick={() => navigate(tutorialPath)}>
+      <span>
+        {t.tutorial.replay}
+        {busy && training && <small>{t.tutorial.replayBusy}</small>}
+      </span>
+      <span className="chev" aria-hidden="true">›</span>
+    </button>
+  );
+}
+
 // Everything editable about the user, opened from the ⚙ on Profile.
 export function SettingsScreen({
   userId,
@@ -81,6 +100,7 @@ export function SettingsScreen({
       {training && profile && <YouSettings userId={userId} training={training} profile={profile} units={units} onSaved={onSaved} />}
       <h2 className="section-title">{t.settings.app}</h2>
       <AppSettings userId={userId} units={units} />
+      <ReplayTutorial training={training} />
       <InstallSettings />
       <h2 className="section-title">{t.settings.privacy}</h2>
       <VisibilityCard userId={userId} />

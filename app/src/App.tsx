@@ -9,12 +9,13 @@ import { HistoryScreen, RecentSessions, SessionDetailScreen } from './HistoryScr
 import { useI18n } from './i18n.ts';
 import { gearIcon, tabIcons } from './icons.tsx';
 import { InstallCard } from './InstallApp.tsx';
-import { historyPath, navigate, paths, routineLinkPath, routinePath, sessionFromPath, settingsPath, tabs, useCurrentTab, usePathname } from './navigation.ts';
+import { goBack, historyPath, navigate, paths, routineLinkPath, routinePath, sessionFromPath, settingsPath, tabs, tutorialPath, useCurrentTab, usePathname } from './navigation.ts';
 import { hasEverything, useBodyProfile, useLayout, useUnits } from './profile.ts';
 import { RankCard } from './RankCard.tsx';
 import { CrownGate } from './CrownGate.tsx';
 import { RankUpGate } from './RankUpGate.tsx';
 import { BodyweightPrompt, ConnectToFinish, Onboarding } from './ProfileScreens.tsx';
+import { Tutorial } from './Tutorial.tsx';
 import { SettingsScreen } from './SettingsScreen.tsx';
 import { MyRoutineButton, RoutineSubScreen } from './RoutineScreen.tsx';
 import { RoutineLinkScreen } from './RoutineLink.tsx';
@@ -57,10 +58,16 @@ function Tabs({ userId }: { userId: string }) {
   const units = storedUnits ?? 'kg';
   const layout = useLayout(userId);
   const [promptDue, setPromptDue] = useState(false);
+  // Whether the account has seen the Tutorial, once the phone has asked the server (null before).
+  const [tutorialSeen, setTutorialSeen] = useState<boolean | null>(null);
 
   useEffect(() => {
     training?.bodyweightPromptDue().then(setPromptDue);
   }, [training, profile]);
+
+  useEffect(() => {
+    if (training && ready && downloaded) training.tutorialSeen().then(setTutorialSeen);
+  }, [training, ready, downloaded]);
 
   // Until the user has given their units, sex, bodyweight and Weekly Target, nothing else opens.
   // A phone that hasn't heard the server's profile history can't tell a new user from a returning
@@ -75,6 +82,22 @@ function Tabs({ userId }: { userId: string }) {
     return <Onboarding userId={userId} training={training} onDone={reload} />;
   }
   if (training && logging.open) return <SessionScreen training={training} units={units} layout={layout} onLeave={logging.leave} />;
+  // The Tutorial comes once, on first reaching Home after setup, and again when replayed from
+  // Settings. Finishing or skipping marks it seen; a phone that hasn't heard the server yet waits.
+  const replaying = pathname === tutorialPath;
+  if (training && onboarded && (replaying || tutorialSeen === false)) {
+    return (
+      <Tutorial
+        onDone={async () => {
+          if (!tutorialSeen) {
+            await training.markTutorialSeen();
+            setTutorialSeen(true);
+          }
+          if (replaying) goBack(settingsPath);
+        }}
+      />
+    );
+  }
   return (
     <>
       {training && <RankUpGate userId={userId} training={training} />}

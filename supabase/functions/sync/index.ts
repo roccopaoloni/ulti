@@ -51,6 +51,7 @@ type Mutation =
   | { id: string; kind: 'saveProfileEntry'; entry: ProfileEntry }
   | { id: string; kind: 'saveRoutine'; routine: RoutineRecord }
   | { id: string; kind: 'saveNoRoutine'; noRoutine: NoRoutineRecord }
+  | { id: string; kind: 'saveTutorialSeen' }
   | { id: string; kind: 'saveIncrement'; increment: IncrementRecord };
 
 // Sets dated after the moment the endpoint received them are rejected. A phone's clock can run a
@@ -162,6 +163,7 @@ async function save(client: Client, userId: string, mutations: Mutation[], recei
   };
   const routines = new Map<string, RoutineRecord>();
   const noRoutines = new Map<string, NoRoutineRecord & { id: string }>();
+  let tutorialSeen = false;
   const increments = new Map<string, IncrementRecord & { id: string }>();
   const deloads = new Map<string, DeloadRecord & { id: string }>();
   const exercises = new Map<string, ExerciseRecord>();
@@ -189,6 +191,7 @@ async function save(client: Client, userId: string, mutations: Mutation[], recei
     if (mutation.kind === 'saveSession') keepLatest(sessions, mutation.session);
     else if (mutation.kind === 'saveRoutine') keepLatest(routines, mutation.routine);
     else if (mutation.kind === 'saveNoRoutine') keepLatest(noRoutines, { ...mutation.noRoutine, id: 'no-routine' });
+    else if (mutation.kind === 'saveTutorialSeen') tutorialSeen = true;
     else if (mutation.kind === 'saveDeload') keepLatest(deloads, { ...mutation.deload, id: mutation.deload.week });
     else if (mutation.kind === 'saveIncrement') keepLatest(increments, { ...mutation.increment, id: mutation.increment.exerciseId });
     else if (mutation.kind === 'saveExercise') exercises.set(mutation.exercise.id, { ...mutation.exercise, muscle: mutation.exercise.muscle ?? 'full-body' });
@@ -261,6 +264,11 @@ async function save(client: Client, userId: string, mutations: Mutation[], recei
       no_routine = excluded.no_routine,
       no_routine_at = excluded.no_routine_at
     where profiles.no_routine_at is null or profiles.no_routine_at < excluded.no_routine_at`;
+  if (tutorialSeen) {
+    await transaction.queryArray`
+      insert into public.profiles (user_id, tutorial_seen) values (${userId}, true)
+      on conflict (user_id) do update set tutorial_seen = true`;
+  }
   await transaction.queryArray`
     update public.profiles set no_routine = false, no_routine_at = r."updatedAt"
     from jsonb_to_recordset(${JSON.stringify([...routines.values()])}::jsonb) as r(days jsonb, "updatedAt" timestamptz)

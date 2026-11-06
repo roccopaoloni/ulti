@@ -185,3 +185,7 @@ _Rioplatense_: Rango ("Oro III")
 A rise in a user's Rank to a higher Division or a higher Tier.
 _Avoid_: Level-up, promotion
 _Rioplatense_: Subida (de rango)
+
+**Tutorial**:
+The walkthrough shown once per account after onboarding: a welcome card and five slides, replayable from Settings.
+_Rioplatense_: Tutorial

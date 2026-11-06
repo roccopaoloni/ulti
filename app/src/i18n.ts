@@ -17,6 +17,20 @@ type Messages = {
   settings: { title: string; open: string; nameOffline: string; you: string; app: string; privacy: string; account: string };
   install: { title: string; settingsTitle: string; homeText: string; install: string; notNow: string; iosShare: string; iosAdd: string; other: string };
   about: { title: string; fitnessVoltLink: string; symmetricStrength: string };
+  // The Tutorial: shown once per account after setup, replayable from Settings.
+  tutorial: {
+    welcomeTitle: string;
+    welcomeText: string;
+    welcomeGo: string;
+    slides: { title: string; text: string }[];
+    slideGo: string;
+    skip: string;
+    next: string;
+    replay: string;
+    replayBusy: string;
+    // The slides' pictures.
+    art: { pr: string; prSub: string; show: string; showSub: string; streak: string; calib: string[]; baseline: string; calibLine: string; me: string };
+  };
   glossary: Record<Term, { term: string; explanation: string }>;
   // Groups: creating, inviting, joining and leaving, and the display name and avatar members see.
   groups: {
@@ -462,6 +476,24 @@ const en: Messages = {
     title: 'About',
     fitnessVoltLink: 'Powered by FitnessVolt',
     symmetricStrength: 'Built on the Symmetric Strength gym dataset.',
+  },
+  tutorial: {
+    welcomeTitle: 'Practice first',
+    welcomeText: 'Let’s log a practice Session together, so your first real one is easy. Nothing here is saved or counted. About 3 minutes.',
+    welcomeGo: 'Start practice',
+    slides: [
+      { title: 'Two ways to score', text: 'Beat your best on an exercise and you earn Progress Points. Show up toward your Weekly Target and you earn Consistency Points. PRs are weighed against how advanced you are, so it’s fair whoever you’re up against.' },
+      { title: 'Stamps and Streaks', text: 'Meet your Weekly Target and the week gets a Week Stamp. Stamp week after week and your Streak grows.' },
+      { title: 'Calibration', text: 'In real life, your first Sessions with each exercise set your starting best, so there are no PRs yet. After that, every best counts. The practice skipped ahead.' },
+      { title: 'Rank', text: 'Points raise your Rank, from Bronze up to Elite. Each Tier below Elite has Divisions, V up to I. Rank is earned each Season.' },
+      { title: 'Groups', text: 'Make a Group with friends and compete on the same fair Points. You choose what your Groups see of your training.' },
+    ],
+    slideGo: 'Show me around',
+    skip: 'Skip',
+    next: 'Next',
+    replay: 'Replay the tutorial',
+    replayBusy: 'Finish your Session first.',
+    art: { pr: 'Personal Record', prSub: 'Bench press, 62.5 × 8', show: 'Session toward your target', showSub: '6+ Working Sets', streak: 'Streak: 4 weeks', calib: ['Session 1', 'Session 2', 'Session 3', 'Session 4'], baseline: 'baseline', calibLine: 'Your first sessions set your baseline', me: 'You' },
   },
   glossary: {
     weeklyTarget: {
@@ -937,6 +969,24 @@ const es: Messages = {
     title: 'Acerca de',
     fitnessVoltLink: 'Powered by FitnessVolt',
     symmetricStrength: 'Basados en el conjunto de datos de gimnasio de Symmetric Strength.',
+  },
+  tutorial: {
+    welcomeTitle: 'Primero, práctica',
+    welcomeText: 'Registremos juntos una sesión de práctica, así la primera de verdad te sale fácil. Nada de esto se guarda ni cuenta. Unos 3 minutos.',
+    welcomeGo: 'Empezar práctica',
+    slides: [
+      { title: 'Dos formas de sumar', text: 'Superá tu mejor marca en un ejercicio y ganás Puntos de progreso. Cumplí con tu objetivo semanal y ganás Puntos de constancia. Los PRs se miden según tu nivel, así que es parejo contra quien sea.' },
+      { title: 'Sellos y rachas', text: 'Cumplí tu objetivo semanal y la semana gana un sello. Sellá semana tras semana y tu racha crece.' },
+      { title: 'Calibración', text: 'En la realidad, tus primeras sesiones con cada ejercicio fijan tu mejor marca inicial, así que todavía no hay PRs. Después, cada mejora cuenta. La práctica se lo salteó.' },
+      { title: 'Rango', text: 'Los Puntos suben tu rango, de Bronce a Élite. Cada liga debajo de Élite tiene divisiones, de V a I. El rango se gana en cada temporada.' },
+      { title: 'Grupos', text: 'Armá un grupo con amigos y competí con los mismos Puntos parejos. Vos elegís qué ven tus grupos de tu entrenamiento.' },
+    ],
+    slideGo: 'Mostrame la app',
+    skip: 'Saltar',
+    next: 'Siguiente',
+    replay: 'Repetir el tutorial',
+    replayBusy: 'Terminá tu sesión primero.',
+    art: { pr: 'PR', prSub: 'Press banca, 62,5 × 8', show: 'Sesión hacia tu objetivo', showSub: '6+ series efectivas', streak: 'Racha: 4 semanas', calib: ['Sesión 1', 'Sesión 2', 'Sesión 3', 'Sesión 4'], baseline: 'base', calibLine: 'Tus primeras sesiones fijan tu base', me: 'Vos' },
   },
   glossary: {
     weeklyTarget: {
