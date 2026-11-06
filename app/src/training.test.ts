@@ -461,6 +461,68 @@ test("a past Session's Sets keep their labels, so History shows the Warm-up and 
   training.close();
 });
 
+test("a Set dragged to its real place is saved there with a position, its logged time untouched, and goes out with the Set", async () => {
+  const network = server();
+  network.offline = true;
+  const phone = anasPhone(network);
+  const training = await phone.open();
+  const session = await training.startSession();
+  const a = await training.logSet(session.id, 'back-squat', 100, 5);
+  const b = await training.logSet(session.id, 'back-squat', 100, 5);
+  const late = await training.logSet(session.id, 'back-squat', 60, 5);
+
+  await training.moveSet(late.id, 0);
+
+  const inProgress = await training.sessionInProgress();
+  expect(inProgress?.sets.map(({ id }) => id)).toEqual([late.id, a.id, b.id]);
+  expect(inProgress?.sets.map(({ loggedAt }) => loggedAt)).toEqual([late.loggedAt, a.loggedAt, b.loggedAt]);
+  expect(inProgress?.sets.map(({ position }) => position)).toEqual([0, 1, 2]);
+  // Moved in front of Working Sets only: the label stays detected, and the rules label it a Warm-up Set.
+  expect(inProgress?.sets.map(({ label }) => label)).toEqual([undefined, undefined, undefined]);
+  expect(labelSets(inProgress!.sets)).toEqual(['warm-up', 'working', 'working']);
+
+  network.offline = false;
+  phone.connectivity.dispatchEvent(new Event('online'));
+  await vi.waitFor(() => expect(network.batches).toHaveLength(1));
+  const sent = new Map(network.batches[0].flatMap((m) => (m.kind === 'saveSet' ? [[m.set.id, m.set] as const] : [])));
+  expect([a.id, b.id, late.id].map((id) => sent.get(id)?.position)).toEqual([1, 2, 0]);
+  training.close();
+});
+
+test("a Set dragged in front of a Warm-up Set becomes the lifter's own Warm-up Set, and drops its RIR", async () => {
+  const phone = anasPhone(server());
+  const training = await phone.open();
+  const session = await training.startSession();
+  await training.logSet(session.id, 'back-squat', 40, 5);
+  await training.logSet(session.id, 'back-squat', 60, 5);
+  const top = await training.logSet(session.id, 'back-squat', 100, 5);
+  await training.setRir(top.id, 2);
+
+  await training.moveSet(top.id, 1);
+
+  const sets = (await training.sessionInProgress())!.sets;
+  expect(sets.map(({ weightKg }) => weightKg)).toEqual([40, 100, 60]);
+  expect(sets.map(({ label }) => label)).toEqual([undefined, 'warm-up', undefined]);
+  expect(sets[1].rir).toBeUndefined();
+  training.close();
+});
+
+test('a Set logged after a drag comes last, and next Session, History and the rules follow the new order', async () => {
+  const phone = anasPhone(server());
+  const training = await phone.open();
+  const session = await training.startSession();
+  await training.logSet(session.id, 'back-squat', 100, 5);
+  const warm = await training.logSet(session.id, 'back-squat', 60, 5);
+  await training.moveSet(warm.id, 0);
+  await training.logSet(session.id, 'back-squat', 100, 4);
+  await training.finishSession(session.id);
+
+  expect((await training.lastSets('back-squat')).map((set) => set.weightKg)).toEqual([60, 100, 100]);
+  expect((await training.pastSessions())[0].sets.map((set) => set.weightKg)).toEqual([60, 100, 100]);
+  expect((await training.history()).sessions[0].sets.map((set) => set.weightKg)).toEqual([60, 100, 100]);
+  training.close();
+});
+
 test("Ana's onboarding is written through the outbox, and her first Weekly Target applies from today", async () => {
   const network = server();
   // Saturday 24 October in Buenos Aires.

@@ -7,7 +7,9 @@ import {
   findCustomExercise,
   findJumps,
   isImplausibleSet,
+  moveSet,
   nextMonday,
+  orderSets,
   isMuscle,
   routineDayChoices,
   suggestedRoutineDay,
@@ -76,6 +78,8 @@ export type SetRecord = {
   reps: number;
   // Set when the lifter overrides the detected label; otherwise the rules detect it.
   label?: SetLabel;
+  // Where the lifter dragged the Set among its Exercise's Sets in the Session; none until they do.
+  position?: number;
   // Reps in reserve when the lifter logged it: 0 to 4, where 4 means 4 or more.
   rir?: number;
   // A deleted Set is sent once more marked deleted, so the server forgets it too.
@@ -318,6 +322,9 @@ export async function openTraining(userId: string, options: Options) {
   sync();
 
   const stamp = () => options.now().toISOString();
+  // A Session's Sets in the order they are done: logged order, then each Exercise's Sets by the position the lifter gave them.
+  const inOrder = (sets: SetRecord[]) =>
+    orderSets([...sets].sort((a, b) => a.loggedAt.localeCompare(b.loggedAt)).map((set) => ({ exercise: set.exerciseId, position: set.position, set }))).map(({ set }) => set);
 
   // Saving a Set checks it first, on the phone with the rules' own function (spec: Implausible Sets).
   async function refuseImplausible(exerciseId: string, weightKg: number, reps: number) {
@@ -396,6 +403,23 @@ export async function openTraining(userId: string, options: Options) {
       await write({ id: crypto.randomUUID(), kind: 'saveSet', set: { ...(label === 'warm-up' ? rest : set), label, updatedAt: stamp() } });
     },
 
+    // Drags a Set to `toIndex` among its Exercise's Sets in the Session: every Set of the Exercise
+    // is written with its place, and a Set that lands in front of a Warm-up Set becomes a Warm-up
+    // Set of the lifter's own (which has no RIR). The logged times stay as they were.
+    async moveSet(setId: string, toIndex: number) {
+      const set = (await db.get('sets', setId))!;
+      const own = inOrder(await db.getAllFromIndex('sets', 'bySession', set.sessionId)).filter((other) => other.exerciseId === set.exerciseId);
+      const moved = moveSet(own.map((other) => ({ id: other.id, weightKg: other.weightKg, label: other.label })), setId, toIndex);
+      const updatedAt = stamp();
+      for (const [position, id] of moved.ids.entries()) {
+        const kept = own.find((other) => other.id === id)!;
+        const { rir, ...rest } = kept;
+        const flipped = id === setId && moved.warmUp;
+        if (kept.position === position && !flipped) continue;
+        await write({ id: crypto.randomUUID(), kind: 'saveSet', set: { ...(flipped ? rest : kept), ...(flipped && { label: 'warm-up' as const }), position, updatedAt } });
+      }
+    },
+
     // The Set's RIR, optional: written like an edit.
     async setRir(setId: string, rir: number) {
       const set = (await db.get('sets', setId))!;
@@ -413,8 +437,7 @@ export async function openTraining(userId: string, options: Options) {
       finished.sort((a, b) => b.startedAt.localeCompare(a.startedAt));
       const past = await Promise.all(
         finished.map(async (session) => {
-          const sets = await db.getAllFromIndex('sets', 'bySession', session.id);
-          sets.sort((a, b) => a.loggedAt.localeCompare(b.loggedAt));
+          const sets = inOrder(await db.getAllFromIndex('sets', 'bySession', session.id));
           return { session, sets };
         }),
       );
@@ -439,8 +462,7 @@ export async function openTraining(userId: string, options: Options) {
       const inProgress = await db.get('state', 'sessionInProgress');
       if (!inProgress) return null;
       const session = (await db.get('sessions', inProgress.sessionId))!;
-      const sets = await db.getAllFromIndex('sets', 'bySession', inProgress.sessionId);
-      sets.sort((a, b) => a.loggedAt.localeCompare(b.loggedAt));
+      const sets = inOrder(await db.getAllFromIndex('sets', 'bySession', inProgress.sessionId));
       return { session, exerciseIds: inProgress.exerciseIds, plan: inProgress.plan ?? [], sets };
     },
 
@@ -480,7 +502,7 @@ export async function openTraining(userId: string, options: Options) {
       );
       if (sessions.length === 0) return [];
       const last = sessions.reduce((a, b) => (a!.startedAt > b!.startedAt ? a : b))!;
-      return sets.filter((set) => set.sessionId === last.id).sort((a, b) => a.loggedAt.localeCompare(b.loggedAt));
+      return inOrder(sets.filter((set) => set.sessionId === last.id));
     },
 
     // Sets a field of the profile. A change to the Weekly Target starts next Monday in the user's
@@ -567,8 +589,7 @@ export async function openTraining(userId: string, options: Options) {
         deloadWeeks: await this.deloadWeeks(),
         sessions: await Promise.all(
           sessions.map(async ({ id, localDate, deload }) => {
-            const sets = await db.getAllFromIndex('sets', 'bySession', id);
-            sets.sort((a, b) => a.loggedAt.localeCompare(b.loggedAt));
+            const sets = inOrder(await db.getAllFromIndex('sets', 'bySession', id));
             const rows = sets.map((set) => {
               const edited = candidate?.id === set.id ? candidate : undefined;
               return {
