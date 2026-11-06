@@ -230,6 +230,8 @@ type Messages = {
     reps: string;
     logSet: string;
     unlogSet: string;
+    // The ≡ handle on a logged Set in the List layout, which moves the Set within its Exercise by sliding it.
+    moveSet: string;
     personalRecord: string;
     // Focus layout: the Set shown, the chips' group, and the controls around the big numbers.
     focusSet: (number: number) => string;
@@ -718,6 +720,7 @@ const en: Messages = {
     reps: 'Reps',
     logSet: 'Log set',
     unlogSet: 'Un-log set',
+    moveSet: 'Hold and slide to move the set',
     personalRecord: 'Personal Record',
     focusSet: (number) => `Set ${number}`,
     focusSets: 'Sets',
@@ -1188,6 +1191,7 @@ const es: Messages = {
     reps: 'Repeticiones',
     logSet: 'Registrar serie',
     unlogSet: 'Deshacer serie',
+    moveSet: 'Mantené apretado y deslizá para mover la serie',
     personalRecord: 'Récord personal',
     focusSet: (number) => `Serie ${number}`,
     focusSets: 'Series',

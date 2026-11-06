@@ -18,6 +18,8 @@ export type Set = {
   rir?: number;
   // The lifter's one-tap override of the detected label (spec: Warm-up detection).
   label?: SetLabel;
+  // Where the lifter dragged the Set among its Exercise's Sets in the Session; none until they do.
+  position?: number;
 };
 
 export type SetLabel = 'warm-up' | 'working';
@@ -496,6 +498,30 @@ export function historyWeeks<S extends { localDate: string }>(input: {
     });
   }
   return weeks;
+}
+
+// Puts a Session's Sets, given in the order they were logged, in the order they are done. Each
+// Exercise's Sets go by position, then logged order: a Set with no position (logged before any
+// drag, or after it) comes after the positioned ones. The Exercises keep the places they had.
+export function orderSets<T extends { exercise: string; position?: number }>(sets: readonly T[]): T[] {
+  const byExercise = new Map<string, T[]>();
+  for (const set of sets) byExercise.set(set.exercise, [...(byExercise.get(set.exercise) ?? []), set]);
+  // Array.sort is stable, so Sets with the same position (or none) stay in logged order.
+  const queues = new Map([...byExercise].map(([exercise, own]) => [exercise, own.sort((a, b) => (a.position ?? Number.MAX_VALUE) - (b.position ?? Number.MAX_VALUE))]));
+  return sets.map((set) => queues.get(set.exercise)!.shift()!);
+}
+
+// What dragging a Set to `toIndex` among its Exercise's Sets (given in their order) does: the new
+// order, and whether the Set becomes a Warm-up Set of the lifter's own, which it does when it lands
+// in front of a Warm-up Set, detected or by hand. Any other move leaves labels as they are.
+export function moveSet(sets: readonly { id: string; weightKg: number; label?: SetLabel }[], setId: string, toIndex: number): { ids: string[]; warmUp: boolean } {
+  const labels = labelSets([...sets]);
+  const moved = sets.findIndex((set) => set.id === setId);
+  const ids = sets.map((set) => set.id);
+  ids.splice(moved, 1);
+  ids.splice(toIndex, 0, setId);
+  const after = new Set(ids.slice(toIndex + 1));
+  return { ids, warmUp: sets.some((set, index) => after.has(set.id) && labels[index] === 'warm-up') };
 }
 
 // Labels one Exercise's Sets of one Session, in the order they were logged: a Set is a Warm-up Set
