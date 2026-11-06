@@ -40,15 +40,15 @@ function Flow({ practice, units, onDone }: { practice: Training; units: Units; o
         layout="list"
         practice
         onLeave={async () => {
-          await logging.leave();
           // Past the seeded Sessions, the Practice Session was finished; otherwise the lifter only stepped back.
           if (!(await practice.sessionInProgress()) && (await practice.pastSessions()).length > PRACTICE_SEED_SESSIONS) onDone();
+          else await logging.leave();
         }}
       />
     );
   }
   return (
-    <main className="screen practice-home">
+    <main className="screen">
       <span className="practice-tag">{t.tutorial.practice}</span>
       <StartSession logging={logging} training={practice} practice />
     </main>
