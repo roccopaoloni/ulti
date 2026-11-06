@@ -1,7 +1,7 @@
 import { createContext, useContext } from 'react';
 import type { AvatarColor } from './groups.ts';
 import type { Tab } from './navigation.ts';
-import type { Chip, Headline, Kicker, Muscle, Tier } from '@ulti/rules';
+import type { Chip, Headline, Kicker, Muscle, TimeLeft, Tier } from '@ulti/rules';
 
 export type Language = 'en' | 'es';
 
@@ -379,6 +379,7 @@ type Messages = {
     position: (position: number) => string;
     toNext: (points: number, next: string) => string;
     maxed: string;
+    seasonEnds: (left: TimeLeft) => string;
     pastSeasons: string;
   };
   // The Rank-up moment (design: The Rank-up moment).
@@ -828,6 +829,7 @@ const en: Messages = {
     position: (position) => `#${position} this Season`,
     toNext: (points, next) => `${points} pts to ${next}`,
     maxed: 'Top Tier reached',
+    seasonEnds: (left) => `Season ends in ${left.unit === 'days' ? `${left.count} days` : left.unit === 'hours' ? `${left.count} h` : 'less than an hour'}`,
     pastSeasons: 'Past Seasons',
   },
   rankUp: {
@@ -1291,6 +1293,7 @@ const es: Messages = {
     position: (position) => `#${position} esta temporada`,
     toNext: (points, next) => `${points} pts para ${next}`,
     maxed: 'Llegaste a la liga más alta',
+    seasonEnds: (left) => `La temporada termina en ${left.unit === 'days' ? `${left.count} días` : left.unit === 'hours' ? `${left.count} h` : 'menos de una hora'}`,
     pastSeasons: 'Temporadas anteriores',
   },
   rankUp: {
