@@ -259,7 +259,7 @@ export function RoutineScreen({ userId, training, profile, onProfileSaved }: { u
               open={open}
               setOpen={setOpen}
               nameOf={(id) => { const exercise = exerciseOf(id); return exercise ? nameOf(exercise) : id; }}
-              equipmentOf={(id) => { const exercise = exerciseOf(id); return exercise?.equipment ? t.session.equipment[exercise.equipment] : t.session.customTag; }}
+              equipmentOf={(id) => { const exercise = exerciseOf(id); const equipment = exercise?.equipment ? t.session.equipment[exercise.equipment] : ''; return exercise?.custom || !exercise ? [t.session.customTag, equipment].filter(Boolean).join(' · ') : equipment; }}
               changeDay={changeDay}
               changeExercise={changeExercise}
               setPicking={setPicking}

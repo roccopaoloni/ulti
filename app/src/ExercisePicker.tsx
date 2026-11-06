@@ -53,7 +53,11 @@ export function ExercisePicker({
   }, [open]);
 
   const nameOf = (exercise: Exercise) => (language === 'es' ? exercise.nameEs : exercise.nameEn);
-  const equipmentOf = (exercise: Exercise) => (exercise.equipment ? (s.equipment[exercise.equipment] ?? '') : s.customTag);
+  // A Custom Exercise keeps its "Custom" tag, with its equipment after it when it has one (bodyweight).
+  const equipmentOf = (exercise: Exercise) => {
+    const equipment = exercise.equipment ? (s.equipment[exercise.equipment] ?? '') : '';
+    return exercise.custom ? [s.customTag, equipment].filter(Boolean).join(' · ') : equipment;
+  };
   // The search looks at the equipment too: "mancuernas" finds every dumbbell variant.
   const choices = catalog
     .filter(({ id }) => !exclude.includes(id))
