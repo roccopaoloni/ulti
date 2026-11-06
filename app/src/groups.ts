@@ -2,7 +2,7 @@ import type { Division, Tier } from '@ulti/rules';
 import { forgetSession, supabase } from './auth.ts';
 import { paths } from './navigation.ts';
 import { languageKey, today } from './profile.ts';
-import { useStored, write } from './stored.ts';
+import { useStored, useStoredMany, write } from './stored.ts';
 import type { Training } from './training.ts';
 
 // What my_groups() returns: of each member, only what the server lets members see of each other.
@@ -213,6 +213,17 @@ const visitKey = (userId: string) => `ulti-last-visit:${userId}`;
 export function useNews(userId: string, groupId: string) {
   const stored = useStored<StoredNews>(newsKey(userId, groupId));
   return stored?.date === today() ? stored : null;
+}
+
+// The news of several Groups at once, by Group id, for ordering them.
+export function useAllNews(userId: string, groupIds: string[]) {
+  const stored = useStoredMany<StoredNews>(groupIds.map((id) => newsKey(userId, id)));
+  const news: Record<string, StoredNews | null> = {};
+  groupIds.forEach((id, index) => {
+    const item = stored[index];
+    news[id] = item?.date === today() ? item : null;
+  });
+  return news;
 }
 
 // The day of the last visit is read once per page load, so the news stays on Home while the user
