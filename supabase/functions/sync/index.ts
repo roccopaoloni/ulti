@@ -33,7 +33,7 @@ type SetRecord = {
 // One entry of a dated history: the value in force from a local date on (ADR 0002).
 type ProfileEntry = { field: string; effectiveFrom: string; value: unknown; updatedAt: string };
 // A Custom Exercise queued before muscles existed has none: it is filed under Full body.
-type ExerciseRecord = { id: string; name: string; muscle?: string };
+type ExerciseRecord = { id: string; name: string; muscle?: string; equipment?: string };
 // The Routine is saved whole: its Sessions are never looked into here.
 type RoutineRecord = { id: string; days: unknown[]; updatedAt: string };
 // "I don't follow a routine", set or cleared. Saving a Routine clears it too.
@@ -107,7 +107,8 @@ function isRejected(mutation: Mutation, receivedAt: number) {
       return !isProfileValue(mutation.entry.field, mutation.entry.value);
     // A Custom Exercise's ID is `custom-` and then its own, so it never stands in for a catalog one.
     case 'saveExercise':
-      return !mutation.exercise.id.startsWith('custom-') || (mutation.exercise.muscle !== undefined && !isMuscle(mutation.exercise.muscle));
+      return !mutation.exercise.id.startsWith('custom-') || (mutation.exercise.muscle !== undefined && !isMuscle(mutation.exercise.muscle)) ||
+        (mutation.exercise.equipment !== undefined && mutation.exercise.equipment !== 'bodyweight');
     case 'saveNoRoutine':
       return typeof mutation.noRoutine.value !== 'boolean';
     case 'saveIncrement':
@@ -200,9 +201,9 @@ async function save(client: Client, userId: string, mutations: Mutation[], recei
   // an ID that exists already, whoever owns it, is left alone. The one name serves both languages,
   // and the Increment is a placeholder: Custom Exercises never get recommendations.
   await transaction.queryArray`
-    insert into public.exercises (id, name_en, name_es, type, default_increment_kg, muscle, owner_id)
-    select e.id, e.name, e.name, 'weighted', 2.5, e.muscle, ${userId}
-    from jsonb_to_recordset(${JSON.stringify([...exercises.values()])}::jsonb) as e(id text, name text, muscle text)
+    insert into public.exercises (id, name_en, name_es, type, equipment, default_increment_kg, muscle, owner_id)
+    select e.id, e.name, e.name, case when e.equipment = 'bodyweight' then 'bodyweight' else 'weighted' end, e.equipment, 2.5, e.muscle, ${userId}
+    from jsonb_to_recordset(${JSON.stringify([...exercises.values()])}::jsonb) as e(id text, name text, muscle text, equipment text)
     on conflict (id) do nothing`;
   await transaction.queryArray`
     insert into public.sessions(user_id, id, started_at, time_zone, local_date, finished_at, routine_day_id, deleted, deload, updated_at)

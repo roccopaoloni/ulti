@@ -259,7 +259,7 @@ export function RoutineScreen({ userId, training, profile, onProfileSaved }: { u
               open={open}
               setOpen={setOpen}
               nameOf={(id) => { const exercise = exerciseOf(id); return exercise ? nameOf(exercise) : id; }}
-              equipmentOf={(id) => { const exercise = exerciseOf(id); return exercise?.equipment ? t.session.equipment[exercise.equipment] : t.session.customTag; }}
+              equipmentOf={(id) => { const exercise = exerciseOf(id); const equipment = exercise?.equipment ? t.session.equipment[exercise.equipment] : ''; return exercise?.custom || !exercise ? [t.session.customTag, equipment].filter(Boolean).join(' · ') : equipment; }}
               changeDay={changeDay}
               changeExercise={changeExercise}
               setPicking={setPicking}
@@ -340,8 +340,8 @@ export function RoutineScreen({ userId, training, profile, onProfileSaved }: { u
           const added = ids.map((exerciseId) => ({ exerciseId, sets: 3, repMin: 8, repMax: 12 }));
           changeDay(dayIndex, { exercises: [...draft[dayIndex].exercises, ...added] });
         }}
-        onCreate={async (exerciseName, muscle) => {
-          const { id } = await training.createExercise(exerciseName, muscle);
+        onCreate={async (exerciseName, muscle, bodyweight) => {
+          const { id } = await training.createExercise(exerciseName, muscle, bodyweight);
           setCatalog(await training.exercises());
           return id;
         }}
