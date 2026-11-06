@@ -25,6 +25,8 @@ type SetRecord = {
   weightKg: number;
   reps: number;
   label?: 'warm-up' | 'working';
+  // Where the lifter dragged the Set among its Exercise's Sets; a phone from before this change sends none.
+  position?: number;
   rir?: number;
   deleted?: boolean;
   loggedAt: string;
@@ -222,10 +224,10 @@ async function save(client: Client, userId: string, mutations: Mutation[], recei
       updated_at = excluded.updated_at
     where sessions.updated_at < excluded.updated_at`;
   await transaction.queryArray`
-    insert into public.sets (user_id, id, session_id, exercise_id, weight_kg, reps, label, rir, deleted, logged_at, updated_at)
-    select ${userId}, s.id, s."sessionId", s."exerciseId", s."weightKg", s.reps, s.label, s.rir, coalesce(s.deleted, false), s."loggedAt", s."updatedAt"
+    insert into public.sets (user_id, id, session_id, exercise_id, weight_kg, reps, label, position, rir, deleted, logged_at, updated_at)
+    select ${userId}, s.id, s."sessionId", s."exerciseId", s."weightKg", s.reps, s.label, s.position, s.rir, coalesce(s.deleted, false), s."loggedAt", s."updatedAt"
     from jsonb_to_recordset(${JSON.stringify([...sets.values()])}::jsonb) as s(
-      id uuid, "sessionId" uuid, "exerciseId" text, "weightKg" numeric, reps integer, label text, rir smallint, deleted boolean, "loggedAt" timestamptz, "updatedAt" timestamptz
+      id uuid, "sessionId" uuid, "exerciseId" text, "weightKg" numeric, reps integer, label text, position integer, rir smallint, deleted boolean, "loggedAt" timestamptz, "updatedAt" timestamptz
     )
     on conflict (user_id, id) do update set
       session_id = excluded.session_id,
@@ -233,6 +235,7 @@ async function save(client: Client, userId: string, mutations: Mutation[], recei
       weight_kg = excluded.weight_kg,
       reps = excluded.reps,
       label = excluded.label,
+      position = excluded.position,
       rir = excluded.rir,
       deleted = excluded.deleted,
       logged_at = excluded.logged_at,

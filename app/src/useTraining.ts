@@ -81,7 +81,7 @@ async function refreshHistory(training: Training) {
   const sets = await pageThrough((from, to) =>
     supabase
       .from('sets')
-      .select('id, session_id, exercise_id, weight_kg, reps, label, rir, logged_at, updated_at')
+      .select('id, session_id, exercise_id, weight_kg, reps, label, position, rir, logged_at, updated_at')
       .eq('deleted', false)
       .order('id')
       .range(from, to),
@@ -104,6 +104,7 @@ async function refreshHistory(training: Training) {
       weightKg: Number(row.weight_kg),
       reps: row.reps,
       ...(row.label && { label: row.label as SetLabel }),
+      ...(row.position !== null && { position: row.position }),
       ...(row.rir !== null && { rir: row.rir }),
       loggedAt: instant(row.logged_at),
       updatedAt: instant(row.updated_at),

@@ -6,7 +6,7 @@ const GAP = 10;
 // Press and slide a ≡ handle to move an item of a list, with a finger or a mouse. Put `list` on the
 // list's element and `item(i)` on each of its children, and `handle(i)` on the item's ≡. The item
 // follows the pointer and the others make room; `onMove` is called on release if it ended up elsewhere.
-export function useSortable(onMove: (from: number, to: number) => void) {
+export function useSortable(onMove: (from: number, to: number) => void, gap = GAP) {
   const list = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<{ from: number; to: number; dy: number; size: number } | null>(null);
   // Where the items' middles were when the press began, and where the pointer was.
@@ -19,7 +19,7 @@ export function useSortable(onMove: (from: number, to: number) => void) {
       const items = [...(list.current?.children ?? [])].map((child) => child.getBoundingClientRect());
       event.currentTarget.setPointerCapture(event.pointerId);
       start.current = { y: event.clientY, middles: items.map((rect) => rect.top + rect.height / 2) };
-      show({ from, to: from, dy: 0, size: items[from].height + GAP });
+      show({ from, to: from, dy: 0, size: items[from].height + gap });
     },
     onPointerMove(event: PointerEvent<HTMLElement>) {
       if (!start.current || !latest.current) return;

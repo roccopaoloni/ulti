@@ -3,7 +3,7 @@
 // At this scale a full recompute takes milliseconds, so late or out-of-order syncs need no special
 // handling.
 import type { Client } from '@db/postgres';
-import { deriveScoringEvents, type TrainingHistory } from '@ulti/rules';
+import { deriveScoringEvents, orderSets, type TrainingHistory } from '@ulti/rules';
 
 type Transaction = ReturnType<Client['createTransaction']>;
 
@@ -38,7 +38,7 @@ export async function recompute(client: Client, userId: string) {
       jsonb_build_object('localDate', s.local_date, 'deload', s.deload, 'sets', coalesce((
         select jsonb_agg(
           jsonb_build_object(
-            'id', t.id, 'exercise', t.exercise_id, 'custom', x.owner_id is not null, 'bodyweight', x.type = 'bodyweight', 'weightKg', t.weight_kg, 'reps', t.reps, 'label', t.label
+            'id', t.id, 'exercise', t.exercise_id, 'custom', x.owner_id is not null, 'bodyweight', x.type = 'bodyweight', 'weightKg', t.weight_kg, 'reps', t.reps, 'label', t.label, 'position', t.position
           )
           order by t.logged_at, t.id
         )
@@ -55,6 +55,7 @@ export async function recompute(client: Client, userId: string) {
   // by itself; if the rules throw, it's rolled back here, so the connection can serve the next user.
   let events: { id: string }[];
   try {
+    for (const session of history.sessions) session.sets = orderSets(session.sets);
     events = deriveScoringEvents(history);
   } catch (error) {
     await transaction.rollback();

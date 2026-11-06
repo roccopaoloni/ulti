@@ -2,9 +2,13 @@ import { deloadRows, incrementInUnits, kgToUnits, labelSets, plannedRows, predic
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useI18n } from './i18n.ts';
-import { checkIcon, trophyIcon, undoIcon } from './icons.tsx';
+import { checkIcon, gripIcon, trophyIcon, undoIcon } from './icons.tsx';
 import { Info } from './Info.tsx';
 import type { SetRecord, Training } from './training.ts';
+import { useSortable } from './useSortable.ts';
+
+// The space between the rows of an Exercise, which the rows being dragged shift by.
+const SET_GAP = 8;
 
 type Planned = { weightKg: number; reps: number };
 
@@ -28,6 +32,7 @@ export function ExerciseBlock({
   onLog,
   asksRir,
   onSetLabel,
+  onMove,
   onRir,
   onUnlog,
   onIncrement,
@@ -58,6 +63,8 @@ export function ExerciseBlock({
   // Whether RIR is asked after this logged Set (design: Logging a Session).
   asksRir: (setId: string) => boolean;
   onSetLabel: (setId: string, label: SetLabel) => Promise<void>;
+  // Drags a Set to a new place among this Exercise's Sets.
+  onMove: (setId: string, toIndex: number) => Promise<void>;
   onRir: (setId: string, rir: number) => Promise<void>;
   // Un-logs a Set: it is removed.
   onUnlog: (setId: string) => Promise<void>;
@@ -66,6 +73,7 @@ export function ExerciseBlock({
   const { t, language, formatNumber } = useI18n();
   const decimalKey = language === 'es' ? ',' : '.';
   const labels = labelSets(sets);
+  const sortable = useSortable((from, to) => onMove(sets[from]!.id, to), SET_GAP);
   // The last Session's Sets and the recommendation (go heavier or Stall), loaded together so the
   // rows are pre-filled once. Accepting is leaving the pre-filled weight; dismissing restores the last Sets.
   const [loaded, setLoaded] = useState<{ last: Planned[]; advice: Recommendation | undefined } | null>(null);
@@ -160,8 +168,13 @@ export function ExerciseBlock({
           </button>
         </p>
       )}
-      {!focus && sets.map((set, index) => (
-        <div key={set.id} className="set done">
+      {!focus && sets.length > 0 && (
+      <div className="sets-done" ref={sortable.list}>
+      {sets.map((set, index) => (
+        <div key={set.id} className="set done" {...sortable.item(index)}>
+          <span className="grip" role="button" aria-label={t.session.moveSet} {...sortable.handle(index)}>
+            {gripIcon}
+          </span>
           <button
             type="button"
             className={`tag label-${labels[index]}`}
@@ -179,6 +192,8 @@ export function ExerciseBlock({
           </button>
         </div>
       ))}
+      </div>
+      )}
       {askRir && sets.some((set) => set.id === askRir) && asksRir(askRir) && (
         <div className="rir" role="group" aria-label={t.session.rir}>
           <span className="muted">RIR</span>

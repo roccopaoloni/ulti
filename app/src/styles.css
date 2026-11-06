@@ -1018,6 +1018,19 @@ Position, avatar, points and › share the row's vertical centre. */
   background: var(--surface-2);
   border-color: transparent;
 }
+.sets-done {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.set.done:has(.grip) {
+  grid-template-columns: 28px 44px minmax(0, 1fr) 14px 64px 56px;
+  gap: 4px;
+}
+.set .grip {
+  width: 28px;
+  height: 46px;
+}
 .tag {
   display: grid;
   place-items: center;

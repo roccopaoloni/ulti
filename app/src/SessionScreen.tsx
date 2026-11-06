@@ -471,6 +471,10 @@ export function SessionScreen({ training, units, layout, onLeave }: { training: 
               await training.setLabel(setId, label);
               await reload();
             }}
+            onMove={async (setId, toIndex) => {
+              await training.moveSet(setId, toIndex);
+              await reload();
+            }}
           />
         ))}
         <button
