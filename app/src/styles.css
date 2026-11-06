@@ -2664,3 +2664,57 @@ prefers-reduced-motion switches every animation off, so it stays off the badge. 
 .season-end.soon svg {
   color: var(--accent-text);
 }
+
+/* Home's "trained today" card: up to four avatars overlapping, the line, ›. Its sheet reuses the
+   Day sheet's fixed height and scrolling list. */
+.today {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: start;
+  color: inherit;
+}
+.avatar-stack {
+  display: flex;
+  flex: none;
+}
+.avatar-stack .avatar {
+  width: 34px;
+  height: 34px;
+  font-size: 12px;
+  border: 2px solid var(--surface);
+}
+.avatar-stack .avatar + .avatar {
+  margin-inline-start: -6px;
+}
+.today-text {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+}
+.friend-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 11px 2px;
+  text-align: start;
+}
+.friend-row + .friend-row {
+  border-top: 1px solid var(--line);
+}
+.friend-who {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.friend-who b {
+  font-weight: 700;
+}
+.friend-who small {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}

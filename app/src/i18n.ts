@@ -88,7 +88,9 @@ type Messages = {
     // Home's news: the "since your last visit" card and the friends who trained today.
     sinceVisit: string;
     passed: (passer: string, passed: string) => string;
-    trainedToday: (name: string) => string;
+    // "Ana, Juan and 4 more trained today": the first names (one or two) and how many more.
+    trainedToday: (names: string[], more: number) => string;
+    trainedTodayTitle: string;
     retry: string;
     notNow: string;
     profileTitle: string;
@@ -589,7 +591,9 @@ const en: Messages = {
     leading: 'Leading the way',
     sinceVisit: 'Since your last visit',
     passed: (passer, passed) => `${passer} passed ${passed}`,
-    trainedToday: (name) => `${name} already trained today`,
+    trainedToday: (names, more) =>
+      names.length === 1 ? `${names[0]} trained today` : more ? `${names.join(', ')} and ${more} more trained today` : `${names[0]} and ${names[1]} trained today`,
+    trainedTodayTitle: 'Trained today',
     retry: 'Try again',
     notNow: 'Not now',
     profileTitle: 'How your friends see you',
@@ -1057,7 +1061,9 @@ const es: Messages = {
     leading: 'Vas al frente',
     sinceVisit: 'Desde tu última visita',
     passed: (passer, passed) => `${passer} pasó a ${passed}`,
-    trainedToday: (name) => `${name} ya entrenó hoy`,
+    trainedToday: (names, more) =>
+      names.length === 1 ? `${names[0]} ya entrenó hoy` : more ? `${names.join(', ')} y ${more} más entrenaron hoy` : `${names[0]} y ${names[1]} entrenaron hoy`,
+    trainedTodayTitle: 'Entrenaron hoy',
     retry: 'Probar de nuevo',
     notNow: 'Ahora no',
     profileTitle: 'Cómo te ven tus amigos',

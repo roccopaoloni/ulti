@@ -17,6 +17,7 @@ import {
   useAllNews,
   useGroups,
   useNews,
+  useTrainedToday,
   type BoardRow,
   type Group,
   type MemberProfile,
@@ -25,6 +26,7 @@ import {
   type ScoringMode,
 } from './groups.ts';
 import { useI18n, type I18n } from './i18n.ts';
+import { Sheet } from './GroupsScreens.tsx';
 import { Info } from './Info.tsx';
 import { chevronIcon, trophyIcon } from './icons.tsx';
 import { navigate, paths } from './navigation.ts';
@@ -383,33 +385,57 @@ export function GroupsPanel({ userId }: { userId: string }) {
   );
 }
 
-function TrainedToday({ userId, group }: { userId: string; group: Group }) {
-  const { t } = useI18n();
-  const news = useNews(userId, group.id);
-  if (!news || news.trained_today.length === 0) return null;
-  return (
-    <section className="card">
-      <div className="eyebrow">{group.name}</div>
-      {news.trained_today.map((member, index) => (
-        <p key={index} className="member-name">
-          <span className="avatar" style={{ '--c': member.avatar_color } as CSSProperties} aria-hidden="true">
-            {initials(member.display_name)}
-          </span>{' '}
-          {t.groups.trainedToday(member.display_name)}
-        </p>
-      ))}
-    </section>
-  );
-}
+const Avatar = ({ name, color }: { name: string; color: string }) => (
+  <span className="avatar" style={{ '--c': color } as CSSProperties} aria-hidden="true">
+    {initials(name)}
+  </span>
+);
 
-// Home: the Group members who already trained today, one card per Group that has any.
+// Home: the friends who already trained today, once each however many Groups they share with the user.
 export function FriendsTrainedToday({ userId }: { userId: string }) {
+  const { t } = useI18n();
   const groups = useGroups(userId);
+  const friends = useTrainedToday(userId, groups ?? []);
+  const sheet = useRef<HTMLDialogElement>(null);
+  if (friends.length === 0) return null;
+  const names = friends.slice(0, 2).map((friend) => friend.display_name);
   return (
     <>
-      {groups?.map((group) => (
-        <TrainedToday key={group.id} userId={userId} group={group} />
-      ))}
+      <button type="button" className="card today" onClick={() => sheet.current?.showModal()}>
+        <span className="avatar-stack">
+          {friends.slice(0, 4).map((friend) => (
+            <Avatar key={friend.user_id} name={friend.display_name} color={friend.avatar_color} />
+          ))}
+        </span>
+        <span className="today-text">{t.groups.trainedToday(names, friends.length - names.length)}</span>
+        <span className="chevron">{chevronIcon}</span>
+      </button>
+      <Sheet dialog={sheet} label={t.groups.trainedTodayTitle} className="pick" focusable>
+        <h2 className="disp sheet-title">{t.groups.trainedTodayTitle}</h2>
+        <div className="days-scroll">
+          {friends.map((friend) => (
+            <button
+              key={friend.user_id}
+              type="button"
+              className="friend-row"
+              onClick={() => {
+                sheet.current?.close();
+                navigate(memberPath(friend.groupId, friend.user_id, 'week'));
+              }}
+            >
+              <Avatar name={friend.display_name} color={friend.avatar_color} />
+              <span className="friend-who">
+                <b>{friend.display_name}</b>
+                <small>{friend.groupNames.join(' · ')}</small>
+              </span>
+              <span className="chevron">{chevronIcon}</span>
+            </button>
+          ))}
+        </div>
+        <button type="button" className="btn-link" onClick={() => sheet.current?.close()}>
+          {t.close}
+        </button>
+      </Sheet>
     </>
   );
 }
