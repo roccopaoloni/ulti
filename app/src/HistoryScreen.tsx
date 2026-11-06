@@ -18,7 +18,7 @@ import { dayColourVar } from './dayColour.ts';
 import { Keypad } from './ExerciseBlock.tsx';
 import { Sheet } from './GroupsScreens.tsx';
 import { useI18n } from './i18n.ts';
-import { chevronIcon, checkIcon } from './icons.tsx';
+import { chevronIcon, checkIcon, trophyIcon } from './icons.tsx';
 import { useImplausibleSheet } from './NoticeSheet.tsx';
 import { historyPath, navigate, paths, sessionPath } from './navigation.ts';
 import { today } from './profile.ts';
@@ -113,7 +113,7 @@ function SessionRow({ past, data }: { past: Past; data: HistoryData }) {
       </span>
       {chips.length > 0 && (
         <span className="sess-prs">
-          <span className="pr">{chips[0]}</span>
+          <span className="pr">{trophyIcon}{chips[0]}</span>
           {chips.length > 1 && <span className="pr more">+{chips.length - 1}</span>}
         </span>
       )}
@@ -413,7 +413,7 @@ function PastSet({
           {load} × {set.reps}
           {set.rir !== undefined && <small> · RIR {set.rir}</small>}
         </span>
-        {record ? <span className="pr-tag">{`PR +${percent(record.percentGain)}% · ${t.session.points(Math.round(record.progressPoints))}`}</span> : <span />}
+        {record ? <span className="pr-tag">{trophyIcon}{`PR +${percent(record.percentGain)}% · ${t.session.points(Math.round(record.progressPoints))}`}</span> : <span />}
         <span className="chev">{chevronIcon}</span>
       </button>
       <Sheet dialog={dialog} label={confirming ? h.deleteTitle : h.setTitle}>

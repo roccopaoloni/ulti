@@ -26,7 +26,7 @@ import {
 } from './groups.ts';
 import { useI18n, type I18n } from './i18n.ts';
 import { Info } from './Info.tsx';
-import { chevronIcon } from './icons.tsx';
+import { chevronIcon, trophyIcon } from './icons.tsx';
 import { navigate, paths } from './navigation.ts';
 import { useUnits } from './profile.ts';
 import { Skeleton } from './Skeleton.tsx';
@@ -168,7 +168,7 @@ export function MemberProfileScreen({ userId, training, groupId, memberId }: { u
           <ul className="profile-rows">
             {profile.records.map((record, index) => (
               <li key={index} className="profile-row">
-                <span className="profile-name">{nameOf(record.exercise)}</span>
+                <span className="profile-name">{trophyIcon}{nameOf(record.exercise)}</span>
                 <span className="profile-end">
                   <span className="stamp">+{Math.round(record.percent_gain)}%</span>
                   <span className="disp">{g.boardPoints(record.points)}</span>
