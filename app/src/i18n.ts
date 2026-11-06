@@ -68,6 +68,8 @@ type Messages = {
     joining: string;
     inviteNotFound: string;
     periods: { week: string; month: string; year: string };
+    // Under the selector: when the selected Period closes.
+    closesIn: (left: TimeLeft) => string;
     // A board's Scoring Mode: the label at its top, the Owner's choice and when a change applies.
     modes: { standard: string; prHunt: string; grind: string };
     scoringMode: (mode: string) => string;
@@ -228,6 +230,7 @@ type Messages = {
     reps: string;
     logSet: string;
     unlogSet: string;
+    personalRecord: string;
     // Focus layout: the Set shown, the chips' group, and the controls around the big numbers.
     focusSet: (number: number) => string;
     focusSets: string;
@@ -570,6 +573,7 @@ const en: Messages = {
     joining: 'Joining the Group…',
     inviteNotFound: "This invite link doesn't work anymore. Ask your friend for a new one.",
     periods: { week: 'Week', month: 'Month', year: 'Year' },
+    closesIn: (left) => `Closes in ${left.unit === 'days' ? `${left.count} days` : left.unit === 'hours' ? `${left.count} h` : 'less than an hour'}`,
     modes: { standard: 'Standard', prHunt: 'PR Hunt', grind: 'Grind' },
     scoringMode: (mode) => `Scoring: ${mode}`,
     modeNext: (mode, period) => `${mode} from next ${period}`,
@@ -714,6 +718,7 @@ const en: Messages = {
     reps: 'Reps',
     logSet: 'Log set',
     unlogSet: 'Un-log set',
+    personalRecord: 'Personal Record',
     focusSet: (number) => `Set ${number}`,
     focusSets: 'Sets',
     focusExercises: 'Exercises',
@@ -1042,6 +1047,7 @@ const es: Messages = {
     joining: 'Entrando al grupo…',
     inviteNotFound: 'Este link de invitación ya no funciona. Pedile uno nuevo a tu amigo.',
     periods: { week: 'Semana', month: 'Mes', year: 'Año' },
+    closesIn: (left) => `Cierra en ${left.unit === 'days' ? `${left.count} días` : left.unit === 'hours' ? `${left.count} h` : 'menos de una hora'}`,
     modes: { standard: 'Estándar', prHunt: 'Caza de récords', grind: 'Constancia' },
     scoringMode: (mode) => `Puntaje: ${mode}`,
     modeNext: (mode, period) => `${mode} desde la ${period} que viene`,
@@ -1182,6 +1188,7 @@ const es: Messages = {
     reps: 'Repeticiones',
     logSet: 'Registrar serie',
     unlogSet: 'Deshacer serie',
+    personalRecord: 'Récord personal',
     focusSet: (number) => `Serie ${number}`,
     focusSets: 'Series',
     focusExercises: 'Ejercicios',

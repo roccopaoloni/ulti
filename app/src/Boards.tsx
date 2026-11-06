@@ -1,5 +1,5 @@
-import { kgToUnits } from '@ulti/rules';
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { endOfLocalDay, kgToUnits, periodEnd, timeLeft } from '@ulti/rules';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { Badge } from './Badge.tsx';
 import { Dots } from './Consistency.tsx';
 import {
@@ -14,6 +14,7 @@ import {
   selectGroup,
   setScoringMode,
   useBoard,
+  useAllNews,
   useGroups,
   useNews,
   useTrainedToday,
@@ -27,9 +28,9 @@ import {
 import { useI18n, type I18n } from './i18n.ts';
 import { Sheet } from './GroupsScreens.tsx';
 import { Info } from './Info.tsx';
-import { chevronIcon } from './icons.tsx';
+import { chevronIcon, trophyIcon } from './icons.tsx';
 import { navigate, paths } from './navigation.ts';
-import { useUnits } from './profile.ts';
+import { today, useUnits } from './profile.ts';
 import { Skeleton } from './Skeleton.tsx';
 import { SubScreen } from './SubScreen.tsx';
 import type { Exercise, Training } from './training.ts';
@@ -169,7 +170,7 @@ export function MemberProfileScreen({ userId, training, groupId, memberId }: { u
           <ul className="profile-rows">
             {profile.records.map((record, index) => (
               <li key={index} className="profile-row">
-                <span className="profile-name">{nameOf(record.exercise)}</span>
+                <span className="profile-name">{trophyIcon}{nameOf(record.exercise)}</span>
                 <span className="profile-end">
                   <span className="stamp">+{Math.round(record.percent_gain)}%</span>
                   <span className="disp">{g.boardPoints(record.points)}</span>
@@ -220,6 +221,13 @@ export function GroupBoard({ userId, group, training }: { userId: string; group:
           </button>
         ))}
       </div>
+      <p className="period-closes">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+          <circle cx="12" cy="13" r="8" />
+          <path d="M12 9v4l2.5 2M9.5 2.5h5" />
+        </svg>
+        {g.closesIn(timeLeft(new Date(), endOfLocalDay(periodEnd(period, today()), Intl.DateTimeFormat().resolvedOptions().timeZone)))}
+      </p>
       {board?.scoring_mode && (
         <p className="muted board-mode">
           {g.scoringMode(g.modes[board.scoring_mode])} <Info term="scoringMode" />
@@ -271,51 +279,6 @@ export function ScoringModeChoice({ userId, group }: { userId: string; group: Gr
   );
 }
 
-// "2nd of 5, 40 pts behind Ana": where the user stands in the Group's week. Tapping it opens the
-// Group on the Groups tab's Week board.
-function RaceCard({ userId, group }: { userId: string; group: Group }) {
-  const { t } = useI18n();
-  const g = t.groups;
-  const board = useFreshBoard(userId, group.id, 'week');
-  const me = board?.members.find((row) => row.me);
-  if (!board) return <Skeleton card bars={['40%', '70%']} />;
-  if (!me) return null;
-  const ahead = board.members.filter((row) => row.position < me.position).at(-1);
-  const behind = board.members.find((row) => row.position > me.position);
-  const open = () => {
-    selectGroup(group.id);
-    navigate(paths.groups);
-  };
-  return (
-    <button type="button" className="card race-card" onClick={open}>
-      <span className="race-main">
-        <span className="eyebrow">{group.name}</span>
-        <span className="disp">{g.race(me.position, board.members.length)}</span>
-        <span className="muted">
-          {ahead ? g.behind(ahead.points - me.points, ahead.display_name) : behind ? g.ahead(me.points - behind.points, behind.display_name) : g.leading}
-        </span>
-      </span>
-      <span className="chevron">{chevronIcon}</span>
-    </button>
-  );
-}
-
-// Home: one race card per Group.
-export function RaceCards({ userId }: { userId: string }) {
-  const groups = useGroups(userId);
-  useEffect(() => {
-    refreshGroups(userId).catch(() => {});
-  }, [userId]);
-  return (
-    <>
-      {!groups && <Skeleton card bars={['40%', '70%']} />}
-      {groups?.map((group) => (
-        <RaceCard key={group.id} userId={userId} group={group} />
-      ))}
-    </>
-  );
-}
-
 // "Bea passed Ana (You)": a Group's passes, the ones involving the user first, at most three.
 function passLines(news: News | null, g: I18n['t']['groups']) {
   const label = (who: { display_name: string; me: boolean }) => (who.me ? `${who.display_name} (${g.you})` : who.display_name);
@@ -323,29 +286,76 @@ function passLines(news: News | null, g: I18n['t']['groups']) {
   return passes.slice(0, 3).map((pass) => g.passed(label(pass.passer), label(pass.passed)));
 }
 
-function SinceVisitCard({ userId, group }: { userId: string; group: Group }) {
+// One page of the Groups panel: the Group's name, where the user stands in its week, and its news
+// since the last visit. Tapping it opens the Group on the Groups tab's Week board.
+function GroupPage({ userId, group, hasNews }: { userId: string; group: Group; hasNews: boolean }) {
   const { t } = useI18n();
-  const lines = passLines(useNews(userId, group.id), t.groups);
-  if (lines.length === 0) return null;
+  const g = t.groups;
+  const board = useFreshBoard(userId, group.id, 'week');
+  const lines = passLines(useNews(userId, group.id), g);
+  const me = board?.members.find((row) => row.me);
+  const ahead = me && board?.members.filter((row) => row.position < me.position).at(-1);
+  const behind = me && board?.members.find((row) => row.position > me.position);
+  const open = () => {
+    selectGroup(group.id);
+    navigate(paths.groups);
+  };
   return (
-    <section className="card">
-      <div className="eyebrow">
-        {t.groups.sinceVisit} · {group.name}
-      </div>
-      {lines.map((line) => (
-        <p key={line} className="disp">
-          {line}
-        </p>
-      ))}
-    </section>
+    <div className="gpage" role="group" aria-roledescription="slide" aria-label={group.name}>
+      <button type="button" className="gpage-link" onClick={open}>
+        <span className="gpage-head">
+          <span className="gname">
+            {group.name}
+            {hasNews && <span className="newsdot" aria-hidden="true" />}
+          </span>
+          <span className="chevron">{chevronIcon}</span>
+        </span>
+        {!board && <Skeleton bars={['40%', '70%']} />}
+        {me && board && (
+          <span className="race">
+            <span className="disp">{g.race(me.position, board.members.length)}</span>
+            <span className="muted">
+              {ahead ? g.behind(ahead.points - me.points, ahead.display_name) : behind ? g.ahead(me.points - behind.points, behind.display_name) : g.leading}
+            </span>
+          </span>
+        )}
+        {lines.length > 0 && (
+          <span className="news">
+            <span className="eyebrow">{g.sinceVisit}</span>
+            {lines.map((line) => (
+              <span key={line} className="news-line">
+                {line}
+              </span>
+            ))}
+          </span>
+        )}
+      </button>
+    </div>
   );
 }
 
-// Home's top card: what happened in each Group since the user's last visit. It also fetches the
-// news for the cards below it, and then counts today as the last visit.
-export function SinceLastVisit({ userId }: { userId: string }) {
+// Home's Groups panel: a page per Group, swiped sideways, Groups with news since the last visit
+// first and then in the order the user joined them. It also fetches the news for the pages, and
+// then counts today as the last visit. One Group is a plain card; no Groups, nothing.
+export function GroupsPanel({ userId }: { userId: string }) {
+  const { t } = useI18n();
   const groups = useGroups(userId);
   const ids = groups?.map((group) => group.id).join(',');
+  const newsOf = useAllNews(userId, groups?.map((group) => group.id) ?? []);
+  const [page, setPage] = useState(0);
+  const pagesRef = useRef<HTMLDivElement>(null);
+  const withNews = (group: Group) => passLines(newsOf[group.id] ?? null, t.groups).length > 0;
+  // sort() is stable, so each half keeps the join order.
+  const ordered = groups && [...groups].sort((a, b) => Number(withNews(b)) - Number(withNews(a)));
+  const order = ordered?.map((group) => group.id).join(',');
+  // The panel always opens on the first page, also when the news puts another Group there.
+  useLayoutEffect(() => {
+    pagesRef.current?.scrollTo({ left: 0 });
+    setPage(0);
+  }, [order]);
+  useEffect(() => {
+    refreshGroups(userId).catch(() => {});
+  }, [userId]);
   useEffect(() => {
     if (!ids) return;
     const refresh = () =>
@@ -357,12 +367,21 @@ export function SinceLastVisit({ userId }: { userId: string }) {
     addEventListener('online', refresh);
     return () => removeEventListener('online', refresh);
   }, [userId, ids]);
+  if (!ordered) return <Skeleton card bars={['40%', '70%']} />;
+  if (ordered.length === 0) return null;
+  const pages = ordered.map((group) => <GroupPage key={group.id} userId={userId} group={group} hasNews={withNews(group)} />);
+  if (ordered.length === 1) return <section className="card gpanel">{pages}</section>;
   return (
-    <>
-      {groups?.map((group) => (
-        <SinceVisitCard key={group.id} userId={userId} group={group} />
-      ))}
-    </>
+    <section className="card gpanel" aria-roledescription="carousel" aria-label={t.tabs.groups}>
+      <div className="gpages" ref={pagesRef} onScroll={(event) => setPage(Math.round(event.currentTarget.scrollLeft / event.currentTarget.clientWidth))}>
+        {pages}
+      </div>
+      <div className="pager" aria-hidden="true">
+        {ordered.map((group, index) => (
+          <i key={group.id} className={index === page ? 'on' : undefined} />
+        ))}
+      </div>
+    </section>
   );
 }
 

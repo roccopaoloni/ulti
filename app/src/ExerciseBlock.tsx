@@ -2,7 +2,7 @@ import { deloadRows, incrementInUnits, kgToUnits, labelSets, plannedRows, predic
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useI18n } from './i18n.ts';
-import { checkIcon, undoIcon } from './icons.tsx';
+import { checkIcon, trophyIcon, undoIcon } from './icons.tsx';
 import { Info } from './Info.tsx';
 import type { SetRecord, Training } from './training.ts';
 
@@ -175,7 +175,7 @@ export function ExerciseBlock({
           <span className="xmark">×</span>
           <span className="cell">{set.reps}</span>
           <button type="button" className="check" aria-label={t.session.unlogSet} onClick={() => unlog(index)}>
-            {records.has(set.id) ? <small className="pr-points">{t.session.points(records.get(set.id)!.progressPoints)}</small> : checkIcon}
+            {records.has(set.id) ? <small className="pr-points">{trophyIcon}{t.session.points(records.get(set.id)!.progressPoints)}</small> : checkIcon}
           </button>
         </div>
       ))}
@@ -502,7 +502,7 @@ function FocusSets({
             {at + 1} {upcomingLabels[at - current - 1] && <small>{upcomingLabels[at - current - 1] === 'warm-up' ? s.warmUp : s.working}</small>}
           </span>
         )}
-        {at < current && records.has(sets[at]!.id) && <small className="pr-points">{s.points(records.get(sets[at]!.id)!.progressPoints)}</small>}
+        {at < current && records.has(sets[at]!.id) && <small className="pr-points"><span role="img" aria-label={s.personalRecord}>{trophyIcon}</span>{s.points(records.get(sets[at]!.id)!.progressPoints)}</small>}
       </div>
       )}
       <div className="f-nav">

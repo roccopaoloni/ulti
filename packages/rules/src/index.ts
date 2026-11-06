@@ -880,3 +880,4 @@ export function deloadRows<T extends { weightKg: number }>(rows: readonly (T | u
 }
 export * from './rank-up.ts';
 export * from './time-left.ts';
+export * from './period-end.ts';

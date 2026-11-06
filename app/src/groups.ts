@@ -2,7 +2,7 @@ import type { Division, Tier } from '@ulti/rules';
 import { forgetSession, supabase } from './auth.ts';
 import { paths } from './navigation.ts';
 import { languageKey, today } from './profile.ts';
-import { useStored, useStoredAll, write } from './stored.ts';
+import { useStored, useStoredMany, write } from './stored.ts';
 import type { Training } from './training.ts';
 
 // What my_groups() returns: of each member, only what the server lets members see of each other.
@@ -215,17 +215,30 @@ export function useNews(userId: string, groupId: string) {
   return stored?.date === today() ? stored : null;
 }
 
+// The news of several Groups at once, by Group id, for ordering them.
+export function useAllNews(userId: string, groupIds: string[]) {
+  const stored = useStoredMany<StoredNews>(groupIds.map((id) => newsKey(userId, id)));
+  const news: Record<string, StoredNews | null> = {};
+  groupIds.forEach((id, index) => {
+    const item = stored[index];
+    news[id] = item?.date === today() ? item : null;
+  });
+  return news;
+}
+
 // Home's "trained today": every friend once, however many of the user's Groups they share, with
 // those Groups' names. The first Group they share (in the order of the Groups) opens their profile.
 export type TrainedFriend = { user_id: string; display_name: string; avatar_color: string; groupId: string; groupNames: string[] };
 
 export function useTrainedToday(userId: string, groups: Group[]): TrainedFriend[] {
-  const all = useStoredAll<StoredNews>(groups.map((group) => newsKey(userId, group.id)));
+  const all = useAllNews(userId, groups.map((group) => group.id));
   const friends = new Map<string, TrainedFriend>();
-  groups.forEach((group, index) => {
-    const news = all[index];
-    if (news?.date !== today()) return;
+  groups.forEach((group) => {
+    const news = all[group.id];
+    if (!news) return;
     for (const { user_id, display_name, avatar_color } of news.trained_today) {
+      // News cached before the server sent user ids can't be told apart: it waits for a refresh.
+      if (!user_id) continue;
       const known = friends.get(user_id);
       if (known) known.groupNames.push(group.name);
       else friends.set(user_id, { user_id, display_name, avatar_color, groupId: group.id, groupNames: [group.name] });
