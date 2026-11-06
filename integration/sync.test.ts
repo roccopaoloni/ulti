@@ -197,12 +197,12 @@ test('a Custom Exercise with an unknown muscle is turned away', async () => {
 });
 
 // A Custom Exercise as the phone's outbox sends it. Its ID is made on the phone.
-function customExercise(name: string, muscle = 'core') {
+function customExercise(name: string, muscle = 'core', equipment?: string) {
   const exerciseId = `custom-${crypto.randomUUID()}`;
   return {
     id: crypto.randomUUID(),
     kind: 'saveExercise',
-    exercise: { id: exerciseId, name, muscle },
+    exercise: { id: exerciseId, name, muscle, ...(equipment ? { equipment } : {}) },
     exerciseId,
   };
 }
@@ -230,6 +230,23 @@ test("Ana's Custom Exercise syncs with her Sets, and only she can see it", async
   const theirs = await bea.client.from('exercises').select('id').eq('id', plank.exerciseId);
   expect(theirs.data).toEqual([]);
   expect((await bea.client.from('exercises').select('id').not('owner_id', 'is', null)).data).toEqual([]);
+});
+
+test('a bodyweight Custom Exercise is stored and returned as bodyweight, with equipment bodyweight', async () => {
+  const ana = await lifter('ana');
+  const rollout = customExercise('Ab wheel rollout', 'core', 'bodyweight');
+
+  expect(await sync(ana, [rollout])).toEqual({ rejected: [] });
+
+  const mine = await ana.client.from('exercises').select('id, type, equipment, owner_id').eq('id', rollout.exerciseId);
+  expect(mine.data).toEqual([{ id: rollout.exerciseId, type: 'bodyweight', equipment: 'bodyweight', owner_id: ana.id }]);
+});
+
+test('a Custom Exercise with equipment other than bodyweight is turned away', async () => {
+  const ana = await lifter('ana');
+  const cable = customExercise('Cable thing', 'back', 'cable');
+
+  expect(await sync(ana, [cable])).toEqual({ rejected: [cable.id] });
 });
 
 test("a Custom Exercise can't replace a catalog Exercise or someone else's Custom Exercise", async () => {

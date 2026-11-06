@@ -2102,6 +2102,26 @@ prefers-reduced-motion switches every animation off, so it stays off the badge. 
   font-weight: 600;
   text-align: left;
 }
+.switch-row.boxed {
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--surface-2);
+  width: 100%;
+  font-weight: 400;
+}
+.switch-row .txt {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.switch-row .txt b {
+  font-weight: 700;
+}
+.switch-row .txt small {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
 .switch {
   position: relative;
   flex: none;
