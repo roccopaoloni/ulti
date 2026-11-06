@@ -352,7 +352,7 @@ function NextSet({
         <div className="f-nums">
           <button type="button" className="f-num" aria-label={bodyweight ? s.addedWeight : dumbbell ? s.perDumbbell : s.weight} onClick={() => setEditing('weight')}>
             <span className="num">
-              {bodyweight && 'BW +'}
+              {bodyweight && `${s.bodyweightLoad('')} +`}
               {weight || '–'}
             </span>
             <span className="unit">{units}</span>
@@ -383,7 +383,7 @@ function NextSet({
         <small>{labelText}</small>
       </button>
       <button type="button" className="cell" aria-label={bodyweight ? s.addedWeight : dumbbell ? s.perDumbbell : s.weight} onClick={() => setEditing('weight')}>
-        {bodyweight && 'BW +'}
+        {bodyweight && `${s.bodyweightLoad('')} +`}
         {weight || '–'}
         <small>{units}</small>
       </button>
@@ -436,7 +436,7 @@ function FocusSets({
   const current = sets.length;
   const at = Math.min(viewing && viewing.loggedSets === current ? viewing.at : current, count - 1);
   const go = (index: number) => setViewing({ at: Math.max(0, Math.min(count - 1, index)), loggedSets: current });
-  const weightText = (weightKg: number) => `${bodyweight ? 'BW +' : ''}${formatNumber(kgToUnits(weightKg, units), 2)}`;
+  const weightText = (weightKg: number) => `${bodyweight ? `${s.bodyweightLoad('')} +` : ''}${formatNumber(kgToUnits(weightKg, units), 2)}`;
   const planned = (index: number) => (index === current ? next : plan[index]);
   const shown = at < current ? sets[at] : planned(at);
 
