@@ -1,4 +1,4 @@
-import { deloadRows, incrementInUnits, kgToUnits, labelSets, plannedRows, predictLabels, stepValue, unitsToKg, type Recommendation,type PersonalRecord, type RoutineExercise, type SetLabel, type Units } from '@ulti/rules';
+import { deloadRows, incrementInUnits, kgToUnits, labelSets, plannedRows, predictLabels, rowsWithAdvice, stepValue, unitsToKg, type Recommendation,type PersonalRecord, type RoutineExercise, type SetLabel, type Units } from '@ulti/rules';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useI18n } from './i18n.ts';
@@ -87,7 +87,7 @@ export function ExerciseBlock({
   const advice = dismissed || deload ? undefined : loaded?.advice;
   const heavier = advice?.kind === 'goHeavier' ? advice : undefined;
   const stall = advice?.kind === 'stall' ? advice : undefined;
-  const last = loaded && (advice ? loaded.last.map(() => ({ weightKg: advice.weightKg, reps: advice.reps })) : loaded.last);
+  const last = loaded && (advice ? rowsWithAdvice(loaded.last, advice) : loaded.last);
 
   // The chips asking for RIR stay after ✓ until answered or until the next Set is logged.
   const [askRir, setAskRir] = useState<string | null>(null);

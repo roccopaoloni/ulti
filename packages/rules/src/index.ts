@@ -751,6 +751,13 @@ export function plannedRows<T>(lastSets: readonly T[], plannedSets: number | und
   return rows;
 }
 
+// The last Session's Sets with a recommendation (go heavier or Stall) applied: only the Working Sets
+// take its weight and reps, the Warm-up Sets keeping the last Session's numbers.
+export function rowsWithAdvice<T extends { weightKg: number; reps: number; label?: SetLabel }>(lastSets: readonly T[], advice: { weightKg: number; reps: number }): (T | { weightKg: number; reps: number })[] {
+  const labels = labelSets(lastSets.map(({ weightKg, label }) => ({ weightKg, label })));
+  return lastSets.map((set, index) => (labels[index] === 'warm-up' ? set : { weightKg: advice.weightKg, reps: advice.reps }));
+}
+
 export * from './rank.ts';
 export * from './routine-link.ts';
 
