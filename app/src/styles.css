@@ -2410,19 +2410,22 @@ prefers-reduced-motion switches every animation off, so it stays off the badge. 
   flex-direction: column;
   max-height: 78dvh;
 }
+.sheet.pick:focus {
+  outline: none;
+}
 .sheet.pick .sheet-body {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-height: 0;
 }
 .sheet.pick .btn-link {
   flex-shrink: 0;
 }
 .days-scroll {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-height: 0;
   overflow-y: auto;
   margin-inline: -4px;
-  padding-inline: 4px;
+  padding: 3px 4px;
   border-block: 1px solid transparent;
 }
 .days-scroll.overflows {

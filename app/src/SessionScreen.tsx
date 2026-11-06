@@ -121,6 +121,8 @@ export function StartSession({ logging, training }: { logging: ReturnType<typeof
     if (days.length > 1) {
       setChoices(days);
       pick.current?.showModal();
+      // Focus starts on the sheet itself, so no row shows a focus ring until Tab moves into them.
+      pick.current?.focus();
       // The list's edges get a hairline while it overflows the sheet's fixed height.
       requestAnimationFrame(() => {
         const list = pickList.current;
@@ -251,7 +253,7 @@ export function StartSession({ logging, training }: { logging: ReturnType<typeof
           {s.extraCancel}
         </button>
       </Sheet>
-      <Sheet dialog={pick} label={s.pickTitle} className="pick">
+      <Sheet dialog={pick} label={s.pickTitle} className="pick" focusable>
         <h2 className="disp sheet-title">{s.pickTitle}</h2>
         <div
           className="days-scroll"
