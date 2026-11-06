@@ -340,8 +340,8 @@ export function RoutineScreen({ userId, training, profile, onProfileSaved }: { u
           const added = ids.map((exerciseId) => ({ exerciseId, sets: 3, repMin: 8, repMax: 12 }));
           changeDay(dayIndex, { exercises: [...draft[dayIndex].exercises, ...added] });
         }}
-        onCreate={async (exerciseName, muscle) => {
-          const { id } = await training.createExercise(exerciseName, muscle);
+        onCreate={async (exerciseName, muscle, bodyweight) => {
+          const { id } = await training.createExercise(exerciseName, muscle, bodyweight);
           setCatalog(await training.exercises());
           return id;
         }}

@@ -25,7 +25,7 @@ export function ExercisePicker({
   multiple: boolean;
   onPick: (exerciseIds: string[]) => void;
   // Creates a Custom Exercise and gives back its ID.
-  onCreate: (name: string, muscle: Muscle) => Promise<string>;
+  onCreate: (name: string, muscle: Muscle, bodyweight: boolean) => Promise<string>;
   onClose: () => void;
 }) {
   const { t, language } = useI18n();
@@ -36,6 +36,8 @@ export function ExercisePicker({
   const [picked, setPicked] = useState<string[]>([]);
   // The name of a Custom Exercise waiting for its muscle.
   const [creating, setCreating] = useState<string | null>(null);
+  // Whether that Custom Exercise is bodyweight: chosen here, and fixed once it's made.
+  const [bodyweight, setBodyweight] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -43,6 +45,7 @@ export function ExercisePicker({
       setMuscle(null);
       setPicked([]);
       setCreating(null);
+      setBodyweight(false);
       dialog.current?.showModal();
       // Focus starts on the dialog itself: not on the back button, and not on the search box, which would raise the keyboard.
       dialog.current?.focus();
@@ -62,8 +65,9 @@ export function ExercisePicker({
   const choose = (id: string) => (multiple ? toggle(id) : onPick([id]));
 
   async function create(chosen: Muscle) {
-    const id = await onCreate(creating!, chosen);
+    const id = await onCreate(creating!, chosen, bodyweight);
     setCreating(null);
+    setBodyweight(false);
     setQuery('');
     choose(id);
   }
@@ -126,7 +130,10 @@ export function ExercisePicker({
             ))}
             {choices.length === 0 && <p className="muted">{s.noMatches}</p>}
             {query.trim() !== '' && (
-              <button type="button" className="pick" onClick={() => setCreating(query.trim())}>
+              <button type="button" className="pick" onClick={() => {
+                  setBodyweight(false);
+                  setCreating(query.trim());
+                }}>
                 {s.createCustom(query.trim())}
               </button>
             )}
@@ -140,6 +147,13 @@ export function ExercisePicker({
       ) : (
         <>
           <p className="lead">{s.chooseMuscle(creating)}</p>
+          <button type="button" role="switch" className="switch-row boxed" aria-checked={bodyweight} onClick={() => setBodyweight(!bodyweight)}>
+            <span className="txt">
+              <b>{s.bodyweightSwitch}</b>
+              <small>{s.bodyweightHint}</small>
+            </span>
+            <span className="switch" aria-hidden="true" />
+          </button>
           <div className="picks picker-list">
             {muscles.map((chip) => (
               <button key={chip} type="button" className="pick" onClick={() => create(chip)}>
