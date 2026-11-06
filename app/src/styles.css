@@ -1468,7 +1468,36 @@ button.cell {
   color: var(--muted);
 }
 .pr-points {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   font: 700 12px var(--body);
+}
+/* The Personal Record trophy: gold, except on pink (the logged Set and the History chip) where it takes the ink. */
+.trophy {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  color: var(--gold);
+}
+.check .trophy {
+  color: inherit;
+}
+.pr .trophy {
+  width: 13px;
+  height: 13px;
+  color: inherit;
+  vertical-align: -2px;
+  margin-right: 3px;
+}
+.hset .pr-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.profile-name .trophy {
+  vertical-align: -2px;
+  margin-right: 8px;
 }
 .per-dumbbell {
   margin: 0;
