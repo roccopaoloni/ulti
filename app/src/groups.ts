@@ -2,7 +2,7 @@ import type { Division, Tier } from '@ulti/rules';
 import { forgetSession, supabase } from './auth.ts';
 import { paths } from './navigation.ts';
 import { languageKey, today } from './profile.ts';
-import { useStored, write } from './stored.ts';
+import { useStored, useStoredAll, write } from './stored.ts';
 import type { Training } from './training.ts';
 
 // What my_groups() returns: of each member, only what the server lets members see of each other.
@@ -201,7 +201,7 @@ export async function refreshBoard(userId: string, groupId: string, period: Peri
 // the week since the caller's last visit. Names and colours only; the server hides the rest.
 type Who = { display_name: string; me: boolean };
 export type News = {
-  trained_today: { display_name: string; avatar_color: string }[];
+  trained_today: { user_id: string; display_name: string; avatar_color: string }[];
   passes: { passer: Who; passed: Who }[];
 };
 // Kept as last fetched with the day it was fetched for, so "today" never shows a day late offline.
@@ -213,6 +213,25 @@ const visitKey = (userId: string) => `ulti-last-visit:${userId}`;
 export function useNews(userId: string, groupId: string) {
   const stored = useStored<StoredNews>(newsKey(userId, groupId));
   return stored?.date === today() ? stored : null;
+}
+
+// Home's "trained today": every friend once, however many of the user's Groups they share, with
+// those Groups' names. The first Group they share (in the order of the Groups) opens their profile.
+export type TrainedFriend = { user_id: string; display_name: string; avatar_color: string; groupId: string; groupNames: string[] };
+
+export function useTrainedToday(userId: string, groups: Group[]): TrainedFriend[] {
+  const all = useStoredAll<StoredNews>(groups.map((group) => newsKey(userId, group.id)));
+  const friends = new Map<string, TrainedFriend>();
+  groups.forEach((group, index) => {
+    const news = all[index];
+    if (news?.date !== today()) return;
+    for (const { user_id, display_name, avatar_color } of news.trained_today) {
+      const known = friends.get(user_id);
+      if (known) known.groupNames.push(group.name);
+      else friends.set(user_id, { user_id, display_name, avatar_color, groupId: group.id, groupNames: [group.name] });
+    }
+  });
+  return [...friends.values()];
 }
 
 // The day of the last visit is read once per page load, so the news stays on Home while the user
