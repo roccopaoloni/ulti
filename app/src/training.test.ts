@@ -1354,6 +1354,45 @@ test('a phone upgraded with Sessions already logged in an accepted Deload Week m
   training.close();
 });
 
+// The phone as it was before the Tutorial existed: version 9, no `tutorial` store.
+async function phoneBeforeTutorial(phone: ReturnType<typeof anasPhone>, onboarded: boolean) {
+  const old = await openDB(`ulti-${phone.userId}`, 9, {
+    upgrade(db) {
+      for (const name of ['outbox', 'state', 'exercises', 'routines', 'increments', 'deloads', 'downloaded', 'routineDraft', 'noRoutine', 'bodyweightPrompt', 'profile', 'sessions', 'sets']) {
+        const keyPath = { exercises: 'id', routines: 'id', increments: 'exerciseId', deloads: 'week', sessions: 'id', sets: 'id', profile: ['field', 'effectiveFrom'] }[name as string];
+        const store = db.createObjectStore(name, keyPath ? { keyPath } : name === 'outbox' ? { autoIncrement: true } : undefined);
+        if (name === 'sets') store.createIndex('bySession', 'sessionId');
+      }
+    },
+  });
+  if (onboarded) await old.put('profile', { field: 'sex', effectiveFrom: '2026-10-01', value: 'female', updatedAt: '2026-10-01T10:00:00.000Z' });
+  await old.put('downloaded', true, 'profile');
+  old.close();
+}
+
+test('a phone onboarded before the Tutorial existed treats it as seen, even offline, and sends nothing', async () => {
+  const network = server();
+  network.offline = true;
+  const phone = anasPhone(network);
+  await phoneBeforeTutorial(phone, true);
+
+  const training = await phone.open();
+
+  expect(await training.tutorialSeen()).toBe(true);
+  expect(network.batches).toEqual([]);
+  training.close();
+});
+
+test('a phone upgraded before its user was onboarded has not seen the Tutorial', async () => {
+  const phone = anasPhone(server());
+  await phoneBeforeTutorial(phone, false);
+
+  const training = await phone.open();
+
+  expect(await training.tutorialSeen()).toBe(false);
+  training.close();
+});
+
 test('the Deload Weeks the server holds reach a phone that is new to this user', async () => {
   const training = await anasPhone(server()).open();
   await training.saveDeloadsFromServer([{ week: '2026-10-19', origin: 'self', status: 'accepted', updatedAt: '2026-10-19T10:00:00.000Z' }]);
