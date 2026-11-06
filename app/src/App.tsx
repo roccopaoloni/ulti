@@ -15,6 +15,7 @@ import { RankCard } from './RankCard.tsx';
 import { CrownGate } from './CrownGate.tsx';
 import { RankUpGate } from './RankUpGate.tsx';
 import { BodyweightPrompt, ConnectToFinish, Onboarding } from './ProfileScreens.tsx';
+import { CoachMarks } from './CoachMarks.tsx';
 import { Tutorial } from './Tutorial.tsx';
 import { SettingsScreen } from './SettingsScreen.tsx';
 import { MyRoutineButton, RoutineSubScreen } from './RoutineScreen.tsx';
@@ -60,6 +61,8 @@ function Tabs({ userId }: { userId: string }) {
   const [promptDue, setPromptDue] = useState(false);
   // Whether the account has seen the Tutorial, once the phone has asked the server (null before).
   const [tutorialSeen, setTutorialSeen] = useState<boolean | null>(null);
+  // After the last slide the Tutorial walks the real Home with coach marks.
+  const [touring, setTouring] = useState(false);
 
   useEffect(() => {
     training?.bodyweightPromptDue().then(setPromptDue);
@@ -85,14 +88,22 @@ function Tabs({ userId }: { userId: string }) {
   // The Tutorial comes once, on first reaching Home after setup, and again when replayed from
   // Settings. Finishing or skipping marks it seen; a phone that hasn't heard the server yet waits.
   const replaying = pathname === tutorialPath;
-  if (training && onboarded && (replaying || tutorialSeen === false)) {
+  const endTutorial = async () => {
+    setTouring(false);
+    if (!tutorialSeen) {
+      await training?.markTutorialSeen();
+      setTutorialSeen(true);
+    }
+  };
+  if (training && onboarded && !touring && (replaying || tutorialSeen === false)) {
     return (
       <Tutorial
+        onShowHome={() => {
+          setTouring(true);
+          if (replaying) navigate(paths.home);
+        }}
         onDone={async () => {
-          if (!tutorialSeen) {
-            await training.markTutorialSeen();
-            setTutorialSeen(true);
-          }
+          await endTutorial();
           if (replaying) goBack(settingsPath);
         }}
       />
@@ -102,6 +113,7 @@ function Tabs({ userId }: { userId: string }) {
     <>
       {training && <RankUpGate userId={userId} training={training} />}
       {training && <CrownGate />}
+      {touring && <CoachMarks onDone={endTutorial} />}
       <main className="screen" key={downloads}>
         {member ? (
           <MemberProfileScreen key={member.join()} userId={userId} training={training} groupId={member[0]} memberId={member[1]} />
@@ -161,7 +173,7 @@ function Tabs({ userId }: { userId: string }) {
         )}
       </main>
       <SessionInProgressBar logging={logging} />
-      <nav className="tabbar">
+      <nav className="tabbar" data-coach="tabs">
         {tabs.map((tab) => (
           <a
             key={tab}
