@@ -144,7 +144,7 @@ Small badges (leaderboard rows) are the crest's flat silhouette in the Tier colo
 
 ## The Rank-up moment
 
-A Rank-up is shown full screen on the next app open, in the new Tier's colour.
+A Rank-up is shown full screen on the next app open, in the new Tier's colour. On a phone that has already seen a Rank it appears as soon as Home opens, decided from the Season Rank Points the phone already has, without waiting for the server (the Elite plaque fills in when the server's position arrives). A phone that has never seen a Rank waits for the server first, so a new phone's empty history can't pass for a Rank.
 
 1. **The old crest waits**: "Tenés novedades" above the user's old crest, and "Tocá para abrir".
 2. **It cracks, one hit at a time.** Each hit sends the cracks further out, jolts the crest and plays one sound. The cracks are jagged, branch and taper away from the impact point, drawn as dark splits with a lit edge. The hits come faster and harder on their own (Silver 3, Gold 4, Diamond 5, Elite 6), and each tap lands the next one at once. Light starts leaking through the cracks on the last hits.
@@ -152,7 +152,7 @@ A Rank-up is shown full screen on the next app open, in the new Tier's colour.
 4. **The new Rank lands**: the Tier name slams in letter by letter, the Division numeral stamps in, and the crest's pips light one by one, each with a hit.
 5. **The proof**: up to three stat chips count up from zero, then a headline and a short kicker appear above a Continue button.
 
-A Division-up within the same Tier skips the cracking: the old crest holds for a second, then becomes the new one with a stamp. Once the reveal has played for a second, a tap skips to the end. With reduced motion, the moment shows its end state without animation.
+A Division-up within the same Tier skips the cracking. Like a Tier-up it waits for the user's first tap on their current crest, with "Tenés novedades" and "Tocá para abrir"; the tap stamps the new crest in at once, with no hold for a second. Once the reveal has played for a second, a tap skips to the end. With reduced motion, the moment shows its end state without animation.
 
 **Headlines** are written only from the user's real stats: being in Elite, leading a Group, a Streak of 8 weeks or more, a lift up 10% or more, passing someone, Personal Records, the climb since the Season started, how fast it happened, Sessions attended, Points, or an even split between consistency and progress. The most impressive true one becomes the headline, but never one of the last three shown, in the app's direct voice ("9 semanas seguidas cumpliendo. Eso no se regala.", "Sos el número 1 de Los del gym. Cuidá el trono."). The next-best stats become the chips. The kicker rotates through "Ulti cargada", "Rango nuevo" and "Esto es otra cosa", plus "Subiste de liga" when the Tier changed (*liga* means Tier), never the same one twice in a row.
 

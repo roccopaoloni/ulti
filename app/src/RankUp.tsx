@@ -401,10 +401,12 @@ export function RankUpMoment({ from, to, tierName, plaque, strings, kicker, head
         started = true;
         audioInit();
         el.classList.add('started');
-        hit(1);
+        if (division) at(90, impact);
+        else hit(1);
         return;
       }
       if (!fired) {
+        if (division) return;
         if (performance.now() - stageAt > 150) hit(stage + 1);
         return;
       }
@@ -421,12 +423,6 @@ export function RankUpMoment({ from, to, tierName, plaque, strings, kicker, head
       };
     }
     raf = requestAnimationFrame(loop);
-    if (division) {
-      audioInit();
-      started = true;
-      el.classList.add('started');
-      at(1000, impact);
-    }
     return () => {
       alive = false;
       timers.forEach(clearTimeout);
@@ -462,7 +458,7 @@ export function RankUpMoment({ from, to, tierName, plaque, strings, kicker, head
           </div>
           <div className="ru-new"><Badge rank={to} tierName={tierName} mode="lg" plaque={plaque} /></div>
         </div>
-        <p className="ru-tap">{division ? '' : strings.tapHint}</p>
+        <p className="ru-tap">{strings.tapHint}</p>
         <h1 className="disp ru-name">
           <span className="w">{[...tierName].map((c, i) => <span key={i} className="l" style={{ '--i': i } as CSSProperties}>{c}</span>)}</span>
           {to.division !== null && <span className="ru-div">{romans[to.division]}</span>}
