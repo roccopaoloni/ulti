@@ -216,6 +216,9 @@ type Messages = {
     addPicked: (count: number) => string;
     // Asks which muscle a new Custom Exercise is for.
     chooseMuscle: (name: string) => string;
+    // The switch beside it that makes the new Custom Exercise bodyweight, and its hint.
+    bodyweightSwitch: string;
+    bodyweightHint: string;
     // Creates a Custom Exercise named as typed in the search, logged as weight × reps.
     createCustom: (name: string) => string;
     weight: string;
@@ -702,6 +705,8 @@ const en: Messages = {
     noMatches: 'No exercise matches.',
     addPicked: (count) => `Add ${count}`,
     chooseMuscle: (name) => `Which muscle is "${name}" for?`,
+    bodyweightSwitch: 'Bodyweight',
+    bodyweightHint: 'You log reps; any added weight is optional.',
     createCustom: (name) => `Create custom exercise "${name}"`,
     weight: 'Weight',
     addedWeight: 'Added weight',
@@ -1168,6 +1173,8 @@ const es: Messages = {
     noMatches: 'Ningún ejercicio coincide.',
     addPicked: (count) => `Agregar ${count}`,
     chooseMuscle: (name) => `¿Para qué músculo es "${name}"?`,
+    bodyweightSwitch: 'Peso corporal',
+    bodyweightHint: 'Registrás repeticiones; el peso que agregues es opcional.',
     createCustom: (name) => `Crear ejercicio personalizado "${name}"`,
     weight: 'Peso',
     addedWeight: 'Peso añadido',

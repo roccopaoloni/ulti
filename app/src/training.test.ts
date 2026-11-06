@@ -345,6 +345,54 @@ test('a Custom Exercise created offline is pickable at once, survives a catalog 
   training.close();
 });
 
+test('a bodyweight Custom Exercise is saved as such on the phone, syncs with equipment bodyweight, and its Sets log with optional added weight', async () => {
+  const network = server();
+  network.offline = true;
+  const phone = anasPhone(network);
+  const training = await phone.open();
+
+  const rollout = await training.createExercise('Ab wheel rollout', 'core', true);
+  const weighted = await training.createExercise('Cable twist', 'core');
+  const session = await training.startSession();
+  await training.logSet(session.id, rollout.id, 0, 12);
+  await training.logSet(session.id, rollout.id, 10, 8);
+
+  expect(await training.exercises()).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ id: rollout.id, equipment: 'bodyweight', custom: true, bodyweight: true }),
+      expect.objectContaining({ id: weighted.id, equipment: null, custom: true, bodyweight: false }),
+    ]),
+  );
+  network.offline = false;
+  phone.connectivity.dispatchEvent(new Event('online'));
+  await vi.waitFor(() => expect(network.batches).toHaveLength(1));
+  const saved = network.batches[0].filter(({ kind }) => kind === 'saveExercise');
+  expect(saved).toEqual([
+    expect.objectContaining({ exercise: { id: rollout.id, name: 'Ab wheel rollout', muscle: 'core', equipment: 'bodyweight' } }),
+    expect.objectContaining({ exercise: { id: weighted.id, name: 'Cable twist', muscle: 'core' } }),
+  ]);
+  training.close();
+});
+
+test('a bodyweight Custom Exercise from a Routine Link matches only a bodyweight one of the same name, else is created bodyweight', async () => {
+  const network = server();
+  network.offline = true;
+  const training = await anasPhone(network).open();
+  const weighted = await training.createExercise('Ab wheel', 'core');
+  const bodyweight = await training.createExercise('Dip', 'triceps', true);
+  const set = (name: string, equipment: string | null) => ({ custom: { name, equipment, muscle: 'core' as const }, sets: 3, repMin: 8, repMax: 12 });
+  const days = [{ name: 'Core', colour: 1, exercises: [set('ab wheel', 'bodyweight'), set(' DIP ', 'bodyweight'), set('Ab wheel', null)] }];
+
+  const first = await training.resolveRoutineLink(days);
+  const ids = first[0].exercises.map((e) => e.exerciseId);
+  expect(ids[1]).toBe(bodyweight.id);
+  expect(ids[2]).toBe(weighted.id);
+  expect(ids[0]).not.toBe(weighted.id);
+  expect((await training.exercises()).find(({ id }) => id === ids[0])).toMatchObject({ equipment: 'bodyweight', bodyweight: true });
+  expect((await training.resolveRoutineLink(days))[0].exercises.map((e) => e.exerciseId)).toEqual(ids);
+  training.close();
+});
+
 test('loading a Routine Link reuses matching Custom Exercises, creates the missing ones once, and a second load adds none', async () => {
   const network = server();
   network.offline = true;
