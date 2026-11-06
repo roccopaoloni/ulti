@@ -1,4 +1,4 @@
-import { kgToUnits } from '@ulti/rules';
+import { endOfLocalDay, kgToUnits, periodEnd, timeLeft } from '@ulti/rules';
 import { useEffect, useState, type CSSProperties } from 'react';
 import { Badge } from './Badge.tsx';
 import { Dots } from './Consistency.tsx';
@@ -27,7 +27,7 @@ import { useI18n, type I18n } from './i18n.ts';
 import { Info } from './Info.tsx';
 import { chevronIcon } from './icons.tsx';
 import { navigate, paths } from './navigation.ts';
-import { useUnits } from './profile.ts';
+import { today, useUnits } from './profile.ts';
 import { Skeleton } from './Skeleton.tsx';
 import { SubScreen } from './SubScreen.tsx';
 import type { Exercise, Training } from './training.ts';
@@ -218,6 +218,13 @@ export function GroupBoard({ userId, group, training }: { userId: string; group:
           </button>
         ))}
       </div>
+      <p className="period-closes">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+          <circle cx="12" cy="13" r="8" />
+          <path d="M12 9v4l2.5 2M9.5 2.5h5" />
+        </svg>
+        {g.closesIn(timeLeft(new Date(), endOfLocalDay(periodEnd(period, today()), Intl.DateTimeFormat().resolvedOptions().timeZone)))}
+      </p>
       {board?.scoring_mode && (
         <p className="muted board-mode">
           {g.scoringMode(g.modes[board.scoring_mode])} <Info term="scoringMode" />
