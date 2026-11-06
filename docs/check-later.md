@@ -23,11 +23,17 @@ Small things for the owner that didn't block a merge: decisions you may want to 
 - **A bodyweight Custom Exercise is tagged "Custom · Bodyweight"** (#164, PR #172) in the picker and the Routine editor, so it still reads as the lifter's own.
 - **Trained-today avatars overlap by 6px, not the mockup's 10px** (#167, PR #176). At 10px the 34px avatars cut each other's initials.
 
+- **A Division-up's tap stamps at once** (#180, PR #186). The first tap plays the stamp on the 90 ms beat a Tier-up's shatter uses; the old one-second hold is gone. Tier-up is unchanged until you've tried one in the prototype.
+- **Sync is pinned to Oregon in the app** (#181, PR #187). The phone calls `sync?forceFunctionRegion=us-west-2`, because the database is in us-west-2, not São Paulo as `docs/setup.md` says. If the project ever moves region, change that line. Pinning means no automatic failover to another region during a Supabase outage there.
+- **A move is judged by the labels before it** (#182, PR #188). A Set lands as a Warm-up when any Warm-up Set (detected or by hand) ends up after it. A detected Warm-up dragged behind the Working Sets becomes a Working Set, as the usual rule says; one labelled by hand stays a Warm-up.
+
 ## Check after deploy
 
 - **Done: the Supabase token now writes Edge Function secrets** (#146, PR #150, `docs/setup.md` §16). The deploys of #150 and #152 failed without it. After the owner widened the token, the deploy of #154 passed and brought the backend up to date with main.
 
 - **The recompute secret reached both places** (#146, PR #150). Vault lists `recompute_secret`, and the retry job sends the `x-recompute-secret` header. On Nov 3 at 01:05 UTC it cleared the 8 users the rescore migrations had marked dirty, so the function accepted it. Still to check by eye: **Edge Functions → Secrets** lists `RECOMPUTE_SECRET`.
+
+- **Done: sync is fast again** (#181, PR #187). From 20:45 UTC on Nov 6, 22 real syncs all ran in us-west-2: median 1.07 s, max 2.0 s, against about 9.5 s before.
 
 ## Never tried on a real phone
 
@@ -36,6 +42,9 @@ Small things for the owner that didn't block a merge: decisions you may want to 
 
 - **The Day sheet's bottom gap** (#161, PR #169). Your iPhone screenshot showed about 60pt of blank space, which was the home-indicator inset with the sheet's padding stacked on top. Every bottom sheet now pads `max(14px, inset)` instead of `14px + inset`, and the Day sheet's last row sits on the inset. It was only checked with an emulated 34px inset. Open the Day sheet and an ⓘ sheet on the iPhone.
 - **The Groups panel's swipe** (#166, PR #177). It's CSS scroll-snap, only scrolled programmatically in headless Chromium. Swipe it on the iPhone and check the dots follow.
+
+- **Dragging Sets by touch** (#182, PR #188; #183, PR #189). Both were only dragged with a mouse in headless Chromium. Drag a Set in the live Session's List layout and in a History Session on the iPhone, and check the page doesn't scroll instead.
+- **The Division-up tap** (#180, PR #186). Seen only in screenshots; the next real Division-up is the first live one.
 
 ## Robustness nits
 
@@ -52,6 +61,10 @@ Small things for the owner that didn't block a merge: decisions you may want to 
 - **ES Season countdown wraps under an hour** (#163, PR #170): "La temporada termina en menos de una hora" takes two lines at 390px. The row grows, which looks fine.
 - **`screens.train` and `screens.profile` look unused** (#162, PR #171). The Home placeholder they were for is gone; only `screens.groups` is read. Left in place.
 
+- **The unlogged row has no drag handle, so its number sits left of the logged rows'** (#182, PR #188). Visible in the List layout under the logged Sets.
+- **Unlogging a Set leaves a gap in the others' positions** (#182, PR #188). Harmless: only the order is read.
+- **The sync region and the CORS preflight** (#181, PR #187). The query parameter avoids the `x-region` header; switching to supabase-js's `region` option would need the function's CORS to allow that header.
+
 ## Test gaps
 
 - **No test for a >12-rep Set over the ceiling** (#147, PR #152). It's covered only because the single filter at the top of `deriveScoringEvents` runs before both tracks.
@@ -61,6 +74,11 @@ Small things for the owner that didn't block a merge: decisions you may want to 
 - **Rep PRs on bodyweight Exercises and the Strength Level fallback are untested** (#149, PR #151).
 - **No server integration test for jumps** (#148, PR #154). The server calls the same `deriveScoringEvents`, so they're covered by the rules tests. The sheet's wait-for-an-answer logic has no test, since v1 has no UI tests.
 
+- **#182's red integration test was never seen red** (PR #188). It was pushed before the implementation, but only the green head run was looked at. #183's outbox test (PR #189) passed at once, since `moveSet` already worked on a finished Session.
+- **Nothing tests the drag gesture or the Division-up's wait for a tap** (#180, #182, #183): v1 has no UI tests. The gate's "decide without the server" rule has a unit test (`rankUpReady`).
+- **The Elite plaque arriving after an early Rank-up decision is untested** (#180, PR #186). It reads the server's standing at render time, so it fills in if it arrives, or is left out.
+
 ## CI flakes
 
 - **`period-finalization.test.ts` > "tied winners each get a crown, and a week nobody trained has none" timed out** on main after #153 merged: 5078 ms against vitest's default 5000 ms. It passed on the PR and on the next run. It recurred on PR #169 (5004 ms), then failed on PR #174 with an extra October month crown. The cause: the scheduled `finalize-periods` job runs every five minutes at the real time, which is now past the October 2026 dates the tests use, so it could crown a test's Group mid-test. Integration runs now pause that job (`integration/global-setup.ts`), and the test also has a 30 s timeout. (#174)
+- **Integration shard 1 is the slowest** (#179, PR #184): about 3m40s against 2m21s and 2m50s, because it also bundles the Edge Functions and its files are heavier. A server PR's CI takes about 4 min; moving the bundle check to its own job or rebalancing the shards could bring it nearer 3.
