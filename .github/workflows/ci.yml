@@ -1,10 +1,30 @@
 name: CI
 
 on:
+  # Branches get CI from their pull request, so a branch push doesn't run it twice.
   push:
+    branches: [main]
   pull_request:
 
 jobs:
+  changes:
+    name: Detect server changes
+    runs-on: ubuntu-latest
+    outputs:
+      server: ${{ steps.filter.outputs.server }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            server:
+              - 'supabase/**'
+              - 'packages/rules/**'
+              - 'integration/**'
+              - '.github/workflows/**'
+              - 'package-lock.json'
+
   rules:
     name: Rules tests
     runs-on: ubuntu-latest
@@ -19,10 +39,15 @@ jobs:
       - run: npm test
 
   integration:
-    name: Integration tests
-    needs: rules
+    name: Integration tests (${{ matrix.shard }}/3)
+    needs: changes
+    if: needs.changes.outputs.server == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -37,8 +62,10 @@ jobs:
           ULTI_FUNCTIONS_URL: http://kong:8000/functions/v1
           # Shared by Vault and the recompute function; any value will do for a throwaway stack.
           ULTI_RECOMPUTE_SECRET: local-stack-recompute-secret
-      - run: npm run test:integration
+      - run: npm run test:integration -- --shard=${{ matrix.shard }}/3
       - name: Bundle Edge Functions the way deploy does
+        # Once is enough, so only the first shard does it.
+        if: matrix.shard == 1
         # `supabase functions deploy` bundles each function with the edge runtime's `bundle`
         # command (it has no dry-run), so run that command with the image `supabase start` pulled.
         # It runs from each function's directory so it finds that function's deno.json, not the
@@ -59,8 +86,9 @@ jobs:
   deploy:
     name: Deploy the backend
     # Only a push to main deploys, and only after every test has passed. Vercel deploys the app itself.
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: integration
+    # Skipped, with the integration shards, when nothing server-side changed.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.changes.outputs.server == 'true'
+    needs: [changes, rules, integration]
     runs-on: ubuntu-latest
     concurrency: deploy-hosted-supabase
     env:
