@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { completeRoutine, dayColour, moveItem, nextDayColour, plannedRows, routineDayChoices, suggestedRoutineDay, suggestedWeeklyTarget, withDayColours, type RoutineDay } from './index.ts';
+import { completeRoutine, dayColour, moveItem, nextDayColour, plannedRows, rowsWithAdvice, routineDayChoices, suggestedRoutineDay, suggestedWeeklyTarget, withDayColours, type RoutineDay } from './index.ts';
 
 const blank = (ids: string[]) => ids.map((id) => ({ id, name: id, exercises: [] }));
 
@@ -146,4 +146,24 @@ test('a draft with no Days, an unnamed Day, an empty Day, a row with no Exercise
   expect(completeRoutine([{ ...day, exercises: [{ ...row, exerciseId: '' }] }])).toBeNull();
   expect(completeRoutine([{ ...day, exercises: [{ ...row, repMin: 12, repMax: 8 }] }])).toBeNull();
   expect(completeRoutine([day, { ...day, id: 'pull', exercises: [] }])).toBeNull();
+});
+
+test('go-heavier changes only the Working Set rows, the Warm-up keeping the last Session numbers', () => {
+  const last = [{ weightKg: 40, reps: 10 }, { weightKg: 60, reps: 8 }, { weightKg: 60, reps: 8 }, { weightKg: 60, reps: 8 }];
+  expect(rowsWithAdvice(last, { weightKg: 62.5, reps: 6 })).toEqual([{ weightKg: 40, reps: 10 }, ...Array(3).fill({ weightKg: 62.5, reps: 6 })]);
+});
+
+test('a Stall changes only the Working Set rows too', () => {
+  const last = [{ weightKg: 40, reps: 10 }, { weightKg: 60, reps: 6 }, { weightKg: 60, reps: 5 }];
+  expect(rowsWithAdvice(last, { weightKg: 55, reps: 6 })).toEqual([{ weightKg: 40, reps: 10 }, { weightKg: 55, reps: 6 }, { weightKg: 55, reps: 6 }]);
+});
+
+test('a last Session with no Warm-up gives every row the recommended numbers', () => {
+  const last = [{ weightKg: 60, reps: 8 }, { weightKg: 60, reps: 8 }];
+  expect(rowsWithAdvice(last, { weightKg: 62.5, reps: 6 })).toEqual([{ weightKg: 62.5, reps: 6 }, { weightKg: 62.5, reps: 6 }]);
+});
+
+test("a lifter's own Warm-up label on a last Set keeps that row as it was", () => {
+  const last = [{ weightKg: 60, reps: 8, label: 'warm-up' as const }, { weightKg: 60, reps: 8 }];
+  expect(rowsWithAdvice(last, { weightKg: 62.5, reps: 6 })).toEqual([last[0], { weightKg: 62.5, reps: 6 }]);
 });
