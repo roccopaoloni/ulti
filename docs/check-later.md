@@ -27,6 +27,12 @@ Small things for the owner that didn't block a merge: decisions you may want to 
 - **Sync is pinned to Oregon in the app** (#181, PR #187). The phone calls `sync?forceFunctionRegion=us-west-2`, because the database is in us-west-2, not São Paulo as `docs/setup.md` says. If the project ever moves region, change that line. Pinning means no automatic failover to another region during a Supabase outage there.
 - **A move is judged by the labels before it** (#182, PR #188). A Set lands as a Warm-up when any Warm-up Set (detected or by hand) ends up after it. A detected Warm-up dragged behind the Working Sets becomes a Working Set, as the usual rule says; one labelled by hand stays a Warm-up.
 
+- **Replay ends on Home, not back in Settings** (#192, PR #196). The coach marks need the real Home, so Replay goes there for them and stays.
+- **Discarding an empty Practice Session goes back to the practice Home** (#193, PR #197) rather than ending the practice. Skip ends it.
+- **The Practice day's name is set once** (#193, PR #197), in the language the practice started in.
+- **A phone with a partial onboarding from before the Tutorial counts as seen** (#191, PR #195). The offline fix marks a phone seen when its local profile has any entries.
+- **On the keypad step, the callout sits over the Session header** (#194, PR #200), so it never covers the keypad.
+
 ## Check after deploy
 
 - **Done: the Supabase token now writes Edge Function secrets** (#146, PR #150, `docs/setup.md` §16). The deploys of #150 and #152 failed without it. After the owner widened the token, the deploy of #154 passed and brought the backend up to date with main.
@@ -45,6 +51,9 @@ Small things for the owner that didn't block a merge: decisions you may want to 
 
 - **Dragging Sets by touch** (#182, PR #188; #183, PR #189). Both were only dragged with a mouse in headless Chromium. Drag a Set in the live Session's List layout and in a History Session on the iPhone, and check the page doesn't scroll instead.
 - **The Division-up tap** (#180, PR #186). Seen only in screenshots; the next real Division-up is the first live one.
+
+- **The whole Tutorial** (#191–#194, PRs #195–#200). Every screenshot came from harness pages at app width on a desktop. Never tried on a phone: the tap passing through the ring, the ring inside the Day sheet and the keypad, the PR banner, and Skip at every step. Run Settings → Replay the tutorial on the iPhone end to end.
+- **An existing phone opening the Tutorial release offline** (#191, PR #195). The upgrade that marks it seen was tested only in the in-memory database.
 
 ## Robustness nits
 
@@ -65,6 +74,10 @@ Small things for the owner that didn't block a merge: decisions you may want to 
 - **Unlogging a Set leaves a gap in the others' positions** (#182, PR #188). Harmless: only the order is read.
 - **The sync region and the CORS preflight** (#181, PR #187). The query parameter avoids the `x-region` header; switching to supabase-js's `region` option would need the function's CORS to allow that header.
 
+- **The guided script finds its steps by the app's class names** (#194, PR #200), for example `.sets-done .set.done`, `.pad-key:nth-child(8)` and `.s-finish`. Renaming one of those in the Session screen silently stalls the script at that step, and no test would catch it.
+- **The ringed element can't be reached by keyboard** (#192, PR #196). The dim layer blocks it; only the callout's buttons are focusable.
+- **The light-theme scrim looks quite dark** (#194, PR #200): it's the Spotlight's one scrim colour in both themes.
+
 ## Test gaps
 
 - **No test for a >12-rep Set over the ceiling** (#147, PR #152). It's covered only because the single filter at the top of `deriveScoringEvents` runs before both tracks.
@@ -77,6 +90,9 @@ Small things for the owner that didn't block a merge: decisions you may want to 
 - **#182's red integration test was never seen red** (PR #188). It was pushed before the implementation, but only the green head run was looked at. #183's outbox test (PR #189) passed at once, since `moveSet` already worked on a finished Session.
 - **Nothing tests the drag gesture or the Division-up's wait for a tap** (#180, #182, #183): v1 has no UI tests. The gate's "decide without the server" rule has a unit test (`rankUpReady`).
 - **The Elite plaque arriving after an early Rank-up decision is untested** (#180, PR #186). It reads the server's standing at render time, so it fills in if it arrives, or is left out.
+
+- **Accounts existing before the Tutorial migration aren't exercised by CI** (#191, PR #195). CI starts from an empty database, so "marked seen" rests on the migration's insert-or-update.
+- **#194's practice tests passed at once** (PR #200): they follow the script on #193's seed with existing code, so they were never seen red. The script's steps themselves have no test, since v1 has no UI tests.
 
 ## CI flakes
 
