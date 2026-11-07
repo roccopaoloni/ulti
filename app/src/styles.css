@@ -3175,6 +3175,17 @@ prefers-reduced-motion switches every animation off, so it stays off the badge. 
   font: 800 12px var(--display);
   text-transform: uppercase;
 }
+.spot-callout .left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.spot-callout .count {
+  font: 700 11px var(--body);
+  opacity: 0.6;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
 .spot-callout .cskip {
   font: 700 12.5px var(--body);
   opacity: 0.65;
