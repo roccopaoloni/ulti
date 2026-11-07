@@ -143,6 +143,7 @@ export function Tutorial({ training, units, onDone, onShowHome }: { training: Tr
             setPracticing(false);
             setStep(1);
           }}
+          onSkip={onDone}
         />
       ) : step === 0 ? (
         <div className="tut-welcome">

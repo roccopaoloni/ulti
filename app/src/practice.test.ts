@@ -67,7 +67,7 @@ test('a Practice Session from start to Finish sends nothing, leaves no database 
   real.close();
 });
 
-test('on the seeded data Bench press recommends going heavier, the first 62.5 × 8 is a Personal Record and six Working Sets fill the dot', async () => {
+test('on the seeded data Bench press recommends going heavier, 62.5 × 6 is not a Personal Record, un-logged and logged as 62.5 × 8 it is, and six Working Sets fill the dot', async () => {
   const { real, clock } = await lifter();
   const practice = await startPractice(real, { dayName: 'Practice day', ...clock });
   const day = (await practice.dayChoices())[0]!.day;
@@ -81,13 +81,17 @@ test('on the seeded data Bench press recommends going heavier, the first 62.5 ×
   expect(await practice.recommendation('barbell-row', row)).toBeUndefined();
   expect((await practice.history()).sessions.every(({ localDate }) => localDate < '2026-11-06')).toBe(true);
 
+  // The Tutorial's script: the pre-filled 62.5 × 6 is no Personal Record; un-logging it and logging 62.5 × 8 instead is.
   const session = await practice.startSession(day.id);
-  await practice.logSet(session.id, 'bench-press', 40, 10);
-  const first = await practice.logSet(session.id, 'bench-press', 62.5, 8);
   const today = async () => (await practice.scoring()).events.filter(({ localDate }) => localDate === '2026-11-06').map(({ setId }) => setId);
+  await practice.logSet(session.id, 'bench-press', 40, 10);
+  const prefilled = await practice.logSet(session.id, 'bench-press', 62.5, 6);
+  expect(await today()).toEqual([]);
+  await practice.deleteSet(prefilled.id);
+  const first = await practice.logSet(session.id, 'bench-press', 62.5, 8);
   expect(await today()).toEqual([first.id]);
-  await practice.logSet(session.id, 'bench-press', 62.5, 8);
-  await practice.logSet(session.id, 'bench-press', 62.5, 8);
+  await practice.logSet(session.id, 'bench-press', 62.5, 6);
+  await practice.logSet(session.id, 'bench-press', 62.5, 6);
   for (let i = 0; i < 3; i++) await practice.logSet(session.id, 'barbell-row', 50, 10);
   expect(await today()).toEqual([first.id]);
   await practice.finishSession(session.id);

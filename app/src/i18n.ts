@@ -34,6 +34,8 @@ type Messages = {
     replayBusy: string;
     // The coach marks on Home, and the spotlight's buttons.
     coach: { week: string; tabs: string; go: string; gotIt: string; tapHint: string };
+    // The Practice Session's callouts, one per step of the script.
+    guide: Record<'start' | 'pick' | 'heavier' | 'warm' | 'work' | 'rir' | 'unlog' | 'edit' | 'key8' | 'keyDone' | 'relog' | 'pr' | 'set3' | 'rest' | 'row' | 'finish' | 'dots' | 'focus', string>;
     // The slides' pictures.
     art: { pr: string; prSub: string; show: string; showSub: string; streak: string; calib: string[]; baseline: string; calibLine: string; me: string };
   };
@@ -508,6 +510,26 @@ const en: Messages = {
       go: 'Ready for the real one? Tap Start session at the gym.',
       gotIt: 'Got it',
       tapHint: 'Tap the highlighted part',
+    },
+    guide: {
+      start: 'Every Session starts here. Tap Start session.',
+      pick: 'Pick the Session of your Routine you’re doing today. The one you did longest ago comes first.',
+      heavier: 'Last time you hit every rep, so ULTI says go heavier: +2.5 kg, starting back at 6 reps. Not up for it? Keep the same weight.',
+      warm: 'Set 1 is lighter, so it’s a Warm-up: it gets you ready but doesn’t earn Points. Wrong label? Tap it to flip it. Tap ✓ to log the Set.',
+      work: 'Set 2 is a Working Set, at the new weight. Done the 6 reps? Tap ✓.',
+      rir: 'How many more reps could you have done? That’s RIR, reps in reserve. It’s optional, and it helps ULTI tell you when to back off. Tap a number.',
+      unlog: 'You actually got 8? Tap the ✓ to un-log the Set.',
+      edit: 'It’s back to numbers you can change. Tap the reps.',
+      key8: 'Tap 8.',
+      keyDone: 'Tap Done.',
+      relog: 'Now ✓ to log it again.',
+      pr: 'A Personal Record! You beat your best, and every PR earns Points.',
+      set3: 'Log Set 3.',
+      rest: 'The rest is just ✓. Log Set 4.',
+      row: 'Barbell row, same thing: ✓ when the numbers are right.',
+      finish: 'That’s six Working Sets. Tap Finish.',
+      dots: 'A Session with at least six Working Sets fills a dot toward your Weekly Target. This one is practice, so it doesn’t count.',
+      focus: 'Prefer one Set at a time, with big numbers? Switch to Focus in Settings → Logging layout. Tap Continue.',
     },
     art: { pr: 'Personal Record', prSub: 'Bench press, 62.5 × 8', show: 'Session toward your target', showSub: '6+ Working Sets', streak: 'Streak: 4 weeks', calib: ['Session 1', 'Session 2', 'Session 3', 'Session 4'], baseline: 'baseline', calibLine: 'Your first sessions set your baseline', me: 'You' },
   },
@@ -1011,6 +1033,26 @@ const es: Messages = {
       go: '¿Vamos con la de verdad? Tocá Empezar sesión en el gimnasio.',
       gotIt: 'Entendido',
       tapHint: 'Tocá la parte marcada',
+    },
+    guide: {
+      start: 'Cada sesión arranca acá. Tocá Empezar sesión.',
+      pick: 'Elegí qué sesión de tu rutina hacés hoy. Primero aparece la que hiciste hace más tiempo.',
+      heavier: 'La última vez hiciste todas las repes, así que ULTI te dice que subas: +2,5 kg, arrancando de nuevo en 6 repes. ¿No podés con más peso? Mantené el mismo peso.',
+      warm: 'La serie 1 es más liviana, así que es de entrada en calor: te prepara pero no suma puntos. ¿Etiqueta equivocada? Tocala para cambiarla. Tocá ✓ para registrar la serie.',
+      work: 'La serie 2 es efectiva, con el peso nuevo. ¿Hiciste las 6 repes? Tocá ✓.',
+      rir: '¿Cuántas repes más podrías haber hecho? Eso es el RIR, repes en reserva. Es opcional y ayuda a ULTI a decirte cuándo aflojar. Tocá un número.',
+      unlog: '¿En realidad hiciste 8? Tocá el ✓ para deshacer la serie.',
+      edit: 'Volvió a ser números que podés cambiar. Tocá las repes.',
+      key8: 'Tocá 8.',
+      keyDone: 'Tocá Listo.',
+      relog: 'Ahora ✓ para registrarla de nuevo.',
+      pr: '¡Un PR! Superaste tu mejor marca, y cada PR suma Puntos.',
+      set3: 'Registrá la serie 3.',
+      rest: 'Lo que queda es solo ✓. Registrá la serie 4.',
+      row: 'Remo con barra, lo mismo: ✓ cuando los números estén bien.',
+      finish: 'Son seis series efectivas. Tocá Terminar.',
+      dots: 'Una sesión con al menos seis series efectivas llena un punto de tu objetivo semanal. Esta es de práctica, así que no cuenta.',
+      focus: '¿Preferís una serie a la vez, con números grandes? Cambiá a Foco en Ajustes → Diseño del registro. Tocá Continuar.',
     },
     art: { pr: 'PR', prSub: 'Press banca, 62,5 × 8', show: 'Sesión hacia tu objetivo', showSub: '6+ series efectivas', streak: 'Racha: 4 semanas', calib: ['Sesión 1', 'Sesión 2', 'Sesión 3', 'Sesión 4'], baseline: 'base', calibLine: 'Tus primeras sesiones fijan tu base', me: 'Vos' },
   },
