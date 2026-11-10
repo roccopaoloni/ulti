@@ -22,10 +22,10 @@ async function refreshCatalog(training: Training) {
   // Row-level security returns the shared catalog and this user's own Custom Exercises.
   const { data, error } = await supabase
     .from('exercises')
-    .select('id, name_en, name_es, type, equipment, default_increment_kg, muscle, owner_id');
+    .select('id, name_en, name_es, type, equipment, default_increment_kg, muscle, pattern, owner_id');
   if (error) return;
   await training.saveExercises(
-    data.map(({ id, name_en, name_es, type, equipment, default_increment_kg, muscle, owner_id }) => ({
+    data.map(({ id, name_en, name_es, type, equipment, default_increment_kg, muscle, pattern, owner_id }) => ({
       id,
       nameEn: name_en,
       nameEs: name_es,
@@ -34,6 +34,7 @@ async function refreshCatalog(training: Training) {
       incrementKg: Number(default_increment_kg),
       bodyweight: type === 'bodyweight',
       muscle,
+      pattern,
     })),
   );
 }

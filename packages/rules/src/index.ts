@@ -631,6 +631,20 @@ export function isMuscle(value: unknown): value is Muscle {
   return muscles.includes(value as Muscle);
 }
 
+// The kind of movement a catalog Exercise trains (spec: Movement Pattern). A Custom Exercise has
+// none and counts as isolation.
+export const movementPatterns = ['squat', 'hinge', 'horizontal-press', 'vertical-press', 'horizontal-pull', 'vertical-pull', 'isolation'] as const;
+export type MovementPattern = (typeof movementPatterns)[number];
+
+export function isMovementPattern(value: unknown): value is MovementPattern {
+  return movementPatterns.includes(value as MovementPattern);
+}
+
+// Compound is any pattern but isolation; an Exercise with no pattern is isolation.
+export function isCompound(pattern: MovementPattern | null | undefined): boolean {
+  return pattern !== null && pattern !== undefined && pattern !== 'isolation';
+}
+
 // Whether an Exercise's text (its name and equipment) answers a search: case and accents don't
 // matter, and every word typed has to be in it.
 export function matchesSearch(text: string, query: string): boolean {

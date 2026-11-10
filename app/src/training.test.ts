@@ -315,6 +315,16 @@ test("an Exercise's Sets from the last Session that had it come back in the orde
   training.close();
 });
 
+test('the phone keeps the Movement Pattern the catalog gave each Exercise', async () => {
+  const phone = anasPhone(server());
+  const training = await phone.open();
+
+  await training.saveExercises([{ id: 'dip', nameEn: 'Dip', nameEs: 'Fondos', equipment: null, custom: false, incrementKg: 2.5, bodyweight: true, muscle: 'triceps', pattern: 'vertical-press' }]);
+
+  expect(await training.exercises()).toContainEqual(expect.objectContaining({ id: 'dip', pattern: 'vertical-press' }));
+  training.close();
+});
+
 test('a Custom Exercise created offline is pickable at once, survives a catalog refresh, and syncs before the Sets that use it', async () => {
   const network = server();
   network.offline = true;

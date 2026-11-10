@@ -186,6 +186,20 @@ test('every catalog Exercise has one main muscle, and the tagging puts the class
   ]);
 });
 
+test('every catalog Exercise has a Movement Pattern, and the mapping puts the awkward ones where the spec says', async () => {
+  const ana = await lifter('ana');
+
+  const { data, error } = await ana.client.from('exercises').select('id, pattern').is('owner_id', null);
+
+  expect(error).toBeNull();
+  const patterns = ['squat', 'hinge', 'horizontal-press', 'vertical-press', 'horizontal-pull', 'vertical-pull', 'isolation'];
+  for (const exercise of data!) expect(patterns, exercise.id).toContain(exercise.pattern);
+  const pattern = new Map(data!.map(({ id, pattern }) => [id, pattern]));
+  expect(
+    ['bulgarian-split-squat', 'barbell-lunge', 'barbell-hip-thrust', 'good-morning', 'dip', 'push-up', 'hanging-leg-raise', 'standing-calf-raise', 'deadlift', 'pull-up', 'barbell-curl'].map((id) => pattern.get(id)),
+  ).toEqual(['squat', 'squat', 'hinge', 'hinge', 'vertical-press', 'horizontal-press', 'isolation', 'isolation', 'hinge', 'vertical-pull', 'isolation']);
+});
+
 test('a Custom Exercise with an unknown muscle is turned away', async () => {
   const ana = await lifter('ana');
   const plank = customExercise('Plank', 'tentacles');

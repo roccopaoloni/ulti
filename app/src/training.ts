@@ -18,6 +18,7 @@ import {
   weekStamps,
   weekStart,
   type Dated,
+  type MovementPattern,
   type Muscle,
   type DeloadReason,
   type LinkDay,
@@ -102,6 +103,9 @@ export type Exercise = {
   // The main muscle it is filed under. A copy of the catalog kept before muscles existed lacks it
   // until the next refresh.
   muscle: Muscle;
+  // Its Movement Pattern. A Custom Exercise, and a copy of the catalog kept before patterns existed,
+  // has none, which counts as isolation.
+  pattern?: MovementPattern | null;
 };
 
 // One entry of a dated history (ADR 0002). A date has one entry per field; the server keeps the
