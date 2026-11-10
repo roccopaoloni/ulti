@@ -15,6 +15,14 @@ Planks, dead hangs, wall sits and similar holds are logged in seconds, not weigh
 
 Assisted exercises (assisted pull-up and dip machines, where less weight means progress) were dropped from the roadmap entirely; they can still be logged as Custom Exercises.
 
+## Intra-session Set decay as a Fatigue signal
+
+Under normal recovery a lifter loses about one rep (or one RIR) per Working Set at the same weight; losing 2.5–3 or more per Set points to local fatigue. It is left out of Fatigue ([ADR 0009](./adr/0009-stall-and-fatigue-from-rir-adjusted-e1rm.md)) because it only holds with constant rest between Sets, which the app doesn't record, and back-off Sets and pyramids make big drops normal. Revisit if a rest timer is ever added.
+
+## Muscle-group partial deload (after the Fatigue engine ships)
+
+Settled: when 2 or more Exercises with the same main muscle show Fatigue and the systemic rule doesn't fire, those Exercises get half their Working Sets at normal weight for the next 7 days (Full body never counts as a group). Still open: how the lifter accepts it, how it is recorded per Exercise (ADR 0007 marks whole Sessions), and how a half-length Exercise counts toward a qualifying Session. Needs its own ADR.
+
 ## Produced Rank-up audio (pending)
 
 The design calls for recorded or produced audio in the Metal style (see the design document's Sound section), but nobody on the project can produce it yet, so there is no ticket for it. Until someone can, the app ships the prototype's synthesized sound, which already follows the Sound rules: every sound lands on something visible, the weight comes from distorted low-mids rather than sub-bass, and nothing rings high and tonal. Swapping in produced audio later changes what plays, not when it plays.

@@ -37,6 +37,10 @@ A named movement from the app's catalog, such as Back Squat or Bench Press. Only
 _Avoid_: Movement, lift (when meaning the catalog entry)
 _Rioplatense_: Ejercicio
 
+**Movement Pattern**:
+The kind of movement a catalog Exercise trains: squat, hinge, horizontal press, vertical press, horizontal pull, vertical pull, or isolation. Every pattern but isolation is compound. A Custom Exercise counts as isolation.
+_Rioplatense_: Patrón de movimiento
+
 **Custom Exercise**:
 An Exercise a user creates themselves. It can be logged but never earns Progress Points.
 _Rioplatense_: Ejercicio personalizado
@@ -98,9 +102,14 @@ The weight added to an Exercise when the app recommends going heavier.
 _Rioplatense_: Incremento
 
 **Stall**:
-An Exercise whose e1RM has stopped improving, for which the app recommends dropping the weight and building back up.
+An Exercise whose e1RM has stayed flat for weeks while the lifter shows no Fatigue: the stimulus has gone stale, so the app recommends moving to another Rep Range.
 _Avoid_: Plateau
 _Rioplatense_: Estancamiento
+
+**Fatigue**:
+An Exercise whose effort is creeping up to hold its numbers, or whose RIR-adjusted e1RM is falling across Sessions. On one Exercise the app recommends dropping the weight and building back up; on two or more Movement Patterns, a Deload Week.
+_Avoid_: Overreaching, overtraining
+_Rioplatense_: Fatiga
 
 **Deload Week**:
 A planned week of deliberately lighter training to recover from accumulated fatigue, which the lifter can cancel partway through.
