@@ -787,11 +787,14 @@ export type Stall = { weightKg: number; reps: number };
 const RECENT_BEST_SESSIONS = 6;
 const STALL_RESET = 0.9;
 
-// Stall (spec: Stall), judged on the Exercise's Working Sets only. It is Stalled after either:
-// - three Sessions in a row each failing to beat the recent best e1RM, where a Session's e1RM is
-//   its best Working Set and the recent best is the best of the up to 6 Sessions before it (equal
-//   does not beat it; a Session with none before it cannot fail), or
-// - the bottom of the Rep Range missed on some Working Set in each of the last two Sessions.
+// Stall (spec: Stall), judged on the Exercise's Working Sets only. The Calibration Sessions (its
+// first CALIBRATION_SESSIONS) only set the baseline, so none counts toward a Stall. It is Stalled after either:
+// - three Sessions in a row, all past Calibration, each failing to beat the recent best e1RM, where
+//   a Session's e1RM is its best Working Set and the recent best is the best of the up to 6
+//   Sessions before it, Calibration Sessions included (equal does not beat it; a Session with none
+//   before it cannot fail), so the earliest is the 5th Session, or
+// - the bottom of the Rep Range missed on some Working Set in each of the last two Sessions, both
+//   past Calibration, so the earliest is the 4th Session.
 // The suggestion is about 10% under the last Session's training weight, rounded to the Increment,
 // back at the bottom of the range.
 export function recommendStall(history: TrainingHistory, exercise: string, rule: GoHeavierRule): Stall | undefined {
@@ -812,8 +815,8 @@ export function recommendStall(history: TrainingHistory, exercise: string, rule:
   };
   const last = sessions.length - 1;
   const stalled =
-    (last >= 3 && [last, last - 1, last - 2].every(failedToBeat)) ||
-    (last >= 1 && sessions.slice(-2).every((working) => working.some((set) => set.reps < rule.repMin)));
+    (last - 2 >= CALIBRATION_SESSIONS && [last, last - 1, last - 2].every(failedToBeat)) ||
+    (last - 1 >= CALIBRATION_SESSIONS && sessions.slice(-2).every((working) => working.some((set) => set.reps < rule.repMin)));
   if (!stalled) return undefined;
   const trainingKg = Math.max(...sessions[last].map((set) => set.weightKg));
   // A bodyweight Exercise drops its added weight by 10% of the total load, never below zero; with
@@ -837,7 +840,8 @@ export function recommend(history: TrainingHistory, exercise: string, rule: GoHe
 // A Deload Week is the Routine with about half the Sets at about this much of the weight.
 const DELOAD_WEIGHT = 0.9;
 // A Deload Week is not suggested within this many weeks of the last one's start, and a dismissed
-// suggestion keeps quiet for as long. The lifter's own start is never limited.
+// suggestion keeps quiet for as long, as do the first this many weeks of training (counted from the
+// week of the first Session). The lifter's own start is never limited.
 export const DELOAD_GAP_WEEKS = 4;
 // The gentle nudge comes after this many weeks without a Deload Week.
 export const DELOAD_NUDGE_WEEKS = 8;
@@ -886,7 +890,8 @@ function rirFalling(history: TrainingHistory, exercise: string): boolean {
 
 // Why a Deload Week is recommended in the week of the local date, if it is (spec: Deload Week):
 // two or more of the Routine's Exercises Stalled, RIR falling across two or more, or eight weeks
-// without one (counted from the first Session when there never was one). `dismissed` holds the
+// without one (counted from the first Session when there never was one). None is suggested within
+// DELOAD_GAP_WEEKS of the week of the first Session. `dismissed` holds the
 // Mondays of the weeks the lifter dismissed a suggestion in.
 export function recommendDeload(
   history: TrainingHistory,
@@ -897,6 +902,7 @@ export function recommendDeload(
   const week = weekStart(today);
   if ((history.deloadWeeks ?? []).some((started) => weeksBetween(started, week) < DELOAD_GAP_WEEKS)) return undefined;
   if (dismissed.some((quiet) => weeksBetween(quiet, week) < DELOAD_GAP_WEEKS)) return undefined;
+  if (history.sessions[0] && weeksBetween(weekStart(history.sessions[0].localDate), week) < DELOAD_GAP_WEEKS) return undefined;
   if (routine.filter(({ exercise, rule }) => recommendStall(history, exercise, rule)).length >= DELOAD_MIN_EXERCISES) return 'stalled';
   if (routine.filter(({ exercise }) => rirFalling(history, exercise)).length >= DELOAD_MIN_EXERCISES) return 'rir';
   const since = deloadedWeeks(history).at(-1) ?? (history.sessions[0] && weekStart(history.sessions[0].localDate));
