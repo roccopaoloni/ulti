@@ -675,10 +675,23 @@ export async function openTraining(userId: string, options: Options) {
     },
 
     // Creates the Routine, or replaces its Sessions: the same Routine written again, so the latest
-    // write wins.
+    // write wins. An Exercise whose Rep Range differs from the saved Routine's gets today as its
+    // `rangeSince`, as a Stall's Switch does: any Rep Range change is a fresh start for a Stall.
     async saveRoutine(days: RoutineDay[]) {
-      const id = (await this.routine())?.id ?? crypto.randomUUID();
-      await write({ id: crypto.randomUUID(), kind: 'saveRoutine', routine: { id, days, updatedAt: stamp() } });
+      const saved = await this.routine();
+      const today = localDate(options.now(), options.timeZone());
+      const stamped = days.map((day) => {
+        const before = saved?.days.find(({ id }) => id === day.id);
+        return {
+          ...day,
+          exercises: day.exercises.map((exercise) => {
+            const was = before?.exercises.find(({ exerciseId }) => exerciseId === exercise.exerciseId);
+            return was && (was.repMin !== exercise.repMin || was.repMax !== exercise.repMax) ? { ...exercise, rangeSince: today } : exercise;
+          }),
+        };
+      });
+      const id = saved?.id ?? crypto.randomUUID();
+      await write({ id: crypto.randomUUID(), kind: 'saveRoutine', routine: { id, days: stamped, updatedAt: stamp() } });
     },
 
     // Accepts a Stall's advice (spec: Stall): the Exercise's Rep Range changes to the new one on the

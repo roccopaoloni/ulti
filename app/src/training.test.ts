@@ -816,6 +816,25 @@ test('a Stall only counts Sessions from the day its Rep Range was switched', asy
   training.close();
 });
 
+test("editing an Exercise's Rep Range by hand on the Routine also dates it, and editing anything else does not", async () => {
+  const network = server();
+  network.offline = true;
+  const training = await anasPhone(network).open();
+  await training.saveRoutine([pushDay, pullDay]);
+  expect((await training.routine())!.days).toEqual([pushDay, pullDay]);
+
+  // A new Set count leaves the Rep Range, so no date.
+  const moreSets = { ...pushDay, exercises: [{ ...pushDay.exercises[0]!, sets: 4 }] };
+  await training.saveRoutine([moreSets, pullDay]);
+  expect((await training.routine())!.days).toEqual([moreSets, pullDay]);
+
+  // A new Rep Range on one Day is dated with the local date of the edit (Monday 19 October in Buenos Aires).
+  const heavier = { ...moreSets, exercises: [{ ...moreSets.exercises[0]!, repMin: 6, repMax: 8 }] };
+  await training.saveRoutine([heavier, pullDay]);
+  expect((await training.routine())!.days).toEqual([{ ...heavier, exercises: [{ ...heavier.exercises[0]!, rangeSince: '2026-10-19' }] }, pullDay]);
+  training.close();
+});
+
 test('a Session started from a Routine Day sets up its Exercises with their Sets and Rep Range, and an unplanned one starts empty', async () => {
   const network = server();
   network.offline = true;
