@@ -1038,22 +1038,23 @@ test('a Custom Exercise at the top of the Rep Range gets no recommendation', asy
   training.close();
 });
 
-test('two Sessions past Calibration under the bottom of the Rep Range recommend a Stall reset, judged without the Session in progress', async () => {
+test('two Sessions past Calibration each 3% under the best before recommend a Fatigue reset, judged without the Session in progress', async () => {
   const network = server();
   network.offline = true;
   const training = await anasPhone(network).open();
   await training.saveExercises(benchCatalog);
-  // Two Calibration Sessions that met the range: a Stall needs Sessions past Calibration.
-  await benchSession(training, [[60, 8], [60, 8]]);
-  await benchSession(training, [[60, 8], [60, 8]]);
-  await benchSession(training, [[60, 7], [60, 6]]);
+  // Two Calibration Sessions and a best: Fatigue needs Sessions past Calibration.
+  await benchSession(training, [[60, 10], [60, 10]]);
+  await benchSession(training, [[60, 10], [60, 10]]);
+  await benchSession(training, [[60, 10], [60, 10]]);
+  await benchSession(training, [[57, 10], [57, 10]]);
   expect(await training.recommendation('bench-press', benchRange)).toBeUndefined();
 
-  await benchSession(training, [[60, 7], [60, 7]]);
+  await benchSession(training, [[57, 10], [57, 10]]);
   const next = await training.startSession();
   await training.logSet(next.id, 'bench-press', 60, 12);
 
-  expect(await training.recommendation('bench-press', benchRange)).toEqual({ kind: 'stall', weightKg: 55, reps: 8 });
+  expect(await training.recommendation('bench-press', benchRange)).toEqual({ kind: 'fatigue', weightKg: 52.5, reps: 8 });
   training.close();
 });
 

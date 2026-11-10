@@ -59,19 +59,7 @@ test('with no Session before the last three there is no recent best, so no Stall
   expect(recommendStall(history(flat('05'), flat('08'), flat('11')), 'bench-press', bench)).toBeUndefined();
 });
 
-test('missing the bottom of the Rep Range in two Sessions in a row is a Stall, even while e1RM improves', () => {
-  const low = (day: string, weight: number) => session(`2026-10-${day}`, [[weight, 8], [weight, 7]]);
-  expect(recommendStall(history(...calibration, low('05', 62), low('08', 65)), 'bench-press', bench)).toEqual({ weightKg: 57.5, reps: 8 });
-});
-
-test('missing the bottom once, or in two Sessions with one met between, is not a Stall', () => {
-  const miss = (day: string) => session(`2026-10-${day}`, [[60, 7]]);
-  const met = session('2026-10-08', [[60, 8], [60, 9]]);
-  expect(recommendStall(history(miss('05')), 'bench-press', bench)).toBeUndefined();
-  expect(recommendStall(history(miss('05'), met, miss('11')), 'bench-press', bench)).toBeUndefined();
-});
-
-test('Warm-up Sets are ignored: a light first Set under the bottom of the range is not a miss', () => {
+test('Warm-up Sets are ignored: a light first Set is not a Working Set to judge', () => {
   const warm = (day: string) => session(`2026-10-${day}`, [[30, 5], [60, 9], [60, 9]]);
   expect(recommendStall(history(warm('05'), warm('08')), 'bench-press', bench)).toBeUndefined();
 });
@@ -79,7 +67,7 @@ test('Warm-up Sets are ignored: a light first Set under the bottom of the range 
 test("the reset weight is the last Session's training weight less 10%, rounded to the Increment", () => {
   expect(recommendStall(history(...calibration, best, flat('05'), flat('08'), flat('11')), 'bench-press', { ...bench, incrementKg: 5 })).toEqual({ weightKg: 55, reps: 8 });
   const heavy = (day: string) => session(`2026-10-${day}`, [[102.5, 6]]);
-  expect(recommendStall(history(...calibration, heavy('05'), heavy('08')), 'bench-press', bench)).toEqual({ weightKg: 92.5, reps: 8 });
+  expect(recommendStall(history(...calibration, heavy('05'), heavy('08'), heavy('11'), heavy('14')), 'bench-press', bench)).toEqual({ weightKg: 92.5, reps: 8 });
 });
 
 test('Custom Exercises and Exercises never done are never Stalled', () => {
@@ -133,27 +121,19 @@ test('a weighted bodyweight Exercise that stops improving drops its added weight
 const pullUpCalibration = [pullUpSession('2026-09-26', [[5, 8]]), pullUpSession('2026-09-28', [[5, 8]])];
 
 test('the added weight never drops below zero', () => {
-  const miss = (day: string) => pullUpSession(`2026-10-${day}`, [[5, 5]]);
-  expect(recommendStall(withBodyweight(80, ...pullUpCalibration, miss('05'), miss('08')), 'pull-up', pullUps)).toEqual({ weightKg: 0, reps: 6 });
+  const miss = (day: string) => pullUpSession(`2026-10-${day}`, [[5, 8]]);
+  expect(recommendStall(withBodyweight(80, ...pullUpCalibration, miss('05'), miss('08'), miss('11')), 'pull-up', pullUps)).toEqual({ weightKg: 0, reps: 6 });
 });
 
 test('a bodyweight Exercise with no added weight has nothing to drop, so no Stall', () => {
-  const miss = (day: string) => pullUpSession(`2026-10-${day}`, [[0, 4]]);
-  expect(recommendStall(withBodyweight(80, ...pullUpCalibration, miss('05'), miss('08')), 'pull-up', pullUps)).toBeUndefined();
+  const miss = (day: string) => pullUpSession(`2026-10-${day}`, [[0, 8]]);
+  expect(recommendStall(withBodyweight(80, ...pullUpCalibration, miss('05'), miss('08'), miss('11')), 'pull-up', pullUps)).toBeUndefined();
 });
 
 test('without a bodyweight on record a bodyweight Exercise cannot be judged, so no Stall', () => {
   const flatPullUp = (day: string) => pullUpSession(`2026-10-${day}`, [[20, 8]]);
   const noBodyweight = history(pullUpSession('2026-10-01', [[20, 9]]), flatPullUp('05'), flatPullUp('08'), flatPullUp('11'));
   expect(recommendStall(noBodyweight, 'pull-up', pullUps)).toBeUndefined();
-});
-
-test("Calibration Sessions can't count toward a Stall: two Sessions under the bottom of the range are not Stalled, two more past Calibration are", () => {
-  const rdl = (day: string) => session(`2026-10-${day}`, [[100, 5]], 'romanian-deadlift');
-  const rdlRule = { repMin: 6, repMax: 10, incrementKg: 2.5 };
-  expect(recommendStall(history(rdl('05'), rdl('08')), 'romanian-deadlift', rdlRule)).toBeUndefined();
-  expect(recommendStall(history(rdl('05'), rdl('08'), rdl('11')), 'romanian-deadlift', rdlRule)).toBeUndefined();
-  expect(recommendStall(history(rdl('05'), rdl('08'), rdl('11'), rdl('14')), 'romanian-deadlift', rdlRule)).toEqual({ weightKg: 90, reps: 6 });
 });
 
 test('the e1RM trigger needs three failing Sessions past Calibration: four Sessions with the same best are not Stalled, five are', () => {
