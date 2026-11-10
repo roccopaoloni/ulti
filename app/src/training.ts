@@ -678,6 +678,22 @@ export async function openTraining(userId: string, options: Options) {
       await write({ id: crypto.randomUUID(), kind: 'saveRoutine', routine: { id, days, updatedAt: stamp() } });
     },
 
+    // Accepts a Stall's advice (spec: Stall): the Exercise's Rep Range changes to the new one on the
+    // Routine Day the Session in progress came from, and on that Session's plan, as an ordinary
+    // Routine edit. Other Days keep theirs.
+    async switchRepRange(sessionId: string, exerciseId: string, repMin: number, repMax: number) {
+      const inProgress = await db.get('state', 'sessionInProgress');
+      const dayId = (await db.get('sessions', sessionId))?.routineDayId;
+      const routine = await this.routine();
+      if (inProgress?.sessionId !== sessionId || !dayId || !routine) return;
+      const switched = (exercise: RoutineExercise) => (exercise.exerciseId === exerciseId ? { ...exercise, repMin, repMax } : exercise);
+      const days = routine.days.map((day) => (day.id === dayId ? { ...day, exercises: day.exercises.map(switched) } : day));
+      await write(
+        { id: crypto.randomUUID(), kind: 'saveRoutine', routine: { id: routine.id, days, updatedAt: stamp() } },
+        { ...inProgress, plan: inProgress.plan?.map(switched) },
+      );
+    },
+
     // Whether the lifter said they don't follow a routine. Saving a Routine clears it.
     async followsNoRoutine() {
       return (await db.get('noRoutine', 'choice'))?.value ?? false;

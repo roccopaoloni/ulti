@@ -762,6 +762,37 @@ test('a Routine saved offline shows at once, and editing it later sends the same
   training.close();
 });
 
+test("switching a Stall's Rep Range changes that Exercise on that Routine Day only, and reaches the server as a Routine edit", async () => {
+  const network = server();
+  network.offline = true;
+  const phone = anasPhone(network);
+  const training = await phone.open();
+  const otherPush = { id: 'push-2', name: 'Push 2', exercises: [{ exerciseId: 'bench-press', sets: 3, repMin: 8, repMax: 12 }] };
+  await training.saveRoutine([pushDay, otherPush, pullDay]);
+  const session = await training.startSession('push');
+
+  await training.switchRepRange(session.id, 'bench-press', 6, 8);
+
+  const days = (await training.routine())!.days;
+  expect(days.find(({ id }) => id === 'push')!.exercises).toEqual([{ exerciseId: 'bench-press', sets: 3, repMin: 6, repMax: 8 }]);
+  expect(days.find(({ id }) => id === 'push-2')).toEqual(otherPush);
+  expect(days.find(({ id }) => id === 'pull')).toEqual(pullDay);
+  // The Session in progress now targets the new range...
+  expect((await training.sessionInProgress())!.plan).toEqual([{ exerciseId: 'bench-press', sets: 3, repMin: 6, repMax: 8 }]);
+  // ...and so does the next Session from that Day.
+  await training.finishSession(session.id);
+  await training.startSession('push');
+  expect((await training.sessionInProgress())!.plan).toEqual([{ exerciseId: 'bench-press', sets: 3, repMin: 6, repMax: 8 }]);
+
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  network.offline = false;
+  phone.connectivity.dispatchEvent(new Event('online'));
+  await vi.waitFor(() => expect(network.batches).toHaveLength(1));
+  const sent = routines(network.batches[0]);
+  expect(sent.at(-1)!.days.find(({ id }) => id === 'push')!.exercises[0]).toMatchObject({ repMin: 6, repMax: 8 });
+  training.close();
+});
+
 test('a Session started from a Routine Day sets up its Exercises with their Sets and Rep Range, and an unplanned one starts empty', async () => {
   const network = server();
   network.offline = true;
