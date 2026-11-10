@@ -36,6 +36,7 @@ export function ExerciseBlock({
   onRir,
   onUnlog,
   onIncrement,
+  onSwitchRepRange,
 }: {
   name: string;
   training: Training;
@@ -69,6 +70,8 @@ export function ExerciseBlock({
   // Un-logs a Set: it is removed.
   onUnlog: (setId: string) => Promise<void>;
   onIncrement: (incrementKg: number) => Promise<void>;
+  // Accepts a Stall: the Exercise's Rep Range on this Routine Day becomes the suggested one.
+  onSwitchRepRange: (repMin: number, repMax: number) => Promise<void>;
 }) {
   const { t, language, formatNumber } = useI18n();
   const decimalKey = language === 'es' ? ',' : '.';
@@ -78,11 +81,14 @@ export function ExerciseBlock({
   // rows are pre-filled once. Accepting is leaving the pre-filled weight; dismissing restores the last Sets.
   const [loaded, setLoaded] = useState<{ last: Planned[]; advice: Recommendation | undefined } | null>(null);
   const [dismissed, setDismissed] = useState(false);
+  // A Stall switched to its new Rep Range: the advice stays on the rows, since judged on the new range it could ask again.
+  const [switched, setSwitched] = useState(false);
   useEffect(() => {
+    if (switched) return;
     Promise.all([training.lastSets(exerciseId), target ? training.recommendation(exerciseId, target) : undefined]).then(([last, advice]) =>
       setLoaded({ last, advice }),
     );
-  }, [training, exerciseId, target, incrementKg]);
+  }, [training, exerciseId, target, incrementKg, switched]);
   // In a Deload Week the advice waits: the rows are the regular Session's, about half and 10% lighter.
   const advice = dismissed || deload ? undefined : loaded?.advice;
   const heavier = advice?.kind === 'goHeavier' ? advice : undefined;
@@ -161,11 +167,21 @@ export function ExerciseBlock({
           </button>
         </p>
       )}
-      {stall && sets.length === 0 && (
+      {stall && target && !switched && sets.length === 0 && (
         <p className="go-heavier">
-          <span className="badge">↓ {t.session.stall(formatNumber(kgToUnits(stall.weightKg, units), 2), units)}</span>
+          <span className="badge">{t.session.stall(stall.repMin, stall.repMax)}</span>
+          <button
+            type="button"
+            className="btn-link inline"
+            onClick={async () => {
+              await onSwitchRepRange(stall.repMin, stall.repMax);
+              setSwitched(true);
+            }}
+          >
+            {t.session.switchRepRange}
+          </button>
           <button type="button" className="btn-link inline" onClick={() => setDismissed(true)}>
-            {t.session.dismissStall}
+            {t.session.keepRepRange(target.repMin, target.repMax)}
           </button>
         </p>
       )}
