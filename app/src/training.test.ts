@@ -947,6 +947,25 @@ async function benchSession(training: Awaited<ReturnType<typeof openTraining>>, 
   await training.finishSession(session.id);
 }
 
+const fatigueCatalog = [
+  { ...benchCatalog[0]!, pattern: 'horizontal-press' as const },
+  { id: 'back-squat', nameEn: 'Back squat', nameEs: 'Sentadilla', equipment: 'barbell', custom: false, incrementKg: 5, bodyweight: false, muscle: 'quads' as const, pattern: 'squat' as const },
+];
+// Ana's bench press and squat, two different Movement Patterns, both Fatigued: two Calibration
+// Sessions, a best, then two Sessions 5% under it. With a Routine, it holds both lifts.
+async function fatigueSessions(training: Awaited<ReturnType<typeof openTraining>>, withRoutine = true) {
+  await training.saveExercises(fatigueCatalog);
+  if (withRoutine) {
+    await training.saveRoutine([{ id: 'full', name: 'Full', exercises: [{ exerciseId: 'bench-press', sets: 3, repMin: 8, repMax: 12 }, { exerciseId: 'back-squat', sets: 3, repMin: 8, repMax: 12 }] }]);
+  }
+  for (const weightKg of [60, 60, 60, 57, 57]) {
+    const session = await training.startSession();
+    await training.logSet(session.id, 'bench-press', weightKg, 10);
+    await training.logSet(session.id, 'back-squat', weightKg, 10);
+    await training.finishSession(session.id);
+  }
+}
+
 test("a Set's RIR logged offline shows at once and goes out as a later write of the same Set", async () => {
   const network = server();
   network.offline = true;
@@ -1182,13 +1201,13 @@ test('a suggested Deload Week can be dismissed or accepted, both are stored, and
   network.offline = true;
   const phone = anasPhone(network);
   const first = await phone.open();
-  await benchSession(first, [[60, 10], [60, 10]]);
+  await fatigueSessions(first);
   expect((await first.deload()).suggestion).toBeUndefined();
   first.close();
 
-  // Eight weeks after the first Session, the app nudges.
+  // Weeks after the first Session, the app suggests one.
   const nudged = await phone.open(Date.UTC(2026, 11, 14, 21, 5));
-  expect((await nudged.deload()).suggestion).toBe('time');
+  expect((await nudged.deload()).suggestion).toMatchObject({ reason: 'fatigue', exercises: ['bench-press', 'back-squat'] });
   await nudged.answerDeload(false);
   expect((await nudged.deload()).suggestion).toBeUndefined();
   nudged.close();
@@ -1197,7 +1216,7 @@ test('a suggested Deload Week can be dismissed or accepted, both are stored, and
   quiet.close();
 
   const again = await phone.open(Date.UTC(2027, 0, 11, 21, 5));
-  expect((await again.deload()).suggestion).toBe('time');
+  expect((await again.deload()).suggestion).toMatchObject({ reason: 'fatigue', exercises: ['bench-press', 'back-squat'] });
   await again.answerDeload(true);
   expect(await again.deload()).toMatchObject({ active: true, suggestion: undefined });
 
@@ -1206,10 +1225,33 @@ test('a suggested Deload Week can be dismissed or accepted, both are stored, and
   await vi.waitFor(() => expect(network.batches.length).toBeGreaterThan(0));
   const deloads = network.batches.flat().flatMap((m) => (m.kind === 'saveDeload' ? [m.deload] : []));
   expect(deloads.map(({ week, origin, reason, status }) => ({ week, origin, reason, status }))).toEqual([
-    { week: '2026-12-14', origin: 'suggested', reason: 'time', status: 'dismissed' },
-    { week: '2027-01-11', origin: 'suggested', reason: 'time', status: 'accepted' },
+    { week: '2026-12-14', origin: 'suggested', reason: 'fatigue', status: 'dismissed' },
+    { week: '2027-01-11', origin: 'suggested', reason: 'fatigue', status: 'accepted' },
   ]);
   again.close();
+});
+
+test('the Deload Week suggestion looks at the Exercises trained in the last four weeks when there is no Routine, and hides the advice of the lifts it names', async () => {
+  const network = server();
+  network.offline = true;
+  const phone = anasPhone(network);
+  const first = await phone.open();
+  await fatigueSessions(first, false);
+  first.close();
+
+  // The last Sessions were four weeks ago: still counted that day, not the day after.
+  const training = await phone.open(Date.UTC(2026, 10, 16, 21, 5));
+  expect((await training.deload()).suggestion).toEqual({ reason: 'fatigue', exercises: ['bench-press', 'back-squat'] });
+  expect(await training.recommendation('bench-press', benchRange)).toBeUndefined();
+  expect(await training.recommendation('back-squat', benchRange)).toBeUndefined();
+  // Dismissing the suggestion brings the per-Exercise Fatigue badge back.
+  await training.answerDeload(false);
+  expect(await training.recommendation('bench-press', benchRange)).toMatchObject({ kind: 'fatigue' });
+  training.close();
+
+  const later = await phone.open(Date.UTC(2026, 10, 17, 21, 5));
+  expect((await later.deload()).suggestion).toBeUndefined();
+  later.close();
 });
 
 test('Deload Week Sessions are skipped when the next Session is pre-filled and when it is advised to go heavier', async () => {
@@ -1313,7 +1355,7 @@ test('a Deload Week the lifter started and cancelled leaves no trace: a suggesti
   network.offline = true;
   const phone = anasPhone(network);
   const first = await phone.open();
-  await benchSession(first, [[60, 10], [60, 10]]);
+  await fatigueSessions(first);
   first.close();
 
   const mistap = await phone.open(Date.UTC(2026, 11, 7, 21, 5));
@@ -1322,7 +1364,7 @@ test('a Deload Week the lifter started and cancelled leaves no trace: a suggesti
   mistap.close();
 
   const later = await phone.open(Date.UTC(2026, 11, 14, 21, 5));
-  expect((await later.deload()).suggestion).toBe('time');
+  expect((await later.deload()).suggestion).toMatchObject({ reason: 'fatigue', exercises: ['bench-press', 'back-squat'] });
   later.close();
 });
 
@@ -1331,11 +1373,11 @@ test('a suggested Deload Week that is accepted and then cancelled is not suggest
   network.offline = true;
   const phone = anasPhone(network);
   const first = await phone.open();
-  await benchSession(first, [[60, 10], [60, 10]]);
+  await fatigueSessions(first);
   first.close();
 
   const training = await phone.open(Date.UTC(2026, 11, 14, 21, 5));
-  expect((await training.deload()).suggestion).toBe('time');
+  expect((await training.deload()).suggestion).toMatchObject({ reason: 'fatigue', exercises: ['bench-press', 'back-squat'] });
   await training.answerDeload(true);
   await training.cancelDeload();
   expect(await training.deload()).toMatchObject({ active: false, suggestion: undefined });
