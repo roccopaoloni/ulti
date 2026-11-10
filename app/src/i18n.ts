@@ -1357,7 +1357,7 @@ const es: Messages = {
   deload: {
     active: 'Semana de descarga: más o menos la mitad de las series con un 10% menos de peso',
     fatigue: (lifts, streak) =>
-      `Tenés fatiga en ${lifts.join(' y ')}${streak ? ' después de 6 semanas de entrenamiento duro' : ''}. Hacé una Semana de descarga para recuperarte.`,
+      `Tu ${lifts.join(' y tu ')} ${lifts.length > 1 ? 'muestran' : 'muestra'} señales de fatiga${streak ? ' después de 6 semanas de entrenamiento duro' : ''}. Hacé una Semana de descarga para recuperarte.`,
     accept: 'Empezar Semana de descarga',
     dismiss: 'Ahora no',
     start: 'Empezar una Semana de descarga',
