@@ -43,6 +43,15 @@ test("Ana's Routine syncs, and of two edits the later one wins whichever arrives
   expect(await routinesOf(ana)).toEqual([{ id, days: [push, pull] }]);
 });
 
+test('a Rep Range switched by a Stall keeps its date through the sync', async () => {
+  const ana = await lifter('ana');
+  const id = crypto.randomUUID();
+  const switched = { ...push, exercises: [{ exerciseId: 'bench-press', sets: 3, repMin: 6, repMax: 8, rangeSince: '2026-11-04' }] };
+
+  expect(await sync(ana, [saveRoutine(id, [switched], '2026-11-04T10:00:00.000Z')])).toEqual({ rejected: [] });
+  expect(await routinesOf(ana)).toEqual([{ id, days: [switched] }]);
+});
+
 test("a Session started from a Routine Day keeps which Day it was", async () => {
   const ana = await lifter('ana');
   const sessionId = crypto.randomUUID();

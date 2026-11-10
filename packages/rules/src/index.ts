@@ -674,7 +674,8 @@ export const incrementInUnits = (incrementKg: number, units: Units) =>
   units === 'kg' ? incrementKg : Math.max(2.5, Math.round(kgToUnits(incrementKg, units) / 2.5) * 2.5);
 
 // A Routine: its Sessions (Routine Days), each listing Exercises with a number of Sets and a Rep Range.
-export type RoutineExercise = { exerciseId: string; sets: number; repMin: number; repMax: number };
+// `rangeSince` is the local date a Stall's Switch moved the Rep Range, if one did.
+export type RoutineExercise = { exerciseId: string; sets: number; repMin: number; repMax: number; rangeSince?: string };
 // `colour` is the Day's slot in the accent rotation. It is stored on the Day so it stays with the
 // Day when Days are reordered and syncs with the Routine; Routines saved before it lack it.
 export type RoutineDay = { id: string; name: string; colour?: number; exercises: RoutineExercise[] };
@@ -776,7 +777,8 @@ export * from './rank.ts';
 export * from './routine-link.ts';
 
 // What an Exercise is trained to in a Routine, and the Increment that applies to it.
-export type GoHeavierRule = { repMin: number; repMax: number; incrementKg: number };
+// `since` is when the Rep Range was last switched by a Stall: only Sessions from then on can fail it.
+export type GoHeavierRule = { repMin: number; repMax: number; incrementKg: number; since?: string };
 export type GoHeavier = { weightKg: number; reps: number; incrementKg: number };
 
 // Double progression (spec: Go heavier): once every Working Set of the Exercise's last Session
@@ -878,11 +880,15 @@ function bestBeforeWindow(judged: Judged, position: number): Judged {
   return judged.slice(from, position);
 }
 
-// A Session's figure against an earlier one's: both RIR-adjusted when both logged RIR on their top
-// Set, else both plain e1RM (RIR is optional, so a skipped chip is never invented).
-function figures(session: Judged[number], before: Judged[number]): { now: number; then: number } {
-  const bothRir = session.adjusted !== undefined && before.adjusted !== undefined;
-  return bothRir ? { now: session.adjusted!, then: before.adjusted! } : { now: session.plain, then: before.plain };
+// What a Session is compared with: the figures of the Sessions in its window. Both sides are
+// RIR-adjusted when the Session logged RIR, using the window's Sessions that did too (the others can't
+// be put on that scale, so they are left out); with no RIR on the Session, or on any window Session,
+// everything is plain e1RM. RIR is optional, so a skipped chip is never invented.
+function comparison(session: Judged[number], window: Judged): { now: number; before: { session: Judged[number]; figure: number }[] } {
+  const adjusted = session.adjusted === undefined ? [] : window.filter((before) => before.adjusted !== undefined);
+  return adjusted.length > 0
+    ? { now: session.adjusted!, before: adjusted.map((before) => ({ session: before, figure: before.adjusted! })) }
+    : { now: session.plain, before: window.map((before) => ({ session: before, figure: before.plain })) };
 }
 
 // Fatigue on an Exercise (spec: Fatigue), judged on its Working Sets only. The Calibration Sessions
@@ -890,7 +896,8 @@ function figures(session: Judged[number], before: Judged[number]): { now: number
 // before". It is Fatigued when either:
 // - (A) effort creep: its last 3 Sessions with RIR logged were trained to the same top weight and
 //   their average RIR fell each time, or
-// - (B) regression: each of its last 2 Sessions is at least 3% under its best before.
+// - (B) regression: each of its last 2 Sessions is at least 3% under the average of its best before
+//   window (the up to 6 Sessions before it).
 // The suggestion is a reset about 10% lighter.
 export function recommendFatigue(history: TrainingHistory, exercise: string, rule: GoHeavierRule): Stall | undefined {
   const done = exerciseSessions(history, exercise);
@@ -904,21 +911,20 @@ export function recommendFatigue(history: TrainingHistory, exercise: string, rul
     creep.every(({ rirTopKg }) => rirTopKg === creep[0].rirTopKg) &&
     creep.every(({ averageRir }, i) => i === 0 || averageRir < creep[i - 1].averageRir);
 
-  const underBestBefore = (position: number) =>
-    bestBeforeWindow(judged, position).some((before) => {
-      const { now, then } = figures(judged[position], before);
-      return now <= then * (1 - FATIGUE_REGRESSION);
-    });
+  const underAverageBefore = (position: number) => {
+    const { now, before } = comparison(judged[position], bestBeforeWindow(judged, position));
+    return before.length > 0 && now <= (before.reduce((sum, { figure }) => sum + figure, 0) / before.length) * (1 - FATIGUE_REGRESSION);
+  };
   const lastPositions = judged.slice(-FATIGUE_REGRESSION_SESSIONS).map((_, i) => judged.length - FATIGUE_REGRESSION_SESSIONS + i);
   const regression =
-    judged.length >= FATIGUE_REGRESSION_SESSIONS && past(judged.slice(-FATIGUE_REGRESSION_SESSIONS)) && lastPositions.every(underBestBefore);
+    judged.length >= FATIGUE_REGRESSION_SESSIONS && past(judged.slice(-FATIGUE_REGRESSION_SESSIONS)) && lastPositions.every(underAverageBefore);
 
   return effortCreep || regression ? resetAdvice(done, rule) : undefined;
 }
 
-// A Stall is at least this many Sessions without beating the best before, the first to the last
-// spanning at least this many days: 3 weeks counted from date to date, so a Monday and the Monday 3
-// weeks on qualify, and 20 days do not.
+// A Stall is at least this many Sessions without beating the best before, the last at least this
+// many days after the Session that set the best (or after the Rep Range was switched, if later): 3
+// weeks counted from date to date, so a Monday and the Monday 3 weeks on qualify, and 20 days do not.
 const STALL_SESSIONS = 3;
 const STALL_DAYS = 21;
 // The remedy puts the new Rep Range's bottom at this many reps in reserve.
@@ -947,31 +953,35 @@ function nextRepRange({ repMin, repMax }: GoHeavierRule): readonly [number, numb
 // for weeks while the lifter is not Fatigued, so the stimulus has gone stale. Judged on the same
 // figure, best-before window and Calibration handling as Fatigue. It is Stalled when the Sessions
 // at the end of its history that are past Calibration and each fail to beat their best before (equal
-// does not beat it; a Session with none before it cannot fail) number at least 3 and span at least
-// 21 days, and it is not Fatigued.
+// does not beat it; a Session with none before it cannot fail) number at least 3, counting only those
+// on or after `rule.since` (the best before may reach further back), and the last Session is at least
+// 21 days after the Session just before them, the one that set the best, or after `rule.since`,
+// whichever is later (the best before window alone is only 6 Sessions, under 3 weeks for someone
+// training 3 times a week). It is not Stalled while Fatigued.
 // The suggestion is the next Rep Range, at the weight that leaves RIR 2 at its bottom from the recent
 // best, rounded down to the Increment. The recent best is the best figure over the last Session's
-// window and itself (RIR-adjusted when the last Session logged RIR, plain otherwise), so a Stall after
-// a Rep Range shift is judged against the old best. A bodyweight Exercise works on bodyweight plus
-// the added weight, which is never below zero.
+// window and itself. A bodyweight Exercise works on bodyweight plus the added weight, which is never
+// below zero.
 export function recommendStall(history: TrainingHistory, exercise: string, rule: GoHeavierRule): RepRangeShift | undefined {
   const judged = judgedSessions(exerciseSessions(history, exercise));
-  const failedToBeat = (position: number) =>
-    judged[position].index >= CALIBRATION_SESSIONS &&
-    bestBeforeWindow(judged, position).some((before) => {
-      const { now, then } = figures(judged[position], before);
-      return now <= then;
-    });
+  const failedToBeat = (position: number) => {
+    const { now, before } = comparison(judged[position], bestBeforeWindow(judged, position));
+    return judged[position].index >= CALIBRATION_SESSIONS && before.length > 0 && now <= Math.max(...before.map(({ figure }) => figure));
+  };
   let first = judged.length;
   while (first > 0 && failedToBeat(first - 1)) first--;
-  const run = judged.slice(first);
-  if (run.length < STALL_SESSIONS) return undefined;
-  const days = (Date.parse(`${run.at(-1)!.localDate}T00:00:00Z`) - Date.parse(`${run[0].localDate}T00:00:00Z`)) / 86_400_000;
+  const failing = judged.slice(first).filter(({ localDate }) => rule.since === undefined || localDate >= rule.since);
+  if (failing.length < STALL_SESSIONS) return undefined;
+
+  const lastPosition = judged.length - 1;
+  const last = judged[lastPosition];
+  const setTheBest = judged[Math.max(0, first - 1)].localDate;
+  const from = rule.since !== undefined && rule.since > setTheBest ? rule.since : setTheBest;
+  const days = (Date.parse(`${last.localDate}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000;
   if (days < STALL_DAYS || recommendFatigue(history, exercise, rule)) return undefined;
 
-  const last = judged[judged.length - 1];
-  const window = [...bestBeforeWindow(judged, judged.length - 1), last];
-  const bestE1rm = Math.max(...window.map((session) => (last.adjusted !== undefined ? session.adjusted : session.plain) ?? session.plain));
+  const { now, before } = comparison(last, bestBeforeWindow(judged, lastPosition));
+  const bestE1rm = Math.max(now, ...before.map(({ figure }) => figure));
   const [repMin, repMax] = nextRepRange(rule);
   const addedKg = Math.max(0, bestE1rm / (1 + (repMin + STALL_RIR) / 30) - last.bodyweightKg);
   // Rounded down to the Increment (the nudge keeps a float like 74.999999 from dropping a step).
@@ -998,14 +1008,11 @@ const DELOAD_WEIGHT = 0.9;
 // suggestion keeps quiet for as long, as do the first this many weeks of training (counted from the
 // week of the first Session). The lifter's own start is never limited.
 export const DELOAD_GAP_WEEKS = 4;
-// The gentle nudge comes after this many weeks without a Deload Week.
-export const DELOAD_NUDGE_WEEKS = 8;
-// The Stalled Exercises, or Exercises with falling RIR, that call for a Deload Week.
-const DELOAD_MIN_EXERCISES = 2;
-// RIR counts as falling after this many Sessions of the Exercise with RIR logged.
-const RIR_FALLING_SESSIONS = 3;
+// A Deload Week is suggested when Fatigue shows on Exercises of this many different compound
+// Movement Patterns (ADR 0009).
+const DELOAD_MIN_PATTERNS = 2;
 
-export type DeloadReason = 'stalled' | 'rir' | 'time';
+export type DeloadReason = 'fatigue';
 
 const weeksBetween = (from: string, to: string) => Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / (7 * 86_400_000));
 
@@ -1029,39 +1036,28 @@ export function deloadedLastWeek(history: TrainingHistory, today: string): boole
   return deloadedWeeks(history).some((week) => weeksBetween(week, weekStart(today)) === 1);
 }
 
-// RIR "keeps falling at the same weights" for an Exercise when its last three regular Sessions with
-// RIR logged were all trained to the same top Working Set weight and their average RIR got lower
-// each time.
-function rirFalling(history: TrainingHistory, exercise: string): boolean {
-  const sessions = regularSessions(history)
-    .map((session) => workingSets(session).filter((set) => set.exercise === exercise && !set.custom && set.rir !== undefined))
-    .filter((working) => working.length > 0)
-    .slice(-RIR_FALLING_SESSIONS);
-  if (sessions.length < RIR_FALLING_SESSIONS) return false;
-  const topWeights = sessions.map((working) => Math.max(...working.map((set) => set.weightKg)));
-  const averages = sessions.map((working) => working.reduce((sum, set) => sum + set.rir!, 0) / working.length);
-  return topWeights.every((weight) => weight === topWeights[0]) && averages.every((average, i) => i === 0 || average < averages[i - 1]!);
-}
-
 // Why a Deload Week is recommended in the week of the local date, if it is (spec: Deload Week):
-// two or more of the Routine's Exercises Stalled, RIR falling across two or more, or eight weeks
-// without one (counted from the first Session when there never was one). None is suggested within
-// DELOAD_GAP_WEEKS of the week of the first Session. `dismissed` holds the
+// Fatigue on Exercises of two or more different compound Movement Patterns among `exercises`, which
+// are the Routine's, or the ones trained lately with no Routine. Two Fatigued presses are one
+// pattern; Stalls, isolation and Custom Exercises (no pattern) do not count. `exercises` in the
+// answer are the Fatigued compound ones, one per pattern first, so the first two can be named. None
+// is suggested within DELOAD_GAP_WEEKS of the week of the first Session. `dismissed` holds the
 // Mondays of the weeks the lifter dismissed a suggestion in.
 export function recommendDeload(
   history: TrainingHistory,
   today: string,
-  routine: { exercise: string; rule: GoHeavierRule }[],
+  exercises: { exercise: string; rule: GoHeavierRule; pattern?: MovementPattern | null }[],
   dismissed: readonly string[] = [],
-): DeloadReason | undefined {
+): { reason: DeloadReason; exercises: string[] } | undefined {
   const week = weekStart(today);
   if ((history.deloadWeeks ?? []).some((started) => weeksBetween(started, week) < DELOAD_GAP_WEEKS)) return undefined;
   if (dismissed.some((quiet) => weeksBetween(quiet, week) < DELOAD_GAP_WEEKS)) return undefined;
   if (history.sessions[0] && weeksBetween(weekStart(history.sessions[0].localDate), week) < DELOAD_GAP_WEEKS) return undefined;
-  if (routine.filter(({ exercise, rule }) => recommendStall(history, exercise, rule)).length >= DELOAD_MIN_EXERCISES) return 'stalled';
-  if (routine.filter(({ exercise }) => rirFalling(history, exercise)).length >= DELOAD_MIN_EXERCISES) return 'rir';
-  const since = deloadedWeeks(history).at(-1) ?? (history.sessions[0] && weekStart(history.sessions[0].localDate));
-  return since !== undefined && weeksBetween(since, week) >= DELOAD_NUDGE_WEEKS ? 'time' : undefined;
+  const fatigued = exercises.filter(({ exercise, rule, pattern }) => isCompound(pattern) && recommendFatigue(history, exercise, rule));
+  const patterns = new Set(fatigued.map(({ pattern }) => pattern));
+  if (patterns.size < DELOAD_MIN_PATTERNS) return undefined;
+  const first = fatigued.filter(({ pattern }, i) => fatigued.findIndex((other) => other.pattern === pattern) === i);
+  return { reason: 'fatigue', exercises: [...first, ...fatigued.filter((lift) => !first.includes(lift))].map(({ exercise }) => exercise) };
 }
 
 // The rows of an Exercise's Sets in a Deload Week (spec: Deload Week), from the rows a regular

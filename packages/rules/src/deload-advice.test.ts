@@ -2,11 +2,14 @@ import { expect, test } from 'vitest';
 import { canStartDeload, deloadedLastWeek, deloadedWeeks, deloadRows, recommendDeload, type Session, type TrainingHistory } from './index.ts';
 
 const rule = { repMin: 8, repMax: 12, incrementKg: 2.5 };
-// The Routine's catalog Exercises, with their Rep Ranges and Increments.
+// The Routine's catalog Exercises, with their Rep Ranges, Increments and Movement Patterns.
 const routine = [
-  { exercise: 'bench-press', rule },
-  { exercise: 'back-squat', rule },
-  { exercise: 'overhead-press', rule },
+  { exercise: 'bench-press', rule, pattern: 'horizontal-press' as const },
+  { exercise: 'incline-bench-press', rule, pattern: 'horizontal-press' as const },
+  { exercise: 'back-squat', rule, pattern: 'squat' as const },
+  { exercise: 'overhead-press', rule, pattern: 'vertical-press' as const },
+  { exercise: 'barbell-curl', rule, pattern: 'isolation' as const },
+  { exercise: 'custom-dips', rule, pattern: null },
 ];
 
 // A Session of one Exercise, given as the [weightKg, reps, rir] of each Set (all one weight, so all Working Sets).
@@ -18,84 +21,60 @@ function session(localDate: string, exercise: string, sets: [number, number, num
 }
 const history = (sessions: Session[], deloadWeeks: string[] = []): TrainingHistory => ({ userId: 'ana', sessions, weeklyTargets: [], deloadWeeks });
 
-// A Stall for the Exercise: two Calibration Sessions, then four equal ones over 3 weeks.
+// Fatigue for the Exercise: two Calibration Sessions, a best, then two Sessions 5% under it.
+const fatiguedSessions = (exercise: string) => [
+  session('2026-08-03', exercise, [[60, 10]]),
+  session('2026-08-05', exercise, [[60, 10]]),
+  session('2026-09-09', exercise, [[60, 10]]),
+  session('2026-09-14', exercise, [[57, 10]]),
+  session('2026-09-16', exercise, [[57, 10]]),
+];
+// A Stall, not Fatigue: flat below the best after the Calibration Sessions.
 const stalledSessions = (exercise: string) => [
   session('2026-08-03', exercise, [[60, 10]]),
   session('2026-08-05', exercise, [[60, 10]]),
-  session('2026-08-26', exercise, [[60, 10]]),
-  session('2026-09-02', exercise, [[60, 10]]),
-  session('2026-09-09', exercise, [[60, 10]]),
-  session('2026-09-16', exercise, [[60, 10]]),
+  session('2026-09-09', exercise, [[60, 9]]),
+  session('2026-09-14', exercise, [[60, 9]]),
+  session('2026-09-16', exercise, [[60, 9]]),
 ];
-// Same top weight in three Sessions with the RIR going 3, 2, 1 (falling), after a first Session more than four weeks back.
-const fallingRir = (exercise: string) => [
-  session('2026-08-03', exercise, [[60, 10]]),
-  session('2026-09-09', exercise, [[60, 10, 3]]),
-  session('2026-09-14', exercise, [[60, 10, 2]]),
-  session('2026-09-16', exercise, [[60, 10, 1]]),
-];
-// A progressing lifter with steady RIR, so no trigger fires.
+// A progressing lifter, so no trigger fires.
 const fine = (exercise: string) => [
+  session('2026-08-03', exercise, [[60, 10, 2]]),
   session('2026-09-09', exercise, [[60, 10, 2]]),
   session('2026-09-14', exercise, [[62.5, 10, 2]]),
   session('2026-09-16', exercise, [[65, 10, 2]]),
 ];
 
 const today = '2026-09-17';
+const fatigued = (...exercises: string[]) => history(exercises.flatMap(fatiguedSessions));
 
-test('two Stalled Exercises in the Routine recommend a Deload Week', () => {
-  const ana = history([...stalledSessions('bench-press'), ...stalledSessions('back-squat')]);
-  expect(recommendDeload(ana, today, routine)).toBe('stalled');
+test('Fatigue on two different compound Movement Patterns recommends a Deload Week, naming the lifts', () => {
+  expect(recommendDeload(fatigued('back-squat', 'bench-press'), today, routine)).toEqual({ reason: 'fatigue', exercises: ['bench-press', 'back-squat'] });
 });
 
-test('one Stalled Exercise is not enough', () => {
-  const ana = history([...stalledSessions('bench-press'), ...fine('back-squat'), ...fine('overhead-press')]);
-  expect(recommendDeload(ana, today, routine)).toBeUndefined();
+test('two Fatigued Exercises of the same pattern are one pattern, which is not enough', () => {
+  expect(recommendDeload(fatigued('bench-press', 'incline-bench-press'), today, routine)).toBeUndefined();
 });
 
-test('Stalled Exercises outside the Routine, or Custom ones, do not count', () => {
-  const ana = history([...stalledSessions('bench-press'), ...stalledSessions('deadlift')]);
-  expect(recommendDeload(ana, today, routine)).toBeUndefined();
+test('a third Fatigued lift of an already named pattern comes after one lift per pattern', () => {
+  const ana = fatigued('incline-bench-press', 'bench-press', 'back-squat');
+  expect(recommendDeload(ana, today, routine)).toEqual({ reason: 'fatigue', exercises: ['bench-press', 'back-squat', 'incline-bench-press'] });
 });
 
-test('RIR falling at the same weights in two Exercises recommends a Deload Week', () => {
-  const ana = history([...fallingRir('bench-press'), ...fallingRir('back-squat')]);
-  expect(recommendDeload(ana, today, routine)).toBe('rir');
+test('Fatigue on isolation or Custom Exercises does not count', () => {
+  expect(recommendDeload(fatigued('back-squat', 'barbell-curl'), today, routine)).toBeUndefined();
+  expect(recommendDeload(fatigued('back-squat', 'custom-dips'), today, routine)).toBeUndefined();
 });
 
-test('RIR falling in only one Exercise is not enough', () => {
-  const ana = history([...fallingRir('bench-press'), ...fine('back-squat')]);
-  expect(recommendDeload(ana, today, routine)).toBeUndefined();
+test('Stalls do not count, and neither does Fatigue on an Exercise outside the list', () => {
+  const stalled = history([...fatiguedSessions('back-squat'), ...stalledSessions('bench-press'), ...stalledSessions('overhead-press')]);
+  expect(recommendDeload(stalled, today, routine)).toBeUndefined();
+  expect(recommendDeload(fatigued('back-squat', 'deadlift'), today, routine)).toBeUndefined();
+  expect(recommendDeload(history([...fatiguedSessions('back-squat'), ...fine('bench-press')]), today, routine)).toBeUndefined();
 });
 
-test('RIR falling because the weight went up is not fatigue', () => {
-  const heavier = (exercise: string) => [
-    session('2026-09-09', exercise, [[60, 10, 3]]),
-    session('2026-09-14', exercise, [[62.5, 10, 2]]),
-    session('2026-09-16', exercise, [[65, 10, 1]]),
-  ];
-  expect(recommendDeload(history([...heavier('bench-press'), ...heavier('back-squat')]), today, routine)).toBeUndefined();
-});
-
-test('RIR must fall over three Sessions, not just two, and Sessions without RIR are skipped', () => {
-  const twoSessions = (exercise: string) => [session('2026-09-14', exercise, [[60, 10, 2]]), session('2026-09-16', exercise, [[60, 10, 1]])];
-  expect(recommendDeload(history([...twoSessions('bench-press'), ...twoSessions('back-squat')]), today, routine)).toBeUndefined();
-  const unlogged = (exercise: string) => [...fallingRir(exercise), session('2026-09-17', exercise, [[70, 10]])];
-  expect(recommendDeload(history([...unlogged('bench-press'), ...unlogged('back-squat')]), today, routine)).toBe('rir');
-});
-
-test('eight weeks since the last Deload Week nudges for another', () => {
-  // The last Deload Week began Monday 20 July; the week of 14 September is its 8th after.
-  const ana = history([session('2026-07-01', 'bench-press', [[60, 10, 2]]), ...fine('bench-press')], ['2026-07-20']);
-  expect(recommendDeload(ana, '2026-09-10', routine)).toBeUndefined();
-  expect(recommendDeload(ana, '2026-09-14', routine)).toBe('time');
-});
-
-test('with no Deload Week yet, the eight weeks count from the first Session', () => {
-  const sessions = [session('2026-07-22', 'bench-press', [[60, 10, 2]]), ...fine('bench-press')];
-  expect(recommendDeload(history(sessions), '2026-09-14', routine)).toBe('time');
-  expect(recommendDeload(history(sessions), '2026-09-13', routine)).toBeUndefined();
-  expect(recommendDeload(history([]), '2026-09-14', routine)).toBeUndefined();
+test('there is no suggestion from time alone', () => {
+  expect(recommendDeload(history(fine('bench-press')), '2027-03-01', routine)).toBeUndefined();
 });
 
 // A Deload Session: a Session marked when it was started in a Deload Week.
@@ -109,36 +88,20 @@ test('a week counts as deloaded if its Deload Week is accepted, or if it holds a
   expect(deloadedWeeks(ana)).toEqual(['2026-06-01', '2026-07-20', '2026-08-03']);
 });
 
-test('a Deload Week cancelled before any Deload Session leaves no trace for the eight-week clock', () => {
-  // A cancelled Deload Week is not in deloadWeeks (accepted only) and holds no Deload Session.
-  const sessions = [session('2026-07-22', 'bench-press', [[60, 10, 2]]), ...fine('bench-press')];
-  expect(deloadedWeeks(history(sessions))).toEqual([]);
-  expect(recommendDeload(history(sessions), '2026-09-13', routine)).toBeUndefined();
-  expect(recommendDeload(history(sessions), '2026-09-14', routine)).toBe('time');
-});
 
-test('a cancelled Deload Week that holds a Deload Session resets the eight-week clock', () => {
-  const sessions = [session('2026-07-06', 'bench-press', [[60, 10, 2]]), deloadSession('2026-08-05', 'bench-press'), ...fine('bench-press')];
-  // Eight weeks from the first Session would be 31 August; the Deload Session in the week of 3 August moves it to 28 September.
-  expect(recommendDeload(history(sessions), '2026-09-14', routine)).toBeUndefined();
-  expect(recommendDeload(history(sessions), '2026-09-28', routine)).toBe('time');
-});
-
-test('a Stall wins over the other reasons, and none is recommended inside four weeks of a Deload Week', () => {
-  const stalled = [...stalledSessions('bench-press'), ...stalledSessions('back-squat')];
-  const sessions = [session('2026-06-01', 'bench-press', [[60, 10, 2]]), ...stalled];
-  expect(recommendDeload(history(sessions), today, routine)).toBe('stalled');
+test('none is recommended inside four weeks of a Deload Week', () => {
+  const ana = fatigued('back-squat', 'bench-press');
   // A Deload Week three weeks earlier (and the one running now) suppress it.
-  expect(recommendDeload(history(sessions, ['2026-08-24']), today, routine)).toBeUndefined();
-  expect(recommendDeload(history(sessions, ['2026-09-14']), today, routine)).toBeUndefined();
-  // Four weeks on, it is allowed again; the deload Sessions are ignored by the Stall rule meanwhile.
-  expect(recommendDeload(history(sessions, ['2026-08-17']), today, routine)).toBe('stalled');
+  expect(recommendDeload({ ...ana, deloadWeeks: ['2026-08-24'] }, today, routine)).toBeUndefined();
+  expect(recommendDeload({ ...ana, deloadWeeks: ['2026-09-14'] }, today, routine)).toBeUndefined();
+  // Four weeks on, it is allowed again.
+  expect(recommendDeload({ ...ana, deloadWeeks: ['2026-08-17'] }, today, routine)?.reason).toBe('fatigue');
 });
 
 test('a dismissed suggestion stays quiet for four weeks', () => {
-  const ana = history([...stalledSessions('bench-press'), ...stalledSessions('back-squat')]);
+  const ana = fatigued('back-squat', 'bench-press');
   expect(recommendDeload(ana, today, routine, ['2026-08-24'])).toBeUndefined();
-  expect(recommendDeload(ana, today, routine, ['2026-08-17'])).toBe('stalled');
+  expect(recommendDeload(ana, today, routine, ['2026-08-17'])?.reason).toBe('fatigue');
 });
 
 test('a lifter can start a Deload Week any week it is not already on, however recent the last one', () => {
@@ -168,26 +131,20 @@ test('a Deload Week cancelled before any Session last week does not count as del
 
 // The first Session is in the week of Monday 26 October 2026: quiet in the weeks of 26 Oct, 2 Nov, 9 Nov
 // and 16 Nov, and free to suggest from the week of 23 Nov.
-test('no Deload Week is suggested in the first four weeks after the first Session: Stalled', () => {
-  const early = (exercise: string) =>
-    ['2026-10-27', '2026-10-29', '2026-10-30', '2026-11-06', '2026-11-13', '2026-11-20'].map((day) => session(day, exercise, [[60, 10]]));
+test('no Deload Week is suggested in the first four weeks after the first Session', () => {
+  const early = (exercise: string) => [
+    session('2026-10-27', exercise, [[60, 10]]),
+    session('2026-10-29', exercise, [[60, 10]]),
+    session('2026-11-03', exercise, [[60, 10]]),
+    session('2026-11-05', exercise, [[57, 10]]),
+    session('2026-11-10', exercise, [[57, 10]]),
+  ];
   const ana = history([...early('bench-press'), ...early('back-squat')]);
   expect(recommendDeload(ana, '2026-11-11', routine)).toBeUndefined();
   expect(recommendDeload(ana, '2026-11-22', routine)).toBeUndefined();
-  expect(recommendDeload(ana, '2026-11-23', routine)).toBe('stalled');
+  expect(recommendDeload(ana, '2026-11-23', routine)?.reason).toBe('fatigue');
 });
 
-test('no Deload Week is suggested in the first four weeks after the first Session: RIR falling', () => {
-  const early = (exercise: string) => [
-    session('2026-10-27', exercise, [[60, 10, 3]]),
-    session('2026-11-03', exercise, [[60, 10, 2]]),
-    session('2026-11-05', exercise, [[60, 10, 1]]),
-  ];
-  const ana = history([...early('bench-press'), ...early('back-squat')]);
-  expect(recommendDeload(ana, '2026-11-06', routine)).toBeUndefined();
-  expect(recommendDeload(ana, '2026-11-22', routine)).toBeUndefined();
-  expect(recommendDeload(ana, '2026-11-23', routine)).toBe('rir');
-});
 
 test('a Deload Week has about half the Sets at about 10% less weight, rounded to the Increment', () => {
   const rows = [

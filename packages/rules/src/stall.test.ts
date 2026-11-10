@@ -29,14 +29,24 @@ test('Sessions not beating the best before over 3 weeks are a Stall: the next Re
   expect(recommendStall(ana, 'bench-press', bench)).toEqual({ weightKg: 77.5, reps: 6, repMin: 6, repMax: 8 });
 });
 
-test('3 Sessions over exactly 3 weeks (21 days, first to last) are a Stall; 20 days are not', () => {
-  expect(recommendStall(history(...calibration, best, under(7), under(18), under(28)), 'bench-press', bench)).toEqual({
-    weightKg: 77.5,
-    reps: 6,
-    repMin: 6,
-    repMax: 8,
-  });
-  expect(recommendStall(history(...calibration, best, under(7), under(17), under(27)), 'bench-press', bench)).toBeUndefined();
+test('3 weeks are counted from the Session that set the best to the last Session: 21 days is a Stall, 20 is not', () => {
+  const stalled = { weightKg: 77.5, reps: 6, repMin: 6, repMax: 8 };
+  expect(recommendStall(history(...calibration, best, under(7), under(14), under(21)), 'bench-press', bench)).toEqual(stalled);
+  expect(recommendStall(history(...calibration, best, under(7), under(14), under(20)), 'bench-press', bench)).toBeUndefined();
+});
+
+test('it takes at least 3 failing Sessions, however long it has been', () => {
+  expect(recommendStall(history(...calibration, best, under(10), under(21)), 'bench-press', bench)).toBeUndefined();
+});
+
+test('the Sessions are counted from when the Rep Range was switched, the best before still reaching further back', () => {
+  const stalled = { weightKg: 77.5, reps: 6, repMin: 6, repMax: 8 };
+  const rule = { ...bench, since: day(10) };
+  // Only the Sessions from day 10 on count, and the 3 weeks run from day 10 as well: 10 + 21 = 31.
+  expect(recommendStall(history(...calibration, best, under(7), under(14), under(21), under(28)), 'bench-press', rule)).toBeUndefined();
+  expect(recommendStall(history(...calibration, best, under(7), under(14), under(21), under(31)), 'bench-press', rule)).toEqual(stalled);
+  // Switched before the best was set, the best's own date is the later start.
+  expect(recommendStall(history(...calibration, best, under(7), under(14), under(21)), 'bench-press', { ...bench, since: day(-5) })).toEqual(stalled);
 });
 
 test('3 Sessions in one week are not a Stall, however flat', () => {
@@ -63,11 +73,12 @@ test("a Session's figure is its top Working Set, so heavier with fewer reps can 
   expect(recommendStall(history(...calibration, best, under(7), heavier, under(21), under(28)), 'bench-press', bench)).toBeUndefined();
 });
 
-test('the Calibration Sessions only set the baseline: they are never in the run', () => {
+test('the Calibration Sessions only set the baseline: they are never failing Sessions, but can set the best', () => {
   const same = (date: string) => session(date, [[60, 10]]);
-  // Two Calibration Sessions and weekly Sessions after them: the run is the 3rd Session on.
-  expect(recommendStall(history(same('2026-10-01'), same('2026-10-08'), same('2026-10-15'), same('2026-10-22'), same('2026-10-29')), 'bench-press', bench)).toBeUndefined();
-  expect(recommendStall(history(same('2026-10-01'), same('2026-10-08'), same('2026-10-15'), same('2026-10-22'), same('2026-10-29'), same('2026-11-05')), 'bench-press', bench)).toEqual({
+  // Two Calibration Sessions and weekly Sessions after them: the failing Sessions are the 3rd on.
+  expect(recommendStall(history(same('2026-10-01'), same('2026-10-08'), same('2026-10-15'), same('2026-10-22')), 'bench-press', bench)).toBeUndefined();
+  // The third failing Session, 21 days or more after the Session that set the best.
+  expect(recommendStall(history(same('2026-10-01'), same('2026-10-08'), same('2026-10-15'), same('2026-10-22'), same('2026-10-29')), 'bench-press', bench)).toEqual({
     weightKg: 62.5,
     reps: 6,
     repMin: 6,
@@ -95,8 +106,8 @@ test('a Session at least 7.5% lighter starts a fresh window: the recent best is 
 test('with RIR logged on both Sessions the figure is RIR-adjusted: more reserve at the same weight beats the best', () => {
   const hard = session(day(0), [[60, 10, 0]]);
   const easier = (n: number) => session(day(n), [[60, 10, 2]]);
-  // On plain e1RM all four are equal and it is a Stall; adjusted, the first beats the best and the run is only 2 weeks.
-  expect(recommendStall(history(...calibration, hard, easier(7), easier(14), easier(21), easier(28)), 'bench-press', bench)).toBeUndefined();
+  // On plain e1RM all of them are equal and it is a Stall; adjusted, the first beats the best and only 2 Sessions fail.
+  expect(recommendStall(history(...calibration, hard, easier(7), easier(14), easier(21)), 'bench-press', bench)).toBeUndefined();
 });
 
 test('RIR is only used when both Sessions logged it', () => {
@@ -169,9 +180,10 @@ test('a Stall wins over going heavier when both would advise', () => {
 });
 
 test('Fatigue wins over a Stall', () => {
-  // Three Sessions 5% under the best, over 3 weeks: both Fatigue and a Stall.
+  // Three Sessions 5% under the best before, over 3 weeks: both Fatigue and a Stall.
+  const strong = [session('2026-09-26', [[75, 10]]), session('2026-09-28', [[75, 10]])];
   const weak = (n: number) => session(day(n), [[71, 10]]);
-  expect(recommend(history(...calibration, best, weak(7), weak(14), weak(21)), 'bench-press', bench)).toMatchObject({ kind: 'fatigue' });
+  expect(recommend(history(...strong, best, weak(7), weak(14), weak(21)), 'bench-press', bench)).toMatchObject({ kind: 'fatigue' });
 });
 
 test('with no Stall, the recommendation is to go heavier; with neither, none', () => {

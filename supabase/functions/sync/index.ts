@@ -103,8 +103,9 @@ function isRejected(mutation: Mutation, receivedAt: number) {
   switch (mutation.kind) {
     case 'saveDeload': {
       // A Deload Week starts on a Monday. Any Deload Week can be dismissed: that is how a lifter cancels one (ADR 0007).
+      // The reason is Fatigue, or one of the old rules' that a phone may still have queued (ADR 0009).
       const { deload } = mutation;
-      return weekStart(deload.week) !== deload.week;
+      return weekStart(deload.week) !== deload.week || (deload.reason !== undefined && !['fatigue', 'stalled', 'rir', 'time'].includes(deload.reason));
     }
     case 'saveProfileEntry':
       return !isProfileValue(mutation.entry.field, mutation.entry.value);

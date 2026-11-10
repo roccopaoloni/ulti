@@ -774,22 +774,45 @@ test("switching a Stall's Rep Range changes that Exercise on that Routine Day on
   await training.switchRepRange(session.id, 'bench-press', 6, 8);
 
   const days = (await training.routine())!.days;
-  expect(days.find(({ id }) => id === 'push')!.exercises).toEqual([{ exerciseId: 'bench-press', sets: 3, repMin: 6, repMax: 8 }]);
+  expect(days.find(({ id }) => id === 'push')!.exercises).toEqual([{ exerciseId: 'bench-press', sets: 3, repMin: 6, repMax: 8, rangeSince: '2026-10-19' }]);
   expect(days.find(({ id }) => id === 'push-2')).toEqual(otherPush);
   expect(days.find(({ id }) => id === 'pull')).toEqual(pullDay);
   // The Session in progress now targets the new range...
-  expect((await training.sessionInProgress())!.plan).toEqual([{ exerciseId: 'bench-press', sets: 3, repMin: 6, repMax: 8 }]);
+  expect((await training.sessionInProgress())!.plan).toEqual([{ exerciseId: 'bench-press', sets: 3, repMin: 6, repMax: 8, rangeSince: '2026-10-19' }]);
   // ...and so does the next Session from that Day.
   await training.finishSession(session.id);
   await training.startSession('push');
-  expect((await training.sessionInProgress())!.plan).toEqual([{ exerciseId: 'bench-press', sets: 3, repMin: 6, repMax: 8 }]);
+  expect((await training.sessionInProgress())!.plan).toEqual([{ exerciseId: 'bench-press', sets: 3, repMin: 6, repMax: 8, rangeSince: '2026-10-19' }]);
 
   await new Promise((resolve) => setTimeout(resolve, 20));
   network.offline = false;
   phone.connectivity.dispatchEvent(new Event('online'));
   await vi.waitFor(() => expect(network.batches).toHaveLength(1));
   const sent = routines(network.batches[0]);
-  expect(sent.at(-1)!.days.find(({ id }) => id === 'push')!.exercises[0]).toMatchObject({ repMin: 6, repMax: 8 });
+  expect(sent.at(-1)!.days.find(({ id }) => id === 'push')!.exercises[0]).toMatchObject({ repMin: 6, repMax: 8, rangeSince: '2026-10-19' });
+  training.close();
+});
+
+test('a Stall only counts Sessions from the day its Rep Range was switched', async () => {
+  const network = server();
+  network.offline = true;
+  const phone = anasPhone(network);
+  // Calibration, a best, then three Sessions under it, the last 21 days after the best.
+  for (const day of [0, 1, 2]) {
+    const training = await phone.open(Date.UTC(2026, 9, 19 + day, 21, 5));
+    if (day === 0) await training.saveExercises(benchCatalog);
+    await benchSession(training, [[75, 10]]);
+    training.close();
+  }
+  for (const day of [9, 16, 23]) {
+    const training = await phone.open(Date.UTC(2026, 9, 19 + day, 21, 5));
+    await benchSession(training, [[74, 10]]);
+    training.close();
+  }
+  const training = await phone.open(Date.UTC(2026, 10, 12, 21, 5));
+  expect(await training.recommendation('bench-press', benchRange)).toMatchObject({ kind: 'stall', repMin: 6, repMax: 8 });
+  // The Rep Range was switched on 4 November: only the Session of the 11th is on or after it.
+  expect(await training.recommendation('bench-press', { ...benchRange, rangeSince: '2026-11-04' })).toBeUndefined();
   training.close();
 });
 
@@ -976,6 +999,25 @@ async function benchSession(training: Awaited<ReturnType<typeof openTraining>>, 
     if (rir !== undefined) await training.setRir(set.id, rir);
   }
   await training.finishSession(session.id);
+}
+
+const fatigueCatalog = [
+  { ...benchCatalog[0]!, pattern: 'horizontal-press' as const },
+  { id: 'back-squat', nameEn: 'Back squat', nameEs: 'Sentadilla', equipment: 'barbell', custom: false, incrementKg: 5, bodyweight: false, muscle: 'quads' as const, pattern: 'squat' as const },
+];
+// Ana's bench press and squat, two different Movement Patterns, both Fatigued: two Calibration
+// Sessions, a best, then two Sessions 5% under it. With a Routine, it holds both lifts.
+async function fatigueSessions(training: Awaited<ReturnType<typeof openTraining>>, withRoutine = true) {
+  await training.saveExercises(fatigueCatalog);
+  if (withRoutine) {
+    await training.saveRoutine([{ id: 'full', name: 'Full', exercises: [{ exerciseId: 'bench-press', sets: 3, repMin: 8, repMax: 12 }, { exerciseId: 'back-squat', sets: 3, repMin: 8, repMax: 12 }] }]);
+  }
+  for (const weightKg of [60, 60, 60, 57, 57]) {
+    const session = await training.startSession();
+    await training.logSet(session.id, 'bench-press', weightKg, 10);
+    await training.logSet(session.id, 'back-squat', weightKg, 10);
+    await training.finishSession(session.id);
+  }
 }
 
 test("a Set's RIR logged offline shows at once and goes out as a later write of the same Set", async () => {
@@ -1213,13 +1255,13 @@ test('a suggested Deload Week can be dismissed or accepted, both are stored, and
   network.offline = true;
   const phone = anasPhone(network);
   const first = await phone.open();
-  await benchSession(first, [[60, 10], [60, 10]]);
+  await fatigueSessions(first);
   expect((await first.deload()).suggestion).toBeUndefined();
   first.close();
 
-  // Eight weeks after the first Session, the app nudges.
+  // Weeks after the first Session, the app suggests one.
   const nudged = await phone.open(Date.UTC(2026, 11, 14, 21, 5));
-  expect((await nudged.deload()).suggestion).toBe('time');
+  expect((await nudged.deload()).suggestion).toMatchObject({ reason: 'fatigue', exercises: ['bench-press', 'back-squat'] });
   await nudged.answerDeload(false);
   expect((await nudged.deload()).suggestion).toBeUndefined();
   nudged.close();
@@ -1228,7 +1270,7 @@ test('a suggested Deload Week can be dismissed or accepted, both are stored, and
   quiet.close();
 
   const again = await phone.open(Date.UTC(2027, 0, 11, 21, 5));
-  expect((await again.deload()).suggestion).toBe('time');
+  expect((await again.deload()).suggestion).toMatchObject({ reason: 'fatigue', exercises: ['bench-press', 'back-squat'] });
   await again.answerDeload(true);
   expect(await again.deload()).toMatchObject({ active: true, suggestion: undefined });
 
@@ -1237,10 +1279,33 @@ test('a suggested Deload Week can be dismissed or accepted, both are stored, and
   await vi.waitFor(() => expect(network.batches.length).toBeGreaterThan(0));
   const deloads = network.batches.flat().flatMap((m) => (m.kind === 'saveDeload' ? [m.deload] : []));
   expect(deloads.map(({ week, origin, reason, status }) => ({ week, origin, reason, status }))).toEqual([
-    { week: '2026-12-14', origin: 'suggested', reason: 'time', status: 'dismissed' },
-    { week: '2027-01-11', origin: 'suggested', reason: 'time', status: 'accepted' },
+    { week: '2026-12-14', origin: 'suggested', reason: 'fatigue', status: 'dismissed' },
+    { week: '2027-01-11', origin: 'suggested', reason: 'fatigue', status: 'accepted' },
   ]);
   again.close();
+});
+
+test('the Deload Week suggestion looks at the Exercises trained in the last four weeks when there is no Routine, and hides the advice of the lifts it names', async () => {
+  const network = server();
+  network.offline = true;
+  const phone = anasPhone(network);
+  const first = await phone.open();
+  await fatigueSessions(first, false);
+  first.close();
+
+  // The last Sessions were four weeks ago: still counted that day, not the day after.
+  const training = await phone.open(Date.UTC(2026, 10, 16, 21, 5));
+  expect((await training.deload()).suggestion).toEqual({ reason: 'fatigue', exercises: ['bench-press', 'back-squat'] });
+  expect(await training.recommendation('bench-press', benchRange)).toBeUndefined();
+  expect(await training.recommendation('back-squat', benchRange)).toBeUndefined();
+  // Dismissing the suggestion brings the per-Exercise Fatigue badge back.
+  await training.answerDeload(false);
+  expect(await training.recommendation('bench-press', benchRange)).toMatchObject({ kind: 'fatigue' });
+  training.close();
+
+  const later = await phone.open(Date.UTC(2026, 10, 17, 21, 5));
+  expect((await later.deload()).suggestion).toBeUndefined();
+  later.close();
 });
 
 test('Deload Week Sessions are skipped when the next Session is pre-filled and when it is advised to go heavier', async () => {
@@ -1344,7 +1409,7 @@ test('a Deload Week the lifter started and cancelled leaves no trace: a suggesti
   network.offline = true;
   const phone = anasPhone(network);
   const first = await phone.open();
-  await benchSession(first, [[60, 10], [60, 10]]);
+  await fatigueSessions(first);
   first.close();
 
   const mistap = await phone.open(Date.UTC(2026, 11, 7, 21, 5));
@@ -1353,7 +1418,7 @@ test('a Deload Week the lifter started and cancelled leaves no trace: a suggesti
   mistap.close();
 
   const later = await phone.open(Date.UTC(2026, 11, 14, 21, 5));
-  expect((await later.deload()).suggestion).toBe('time');
+  expect((await later.deload()).suggestion).toMatchObject({ reason: 'fatigue', exercises: ['bench-press', 'back-squat'] });
   later.close();
 });
 
@@ -1362,11 +1427,11 @@ test('a suggested Deload Week that is accepted and then cancelled is not suggest
   network.offline = true;
   const phone = anasPhone(network);
   const first = await phone.open();
-  await benchSession(first, [[60, 10], [60, 10]]);
+  await fatigueSessions(first);
   first.close();
 
   const training = await phone.open(Date.UTC(2026, 11, 14, 21, 5));
-  expect((await training.deload()).suggestion).toBe('time');
+  expect((await training.deload()).suggestion).toMatchObject({ reason: 'fatigue', exercises: ['bench-press', 'back-squat'] });
   await training.answerDeload(true);
   await training.cancelDeload();
   expect(await training.deload()).toMatchObject({ active: false, suggestion: undefined });

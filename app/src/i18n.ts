@@ -318,10 +318,8 @@ type Messages = {
   deload: {
     // This week is a Deload Week.
     active: string;
-    // Why a Deload Week is suggested.
-    stalled: string;
-    rir: string;
-    time: string;
+    // Why a Deload Week is suggested: the lifts showing Fatigue, one or two, by name.
+    fatigue: (lifts: string[]) => string;
     accept: string;
     dismiss: string;
     start: string;
@@ -843,9 +841,7 @@ const en: Messages = {
   },
   deload: {
     active: 'Deload Week: about half the sets at about 10% less weight',
-    stalled: 'Two or more exercises have stalled. Take a Deload Week to recover.',
-    rir: 'Your reps in reserve keep falling at the same weights. Take a Deload Week to recover.',
-    time: "It's been a while since your last Deload Week. Want to take one?",
+    fatigue: (lifts) => `Your ${lifts.join(' and ')} ${lifts.length > 1 ? 'are' : 'is'} showing fatigue. Take a Deload Week to recover.`,
     accept: 'Start Deload Week',
     dismiss: 'Not now',
     start: 'Start a Deload Week',
@@ -1365,9 +1361,7 @@ const es: Messages = {
   },
   deload: {
     active: 'Semana de descarga: más o menos la mitad de las series con un 10% menos de peso',
-    stalled: 'Dos o más ejercicios se estancaron. Hacé una Semana de descarga para recuperarte.',
-    rir: 'Tus repeticiones en reserva siguen bajando con los mismos pesos. Hacé una Semana de descarga para recuperarte.',
-    time: 'Pasó un buen tiempo desde tu última Semana de descarga. ¿Querés hacer una?',
+    fatigue: (lifts) => `Tenés fatiga en ${lifts.join(' y ')}. Hacé una Semana de descarga para recuperarte.`,
     accept: 'Empezar Semana de descarga',
     dismiss: 'Ahora no',
     start: 'Empezar una Semana de descarga',

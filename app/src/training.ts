@@ -200,6 +200,9 @@ type InProgress = { sessionId: string; exerciseIds: string[]; plan?: RoutineExer
 
 // The Increment of an Exercise missing from the phone's catalog copy.
 const DEFAULT_INCREMENT_KG = 2.5;
+// The Rep Range the Deload Week suggestion assumes for an Exercise trained without a Routine. Fatigue
+// is judged on the Sets logged, so the range only shapes the reset weight, which the suggestion ignores.
+const UNPLANNED_REP_RANGE = { repMin: 8, repMax: 12 };
 
 export type Training = Awaited<ReturnType<typeof openTraining>>;
 
@@ -680,13 +683,15 @@ export async function openTraining(userId: string, options: Options) {
 
     // Accepts a Stall's advice (spec: Stall): the Exercise's Rep Range changes to the new one on the
     // Routine Day the Session in progress came from, and on that Session's plan, as an ordinary
-    // Routine edit. Other Days keep theirs.
+    // Routine edit. Other Days keep theirs. It notes the Session's local date as `rangeSince`, from when a
+    // Stall counts Sessions again.
     async switchRepRange(sessionId: string, exerciseId: string, repMin: number, repMax: number) {
       const inProgress = await db.get('state', 'sessionInProgress');
-      const dayId = (await db.get('sessions', sessionId))?.routineDayId;
+      const started = await db.get('sessions', sessionId);
+      const dayId = started?.routineDayId;
       const routine = await this.routine();
-      if (inProgress?.sessionId !== sessionId || !dayId || !routine) return;
-      const switched = (exercise: RoutineExercise) => (exercise.exerciseId === exerciseId ? { ...exercise, repMin, repMax } : exercise);
+      if (inProgress?.sessionId !== sessionId || !started || !dayId || !routine) return;
+      const switched = (exercise: RoutineExercise) => (exercise.exerciseId === exerciseId ? { ...exercise, repMin, repMax, rangeSince: started.localDate } : exercise);
       const days = routine.days.map((day) => (day.id === dayId ? { ...day, exercises: day.exercises.map(switched) } : day));
       await write(
         { id: crypto.randomUUID(), kind: 'saveRoutine', routine: { id: routine.id, days, updatedAt: stamp() } },
@@ -779,12 +784,14 @@ export async function openTraining(userId: string, options: Options) {
 
     // The advice for the Exercise's next Session: a Stall reset (spec: Stall), else going heavier
     // (spec: Go heavier), else none. Judged on the Sessions before the one in progress. Custom
-    // Exercises never get a recommendation.
-    async recommendation(exerciseId: string, repRange: { repMin: number; repMax: number }) {
+    // Exercises never get a recommendation, and neither do the lifts a suggested Deload Week covers.
+    async recommendation(exerciseId: string, repRange: { repMin: number; repMax: number; rangeSince?: string }) {
+      if ((await this.deload()).suggestion?.exercises.includes(exerciseId)) return undefined;
       const exercise = (await this.exercises()).find(({ id }) => id === exerciseId);
       const inProgress = await db.get('state', 'sessionInProgress');
       const { history } = await this.scoring(inProgress?.sessionId);
-      return recommend(history, exerciseId, { ...repRange, incrementKg: exercise?.incrementKg ?? DEFAULT_INCREMENT_KG });
+      const { rangeSince, ...range } = repRange;
+      return recommend(history, exerciseId, { ...range, since: rangeSince, incrementKg: exercise?.incrementKg ?? DEFAULT_INCREMENT_KG });
     },
 
     // The Mondays of the Deload Weeks the lifter started or accepted.
@@ -794,19 +801,28 @@ export async function openTraining(userId: string, options: Options) {
 
     // Whether this week is a Deload Week, whether the lifter can start one, and the app's
     // suggestion for one, if any and not dismissed (spec: Deload Week). The Routine's catalog
-    // Exercises are what the suggestion looks at.
+    // Exercises are what the suggestion looks at, or with no Routine the catalog Exercises trained
+    // in the last four weeks.
     async deload() {
       const today = localDate(options.now(), options.timeZone());
       const inProgress = await db.get('state', 'sessionInProgress');
       const { history } = await this.scoring(inProgress?.sessionId);
       const catalog = await this.exercises();
-      const routine = new Map<string, { exercise: string; rule: { repMin: number; repMax: number; incrementKg: number } }>();
-      for (const planned of (await this.routine())?.days.flatMap((day) => day.exercises) ?? []) {
-        const exercise = catalog.find(({ id }) => id === planned.exerciseId);
-        if (!exercise || exercise.custom || routine.has(planned.exerciseId)) continue;
-        routine.set(planned.exerciseId, {
-          exercise: planned.exerciseId,
-          rule: { repMin: planned.repMin, repMax: planned.repMax, incrementKg: exercise.incrementKg },
+      const routine = new Map<string, { exercise: string; rule: { repMin: number; repMax: number; incrementKg: number }; pattern: MovementPattern | null | undefined }>();
+      const planned = (await this.routine())?.days.flatMap((day) => day.exercises) ?? [];
+      const since = new Date(Date.parse(`${today}T00:00:00Z`) - 28 * 86_400_000).toISOString().slice(0, 10);
+      const lifts = planned.length
+        ? planned
+        : [...new Set(history.sessions.filter(({ localDate }) => localDate >= since).flatMap(({ sets }) => sets.map(({ exercise }) => exercise)))].map(
+            (exerciseId) => ({ exerciseId, ...UNPLANNED_REP_RANGE }),
+          );
+      for (const lift of lifts) {
+        const exercise = catalog.find(({ id }) => id === lift.exerciseId);
+        if (!exercise || exercise.custom || routine.has(lift.exerciseId)) continue;
+        routine.set(lift.exerciseId, {
+          exercise: lift.exerciseId,
+          rule: { repMin: lift.repMin, repMax: lift.repMax, incrementKg: exercise.incrementKg },
+          pattern: exercise.pattern,
         });
       }
       // Only dismissed suggestions keep it quiet: a Deload Week the lifter started and cancelled leaves no trace.
@@ -835,7 +851,7 @@ export async function openTraining(userId: string, options: Options) {
 
     // Accepts or dismisses the suggested Deload Week; both answers are stored.
     async answerDeload(accept: boolean) {
-      const reason = (await this.deload()).suggestion;
+      const reason = (await this.deload()).suggestion?.reason;
       if (!reason) return;
       const deload: DeloadRecord = {
         week: weekStart(localDate(options.now(), options.timeZone())),

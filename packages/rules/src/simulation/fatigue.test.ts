@@ -107,8 +107,8 @@ function flagRuns(sessions: Session[], from: number, flagged: (history: Training
 
 // A flat lifter (true e1RM unchanged, RIR not trending) is Stalled, which is accommodation. With 2% day-to-day
 // noise and whole-number RIR, though, Fatigue (B)'s 3% bar is crossed by chance now and then: over a Season
-// (200 lifters, seed 207) every lifter is Stalled at some point (1.995 Stall alarms each) and 116 of them
-// (0.995 alarms each) also get a Fatigue alarm. The thresholds are the owner's call, so this pins how it is today.
+// (200 lifters, seed 207) every lifter is Stalled at some point (1.92 Stall alarms each) and 106 of them
+// (0.83 alarms each) also get a Fatigue alarm. The owner's bar was 0.3 or fewer, which this misses; the thresholds are theirs to change, so this pins how it is today.
 test('a flat lifter whose RIR does not move is Stalled, and gets fewer Fatigue alarms than Stall ones', () => {
   const random = randomSource(207);
   let fatigue = 0;
