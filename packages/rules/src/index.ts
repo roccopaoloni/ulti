@@ -837,11 +837,9 @@ const FATIGUE_MAX_RIR = 4;
 const FATIGUE_BEST_SESSIONS = 6;
 // ...never reaching past the latest Session whose top Set is this much lighter than the Session before it...
 const FATIGUE_WINDOW_RESET = 0.075;
-// ...and Fatigue (B) is each of the last 2 Sessions at least this far under it.
+// ...and Fatigue is each of the last 2 Sessions at least this far under the average of it.
 const FATIGUE_REGRESSION = 0.03;
 const FATIGUE_REGRESSION_SESSIONS = 2;
-// Fatigue (A) is RIR falling across this many Sessions with RIR at the same top weight.
-const FATIGUE_CREEP_SESSIONS = 3;
 
 // The Exercise's Sessions with a figure to judge, each with the numbers Fatigue and Stall read from
 // its Working Sets: `index` is its place among all the Exercise's Sessions, so the first
@@ -855,7 +853,6 @@ function judgedSessions(done: ReturnType<typeof exerciseSessions>) {
       if (counted.length === 0 || bodyweightKg === undefined) return undefined;
       const figure = (set: Set, reps: number) => (set.weightKg + bodyweightKg) * (1 + reps / 30);
       const top = counted.reduce((a, b) => (figure(b, b.reps) > figure(a, a.reps) ? b : a));
-      const withRir = counted.filter((set) => set.rir !== undefined);
       return {
         index,
         localDate: done.dates[index],
@@ -863,9 +860,6 @@ function judgedSessions(done: ReturnType<typeof exerciseSessions>) {
         loadKg: top.weightKg + bodyweightKg,
         plain: figure(top, top.reps),
         adjusted: top.rir === undefined ? undefined : figure(top, top.reps + Math.min(top.rir, FATIGUE_MAX_RIR)),
-        rirTopKg: Math.max(...withRir.map((set) => set.weightKg)),
-        averageRir: withRir.reduce((sum, set) => sum + Math.min(set.rir!, FATIGUE_MAX_RIR), 0) / withRir.length,
-        hasRir: withRir.length > 0,
       };
     })
     .filter((session) => session !== undefined);
@@ -893,23 +887,14 @@ function comparison(session: Judged[number], window: Judged): { now: number; bef
 
 // Fatigue on an Exercise (spec: Fatigue), judged on its Working Sets only. The Calibration Sessions
 // only set the baseline: the Sessions judged are all past Calibration, but they can be the "best
-// before". It is Fatigued when either:
-// - (A) effort creep: its last 3 Sessions with RIR logged were trained to the same top weight and
-//   their average RIR fell each time, or
-// - (B) regression: each of its last 2 Sessions is at least 3% under the average of its best before
-//   window (the up to 6 Sessions before it).
+// before". It is Fatigued when each of its last 2 Sessions is at least 3% under the average of its
+// best before window (the up to 6 Sessions before it). On the RIR-adjusted figure this also catches
+// effort creep: the same weight with less and less in reserve is a falling adjusted e1RM.
 // The suggestion is a reset about 10% lighter.
 export function recommendFatigue(history: TrainingHistory, exercise: string, rule: GoHeavierRule): Stall | undefined {
   const done = exerciseSessions(history, exercise);
   const judged = judgedSessions(done);
   const past = (sessions: Judged) => sessions.every(({ index }) => index >= CALIBRATION_SESSIONS);
-
-  const creep = judged.filter(({ hasRir }) => hasRir).slice(-FATIGUE_CREEP_SESSIONS);
-  const effortCreep =
-    creep.length === FATIGUE_CREEP_SESSIONS &&
-    past(creep) &&
-    creep.every(({ rirTopKg }) => rirTopKg === creep[0].rirTopKg) &&
-    creep.every(({ averageRir }, i) => i === 0 || averageRir < creep[i - 1].averageRir);
 
   const underAverageBefore = (position: number) => {
     const { now, before } = comparison(judged[position], bestBeforeWindow(judged, position));
@@ -919,7 +904,7 @@ export function recommendFatigue(history: TrainingHistory, exercise: string, rul
   const regression =
     judged.length >= FATIGUE_REGRESSION_SESSIONS && past(judged.slice(-FATIGUE_REGRESSION_SESSIONS)) && lastPositions.every(underAverageBefore);
 
-  return effortCreep || regression ? resetAdvice(done, rule) : undefined;
+  return regression ? resetAdvice(done, rule) : undefined;
 }
 
 // A Stall is at least this many Sessions without beating the best before, the last at least this

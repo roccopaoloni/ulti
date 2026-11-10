@@ -28,7 +28,7 @@ test('two Sessions each at least 3% under the best before are Fatigue, reset abo
   expect(recommendFatigue(ana, 'bench-press', bench)).toEqual({ weightKg: 52.5, reps: 8 });
 });
 
-test('Fatigue (B) is measured against the average of the Sessions before, not the best of them', () => {
+test('Fatigue is measured against the average of the Sessions before, not the best of them', () => {
   const peak = session(day(2), [[60, 12]]);
   const dip = (n: number) => session(day(n), [[59, 10]]);
   // 59 kg x 10 is 6% under the peak but 2.9% under the 81 kg average of the Sessions before it.
@@ -88,18 +88,19 @@ test('RIR 4 and over counts as 4', () => {
   expect(recommendFatigue(history(...calibrationRir.map((s) => ({ ...s, sets: s.sets.map((set) => ({ ...set, reps: 7, rir: 4 })) })), four, lots(3), lots(5)), 'bench-press', bench)).toBeUndefined();
 });
 
-test('effort creep is Fatigue: the last 3 Sessions at the same weight, with average RIR falling each time', () => {
+test('effort creep is caught through the adjusted e1RM: the same weight with less in reserve each Session', () => {
   const creep = (n: number, rir: number) => session(day(n), [[60, 8, rir], [60, 8, rir]]);
-  expect(recommendFatigue(history(...calibration8, creep(1, 3), creep(3, 2), creep(5, 1)), 'bench-press', bench)).toEqual({ weightKg: 55, reps: 8 });
-  // Held (not falling), or a different weight, is no creep.
-  expect(recommendFatigue(history(...calibration8, creep(1, 3), creep(3, 2), creep(5, 2)), 'bench-press', bench)).toBeUndefined();
-  const heavier = session(day(5), [[62.5, 8, 1]]);
-  expect(recommendFatigue(history(...calibration8, creep(1, 3), creep(3, 2), heavier), 'bench-press', bench)).toBeUndefined();
+  // 8 reps at RIR 4, 3, 2, 1, 0 is an adjusted e1RM of 84, 82, 80, 78, 76: the last two are 4.9% and 6.2% under the average before.
+  expect(recommendFatigue(history(...calibration8, creep(1, 4), creep(3, 3), creep(5, 2), creep(7, 1), creep(9, 0)), 'bench-press', bench)).toEqual({ weightKg: 55, reps: 8 });
+  // The same reserve each time is no creep, and neither is a single step down.
+  const held = (n: number) => creep(n, 2);
+  expect(recommendFatigue(history(...calibration8, held(1), held(3), held(5), held(7), held(9)), 'bench-press', bench)).toBeUndefined();
+  expect(recommendFatigue(history(...calibration8, creep(1, 4), creep(3, 4), creep(5, 4), creep(7, 3), creep(9, 2)), 'bench-press', bench)).toBeUndefined();
 });
 
 test('a Fatigue reset wins over going heavier', () => {
   const top = (n: number, rir: number) => session(day(n), [[60, 12, rir], [60, 12, rir]]);
-  const ana = history(...calibration8, top(1, 3), top(3, 2), top(5, 1));
+  const ana = history(...calibration8, top(1, 4), top(3, 3), top(5, 2), top(7, 1));
   expect(recommend(ana, 'bench-press', bench)).toEqual({ kind: 'fatigue', weightKg: 55, reps: 8 });
 });
 

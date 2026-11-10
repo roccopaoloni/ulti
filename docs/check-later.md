@@ -32,8 +32,7 @@ Small things for the owner that didn't block a merge: decisions you may want to 
 - **The Practice day's name is set once** (#193, PR #197), in the language the practice started in.
 - **A phone with a partial onboarding from before the Tutorial counts as seen** (#191, PR #195). The offline fix marks a phone seen when its local profile has any entries.
 - **On the keypad step, the callout sits over the Session header** (#194, PR #200), so it never covers the keypad.
-- **"At most 1 false Fatigue per Season per lift" is an average** (#205, PR #211). Over 200 simulated progressing intermediates who log RIR, the average is 0.72 a Season, and the worst single lifter got 3. No threshold was changed.
-- **Effort creep is flagged within 3 Sessions for 95% of simulated lifters, and within 4 for all** (#205, PR #211). The stragglers started with more reserve than the RIR 4 cap, or their rounded RIR repeated once, so the first creep Sessions looked level.
+- **Fatigue's simulated false-alarm and detection rates** (#205, #207). Fatigue is one rule, regression on the RIR-adjusted e1RM (each of the last 2 Sessions 3% under the average of its window). Over 200 simulated lifters: a progressing intermediate gets 0.095 false Fatigue alarms a Season, a flat lifter 0.275 (the bars were at most 1 and 0.3), and effort creep is flagged within 4 Sessions for all and within 3 for 93%. These come from a simulated model (whole-number RIR, the same on every Set, 2% day-to-day noise), so revisit them against real logs.
 - **Mapping calls you approved on the Movement Patterns** (#206, PR #210): power clean is a hinge; incline, decline and close-grip bench are horizontal presses; leg press and hack squat are squats; face pull, flyes, pec deck, shrugs, leg extension and leg curls are isolation. The catalog has no carries.
 
 ## Check after deploy
