@@ -56,7 +56,7 @@ export function ExerciseBlock({
   custom: boolean;
   // The Focus layout: one Set at a time, instead of every row (design: Logging a Session).
   focus?: boolean;
-  // This week is a Deload Week: about half the Sets, about 10% lighter, and no go heavier or Stall advice.
+  // This week is a Deload Week: about half the Sets, about 10% lighter, and no go heavier, Stall or Fatigue advice.
   deload?: boolean;
   // Logs the Set and returns its ID.
   onLog: (weightKg: number, reps: number, label: SetLabel) => Promise<string | null>;
@@ -74,7 +74,7 @@ export function ExerciseBlock({
   const decimalKey = language === 'es' ? ',' : '.';
   const labels = labelSets(sets);
   const sortable = useSortable((from, to) => onMove(sets[from]!.id, to), SET_GAP);
-  // The last Session's Sets and the recommendation (go heavier or Stall), loaded together so the
+  // The last Session's Sets and the recommendation (go heavier, Stall or Fatigue), loaded together so the
   // rows are pre-filled once. Accepting is leaving the pre-filled weight; dismissing restores the last Sets.
   const [loaded, setLoaded] = useState<{ last: Planned[]; advice: Recommendation | undefined } | null>(null);
   const [dismissed, setDismissed] = useState(false);
@@ -87,6 +87,7 @@ export function ExerciseBlock({
   const advice = dismissed || deload ? undefined : loaded?.advice;
   const heavier = advice?.kind === 'goHeavier' ? advice : undefined;
   const stall = advice?.kind === 'stall' ? advice : undefined;
+  const fatigue = advice?.kind === 'fatigue' ? advice : undefined;
   const last = loaded && (advice ? rowsWithAdvice(loaded.last, advice) : loaded.last);
 
   // The chips asking for RIR stay after ✓ until answered or until the next Set is logged.
@@ -163,6 +164,14 @@ export function ExerciseBlock({
       {stall && sets.length === 0 && (
         <p className="go-heavier">
           <span className="badge">↓ {t.session.stall(formatNumber(kgToUnits(stall.weightKg, units), 2), units)}</span>
+          <button type="button" className="btn-link inline" onClick={() => setDismissed(true)}>
+            {t.session.dismissStall}
+          </button>
+        </p>
+      )}
+      {fatigue && sets.length === 0 && (
+        <p className="go-heavier">
+          <span className="badge">↓ {t.session.fatigue(formatNumber(kgToUnits(fatigue.weightKg, units), 2), units)}</span>
           <button type="button" className="btn-link inline" onClick={() => setDismissed(true)}>
             {t.session.dismissStall}
           </button>
