@@ -97,8 +97,10 @@ export function StartSession({ logging, training, practice = false }: { logging:
   const next = choices[0]?.day ?? null;
   const [deload, setDeload] = useState<Awaited<ReturnType<Training['deload']>> | null>(null);
   const [met, setMet] = useState(false);
+  const [catalog, setCatalog] = useState<Exercise[]>([]);
   useEffect(() => {
     training.dayChoices().then(setChoices);
+    training.exercises().then(setCatalog);
     training.weeklyTargetMet().then(setMet);
     training.deload().then(setDeload);
   }, [training, inProgress]);
@@ -139,6 +141,10 @@ export function StartSession({ logging, training, practice = false }: { logging:
     else await chooseDay();
   };
   const today = new Date().toLocaleDateString('en-CA');
+  const liftName = (id: string) => {
+    const exercise = catalog.find((candidate) => candidate.id === id);
+    return (exercise ? (language === 'es' ? exercise.nameEs : exercise.nameEn) : id).toLocaleLowerCase(language);
+  };
   const answer = async (accept: boolean) => {
     await training.answerDeload(accept);
     setDeload(await training.deload());
@@ -156,7 +162,7 @@ export function StartSession({ logging, training, practice = false }: { logging:
       {deload?.suggestion && (
         <section className="card">
           <p>
-            {d[deload.suggestion]} <Info term="deload" />
+            {d.fatigue(deload.suggestion.exercises.slice(0, 2).map(liftName))} <Info term="deload" />
           </p>
           <p className="go-heavier">
             <button type="button" className="btn-ghost" onClick={() => answer(true)}>

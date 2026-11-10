@@ -939,14 +939,11 @@ const DELOAD_WEIGHT = 0.9;
 // suggestion keeps quiet for as long, as do the first this many weeks of training (counted from the
 // week of the first Session). The lifter's own start is never limited.
 export const DELOAD_GAP_WEEKS = 4;
-// The gentle nudge comes after this many weeks without a Deload Week.
-export const DELOAD_NUDGE_WEEKS = 8;
-// The Stalled Exercises, or Exercises with falling RIR, that call for a Deload Week.
-const DELOAD_MIN_EXERCISES = 2;
-// RIR counts as falling after this many Sessions of the Exercise with RIR logged.
-const RIR_FALLING_SESSIONS = 3;
+// A Deload Week is suggested when Fatigue shows on Exercises of this many different compound
+// Movement Patterns (ADR 0009).
+const DELOAD_MIN_PATTERNS = 2;
 
-export type DeloadReason = 'stalled' | 'rir' | 'time';
+export type DeloadReason = 'fatigue';
 
 const weeksBetween = (from: string, to: string) => Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / (7 * 86_400_000));
 
@@ -970,39 +967,28 @@ export function deloadedLastWeek(history: TrainingHistory, today: string): boole
   return deloadedWeeks(history).some((week) => weeksBetween(week, weekStart(today)) === 1);
 }
 
-// RIR "keeps falling at the same weights" for an Exercise when its last three regular Sessions with
-// RIR logged were all trained to the same top Working Set weight and their average RIR got lower
-// each time.
-function rirFalling(history: TrainingHistory, exercise: string): boolean {
-  const sessions = regularSessions(history)
-    .map((session) => workingSets(session).filter((set) => set.exercise === exercise && !set.custom && set.rir !== undefined))
-    .filter((working) => working.length > 0)
-    .slice(-RIR_FALLING_SESSIONS);
-  if (sessions.length < RIR_FALLING_SESSIONS) return false;
-  const topWeights = sessions.map((working) => Math.max(...working.map((set) => set.weightKg)));
-  const averages = sessions.map((working) => working.reduce((sum, set) => sum + set.rir!, 0) / working.length);
-  return topWeights.every((weight) => weight === topWeights[0]) && averages.every((average, i) => i === 0 || average < averages[i - 1]!);
-}
-
 // Why a Deload Week is recommended in the week of the local date, if it is (spec: Deload Week):
-// two or more of the Routine's Exercises Stalled, RIR falling across two or more, or eight weeks
-// without one (counted from the first Session when there never was one). None is suggested within
-// DELOAD_GAP_WEEKS of the week of the first Session. `dismissed` holds the
+// Fatigue on Exercises of two or more different compound Movement Patterns among `exercises`, which
+// are the Routine's, or the ones trained lately with no Routine. Two Fatigued presses are one
+// pattern; Stalls, isolation and Custom Exercises (no pattern) do not count. `exercises` in the
+// answer are the Fatigued compound ones, one per pattern first, so the first two can be named. None
+// is suggested within DELOAD_GAP_WEEKS of the week of the first Session. `dismissed` holds the
 // Mondays of the weeks the lifter dismissed a suggestion in.
 export function recommendDeload(
   history: TrainingHistory,
   today: string,
-  routine: { exercise: string; rule: GoHeavierRule }[],
+  exercises: { exercise: string; rule: GoHeavierRule; pattern?: MovementPattern | null }[],
   dismissed: readonly string[] = [],
-): DeloadReason | undefined {
+): { reason: DeloadReason; exercises: string[] } | undefined {
   const week = weekStart(today);
   if ((history.deloadWeeks ?? []).some((started) => weeksBetween(started, week) < DELOAD_GAP_WEEKS)) return undefined;
   if (dismissed.some((quiet) => weeksBetween(quiet, week) < DELOAD_GAP_WEEKS)) return undefined;
   if (history.sessions[0] && weeksBetween(weekStart(history.sessions[0].localDate), week) < DELOAD_GAP_WEEKS) return undefined;
-  if (routine.filter(({ exercise, rule }) => recommendStall(history, exercise, rule)).length >= DELOAD_MIN_EXERCISES) return 'stalled';
-  if (routine.filter(({ exercise }) => rirFalling(history, exercise)).length >= DELOAD_MIN_EXERCISES) return 'rir';
-  const since = deloadedWeeks(history).at(-1) ?? (history.sessions[0] && weekStart(history.sessions[0].localDate));
-  return since !== undefined && weeksBetween(since, week) >= DELOAD_NUDGE_WEEKS ? 'time' : undefined;
+  const fatigued = exercises.filter(({ exercise, rule, pattern }) => isCompound(pattern) && recommendFatigue(history, exercise, rule));
+  const patterns = new Set(fatigued.map(({ pattern }) => pattern));
+  if (patterns.size < DELOAD_MIN_PATTERNS) return undefined;
+  const first = fatigued.filter(({ pattern }, i) => fatigued.findIndex((other) => other.pattern === pattern) === i);
+  return { reason: 'fatigue', exercises: [...first, ...fatigued.filter((lift) => !first.includes(lift))].map(({ exercise }) => exercise) };
 }
 
 // The rows of an Exercise's Sets in a Deload Week (spec: Deload Week), from the rows a regular
