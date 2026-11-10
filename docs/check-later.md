@@ -32,6 +32,9 @@ Small things for the owner that didn't block a merge: decisions you may want to 
 - **The Practice day's name is set once** (#193, PR #197), in the language the practice started in.
 - **A phone with a partial onboarding from before the Tutorial counts as seen** (#191, PR #195). The offline fix marks a phone seen when its local profile has any entries.
 - **On the keypad step, the callout sits over the Session header** (#194, PR #200), so it never covers the keypad.
+- **"At most 1 false Fatigue per Season per lift" is an average** (#205, PR #211). Over 200 simulated progressing intermediates who log RIR, the average is 0.72 a Season, and the worst single lifter got 3. No threshold was changed.
+- **Effort creep is flagged within 3 Sessions for 95% of simulated lifters, and within 4 for all** (#205, PR #211). The stragglers started with more reserve than the RIR 4 cap, or their rounded RIR repeated once, so the first creep Sessions looked level.
+- **Mapping calls you approved on the Movement Patterns** (#206, PR #210): power clean is a hinge; incline, decline and close-grip bench are horizontal presses; leg press and hack squat are squats; face pull, flyes, pec deck, shrugs, leg extension and leg curls are isolation. The catalog has no carries.
 
 ## Check after deploy
 
@@ -77,6 +80,7 @@ Small things for the owner that didn't block a merge: decisions you may want to 
 - **The guided script finds its steps by the app's class names** (#194, PR #200), for example `.sets-done .set.done`, `.pad-key:nth-child(8)` and `.s-finish`. Renaming one of those in the Session screen silently stalls the script at that step, and no test would catch it.
 - **The ringed element can't be reached by keyboard** (#192, PR #196). The dim layer blocks it; only the callout's buttons are focusable.
 - **The light-theme scrim looks quite dark** (#194, PR #200): it's the Spotlight's one scrim colour in both themes.
+- **A 10% reset can round back to the same weight** (#205, PR #211; already true of the old Stall). The reset rounds to the nearest Increment, so a light Exercise with a big Increment (10 kg with a 2 kg step: 9 rounds to 10) is told to "drop to 10 kg", and the 7.5% window reset can't start a fresh window.
 
 ## Test gaps
 
@@ -93,6 +97,9 @@ Small things for the owner that didn't block a merge: decisions you may want to 
 
 - **Accounts existing before the Tutorial migration aren't exercised by CI** (#191, PR #195). CI starts from an empty database, so "marked seen" rests on the migration's insert-or-update.
 - **#194's practice tests passed at once** (PR #200): they follow the script on #193's seed with existing code, so they were never seen red. The script's steps themselves have no test, since v1 has no UI tests.
+
+- **The Fatigue simulation only covers lifters who log RIR** (#205, PR #211). Without RIR the 3% regression runs on plain Epley, which moves with every rep the lifter varies; nobody has measured how often that cries wolf.
+- **#206's red integration test was never seen red** (PR #210). It was pushed on its own commit, but CI didn't run on that commit.
 
 ## CI flakes
 
