@@ -1038,11 +1038,14 @@ test('a Custom Exercise at the top of the Rep Range gets no recommendation', asy
   training.close();
 });
 
-test('two Sessions under the bottom of the Rep Range recommend a Stall reset, judged without the Session in progress', async () => {
+test('two Sessions past Calibration under the bottom of the Rep Range recommend a Stall reset, judged without the Session in progress', async () => {
   const network = server();
   network.offline = true;
   const training = await anasPhone(network).open();
   await training.saveExercises(benchCatalog);
+  // Two Calibration Sessions that met the range: a Stall needs Sessions past Calibration.
+  await benchSession(training, [[60, 8], [60, 8]]);
+  await benchSession(training, [[60, 8], [60, 8]]);
   await benchSession(training, [[60, 7], [60, 6]]);
   expect(await training.recommendation('bench-press', benchRange)).toBeUndefined();
 
