@@ -114,3 +114,33 @@ test('a Deload Week that does not start on a Monday is rejected', async () => {
   expect((await sync(ana, [wednesday])).rejected).toEqual([wednesday.id]);
   expect((await ana.client.from('deload_weeks').select('week')).data).toEqual([]);
 });
+
+// A suggested Deload Week as the phone saves it, with the reason the app gave.
+const suggested = (week: string, reason: string) => ({
+  id: crypto.randomUUID(),
+  kind: 'saveDeload',
+  deload: { week, origin: 'suggested', reason, status: 'accepted', updatedAt: `${week}T10:00:00.000Z` },
+});
+
+test('a Deload Week suggested for Fatigue is stored with its reason, and the reasons of the old rules are still accepted', async () => {
+  const ana = await lifter('ana');
+
+  const fatigue = suggested('2026-10-19', 'fatigue');
+  const stalled = suggested('2026-10-12', 'stalled');
+  expect((await sync(ana, [fatigue, stalled])).rejected).toEqual([]);
+
+  const { data } = await ana.client.from('deload_weeks').select('week, reason').order('week');
+  expect(data).toEqual([
+    { week: '2026-10-12', reason: 'stalled' },
+    { week: '2026-10-19', reason: 'fatigue' },
+  ]);
+});
+
+test('a Deload Week with a reason nobody gives is rejected without failing the rest of the batch', async () => {
+  const ana = await lifter('ana');
+  const bogus = suggested('2026-10-19', 'boredom');
+  const fine = suggested('2026-10-26', 'fatigue');
+
+  expect((await sync(ana, [bogus, fine])).rejected).toEqual([bogus.id]);
+  expect((await ana.client.from('deload_weeks').select('week')).data).toEqual([{ week: '2026-10-26' }]);
+});
