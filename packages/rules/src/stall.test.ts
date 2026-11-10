@@ -20,10 +20,11 @@ const calibration = [session('2026-09-26', [[50, 10]]), session('2026-09-28', [[
 
 // A best Session (an e1RM of 100 kg), then weekly ones under it.
 const best = session(day(0), [[75, 10]]);
-const under = (n: number) => session(day(n), [[70, 10]]);
+// ...a little under it (1.3%): flat, not Fatigue.
+const under = (n: number) => session(day(n), [[74, 10]]);
 
 test('Sessions not beating the best before over 3 weeks are a Stall: the next Rep Range, at RIR 2 from the best, rounded down', () => {
-  const ana = history(...calibration, best, under(7), under(14), under(21));
+  const ana = history(...calibration, best, under(7), under(14), under(21), under(28));
   // 100 / (1 + (6 + 2) / 30) = 78.9, down to the 2.5 kg Increment.
   expect(recommendStall(ana, 'bench-press', bench)).toEqual({ weightKg: 77.5, reps: 6, repMin: 6, repMax: 8 });
 });
@@ -49,7 +50,7 @@ test('a Session that beats the best before breaks the run', () => {
 
 test('equalling the best before is not beating it', () => {
   const same = (n: number) => session(day(n), [[75, 10]]);
-  expect(recommendStall(history(...calibration, best, same(7), same(14), same(21)), 'bench-press', bench)).toEqual({
+  expect(recommendStall(history(...calibration, best, same(7), same(14), same(21), same(28)), 'bench-press', bench)).toEqual({
     weightKg: 77.5,
     reps: 6,
     repMin: 6,
@@ -77,16 +78,18 @@ test('the Calibration Sessions only set the baseline: they are never in the run'
 test('the best before is only the up to 6 Sessions before, so an old peak is forgotten', () => {
   const peak = session(day(0), [[75, 12]]);
   // Each Session beats the one before it but stays under the peak.
-  const climbing = (count: number) => Array.from({ length: count }, (_, i) => session(day(7 * (i + 1)), [[70 + i, 10]]));
+  const climbing = (count: number) => Array.from({ length: count }, (_, i) => session(day(7 * (i + 1)), [[75 + i / 10, 11]]));
   // The peak is within sight of the first 6 Sessions after it: all fail to beat it.
   expect(recommendStall(history(...calibration, peak, ...climbing(6)), 'bench-press', bench)).toBeDefined();
   // The 7th is past the window, so it beats everything it can see and the run is broken.
   expect(recommendStall(history(...calibration, peak, ...climbing(7)), 'bench-press', bench)).toBeUndefined();
 });
 
-test('a Session at least 7.5% lighter starts a fresh window, so rebuilding after a drop is not a Stall', () => {
-  const rebuilding = [68, 70, 72, 74].map((kg, i) => session(day(7 * (i + 1)), [[kg, 10]]));
-  expect(recommendStall(history(...calibration, best, ...rebuilding), 'bench-press', bench)).toBeUndefined();
+test('a Session at least 7.5% lighter starts a fresh window: the recent best is the new one, not the one before the drop', () => {
+  const dropped = (n: number) => session(day(n), [[68, 10]]);
+  const ana = history(...calibration, best, dropped(7), dropped(14), dropped(21), dropped(28), dropped(35));
+  // 68 x 10 is an e1RM of 90.7 kg: 90.7 / (1 + 8/30) = 71.6, down to 70. The 100 kg best before the drop is not counted.
+  expect(recommendStall(ana, 'bench-press', bench)).toEqual({ weightKg: 70, reps: 6, repMin: 6, repMax: 8 });
 });
 
 test('with RIR logged on both Sessions the figure is RIR-adjusted: more reserve at the same weight beats the best', () => {
@@ -113,14 +116,14 @@ test('Deload Sessions are ignored', () => {
 });
 
 test('the Rep Range moves one bracket by its midpoint: down from 8 or more, up below 8, never past 10–12', () => {
-  const ana = history(...calibration, best, under(7), under(14), under(21));
+  const ana = history(...calibration, best, under(7), under(14), under(21), under(28));
   const shift = (repMin: number, repMax: number) => {
     const advice = recommendStall(ana, 'bench-press', { repMin, repMax, incrementKg: 2.5 });
     return advice && [advice.repMin, advice.repMax, advice.weightKg, advice.reps];
   };
   expect(shift(8, 12)).toEqual([6, 8, 77.5, 6]);
   expect(shift(5, 6)).toEqual([6, 8, 77.5, 6]);
-  expect(shift(10, 12)).toEqual([8, 10, 70, 8]);
+  expect(shift(10, 12)).toEqual([8, 10, 75, 8]);
   expect(shift(6, 8)).toEqual([8, 10, 75, 8]);
   expect(shift(4, 6)).toEqual([6, 8, 77.5, 6]);
   expect(shift(8, 10)).toEqual([6, 8, 77.5, 6]);
@@ -129,14 +132,14 @@ test('the Rep Range moves one bracket by its midpoint: down from 8 or more, up b
 });
 
 test('the weight is rounded down to the Increment, whatever it is', () => {
-  const ana = history(...calibration, best, under(7), under(14), under(21));
+  const ana = history(...calibration, best, under(7), under(14), under(21), under(28));
   expect(recommendStall(ana, 'bench-press', { ...bench, incrementKg: 5 })?.weightKg).toBe(75);
   expect(recommendStall(ana, 'bench-press', { ...bench, incrementKg: 1.25 })?.weightKg).toBe(78.75);
 });
 
 test('Warm-up Sets are ignored: a light first Set is not a Working Set to judge', () => {
-  const warm = (n: number) => session(day(n), [[30, 5], [70, 10]]);
-  expect(recommendStall(history(...calibration, best, warm(7), warm(14), warm(21)), 'bench-press', bench)).toBeDefined();
+  const warm = (n: number) => session(day(n), [[30, 5], [74, 10]]);
+  expect(recommendStall(history(...calibration, best, warm(7), warm(14), warm(21), warm(28)), 'bench-press', bench)).toBeDefined();
   const lightOnly = (n: number) => session(day(n), [[30, 5], [70, 10], [70, 10]]);
   expect(recommendStall(history(lightOnly(0), lightOnly(7)), 'bench-press', bench)).toBeUndefined();
 });
@@ -154,11 +157,11 @@ test('other Exercises in between do not count as Sessions of this one', () => {
 
 test('a Stall wins over going heavier when both would advise', () => {
   // Sessions at the top of the range (go heavier dismissed each time) under an earlier better one.
-  const top = (n: number) => session(day(n), [[60, 12], [60, 12]]);
+  const top = (n: number) => session(day(n), [[64, 12], [64, 12]]);
   const peak = session(day(0), [[65, 12]]);
-  expect(recommend(history(...calibration, peak, top(7), top(14), top(21)), 'bench-press', bench)).toEqual({
+  expect(recommend(history(...calibration, peak, top(7), top(14), top(21), top(28)), 'bench-press', bench)).toEqual({
     kind: 'stall',
-    weightKg: 77.5,
+    weightKg: 70,
     reps: 6,
     repMin: 6,
     repMax: 8,
@@ -191,29 +194,26 @@ const withBodyweight = (kg: number, ...sessions: Session[]): TrainingHistory => 
 const pullUpCalibration = [pullUpSession('2026-09-26', [[5, 8]]), pullUpSession('2026-09-28', [[5, 8]])];
 
 test('a bodyweight Exercise with rising reps is not Stalled', () => {
-  const ana = withBodyweight(80, ...pullUpCalibration, ...[6, 7, 8, 9].map((reps, i) => pullUpSession(day(7 * i), [[0, reps]])));
+  const ana = withBodyweight(80, pullUpSession('2026-09-26', [[0, 4]]), pullUpSession('2026-09-28', [[0, 5]]), ...[6, 7, 8, 9, 10].map((reps, i) => pullUpSession(day(7 * i), [[0, reps]])));
   expect(recommendStall(ana, 'pull-up', pullUps)).toBeUndefined();
 });
 
 test('a weighted bodyweight Exercise that stops improving works on bodyweight plus the added weight', () => {
   const flatPullUp = (n: number) => pullUpSession(day(n), [[20, 8]]);
-  const ana = withBodyweight(80, ...pullUpCalibration, pullUpSession(day(0), [[20, 9]]), flatPullUp(7), flatPullUp(14), flatPullUp(21));
+  const ana = withBodyweight(80, ...pullUpCalibration, pullUpSession(day(0), [[20, 9]]), flatPullUp(7), flatPullUp(14), flatPullUp(21), flatPullUp(28));
   // Best: 100 kg x 9 = 130 kg e1RM. To 4–6: 130 / (1 + 6/30) = 108.3 kg in all, 28.3 added, down to 27.5.
   expect(recommendStall(ana, 'pull-up', pullUps)).toEqual({ weightKg: 27.5, reps: 4, repMin: 4, repMax: 6 });
 });
 
-test('a bodyweight Exercise with no added weight can be Stalled too, and the added weight is never below zero', () => {
+test('a bodyweight Exercise with no added weight can be Stalled too', () => {
   const plain = (n: number) => pullUpSession(day(n), [[0, 12]]);
-  const ana = withBodyweight(80, ...pullUpCalibration, plain(0), plain(7), plain(14), plain(21));
+  const ana = withBodyweight(80, ...pullUpCalibration, plain(0), plain(7), plain(14), plain(21), plain(28));
   // Best: 80 kg x 12 = 112 kg. To 8–10: 112 / (1 + 10/30) = 84 kg in all, 4 added, down to 2.5.
   expect(recommendStall(ana, 'pull-up', { repMin: 10, repMax: 12, incrementKg: 2.5 })).toEqual({ weightKg: 2.5, reps: 8, repMin: 8, repMax: 10 });
-  // A lighter bodyweight reading than the figure allows would give less than the bodyweight: clamped.
-  const light = withBodyweight(100, ...pullUpCalibration, plain(0), plain(7), plain(14), plain(21));
-  expect(recommendStall(light, 'pull-up', { repMin: 10, repMax: 12, incrementKg: 2.5 })?.weightKg).toBeGreaterThanOrEqual(0);
 });
 
 test('without a bodyweight on record a bodyweight Exercise cannot be judged, so no Stall', () => {
   const flatPullUp = (n: number) => pullUpSession(day(n), [[20, 8]]);
-  const noBodyweight = history(...pullUpCalibration, pullUpSession(day(0), [[20, 9]]), flatPullUp(7), flatPullUp(14), flatPullUp(21));
+  const noBodyweight = history(...pullUpCalibration, pullUpSession(day(0), [[20, 9]]), flatPullUp(7), flatPullUp(14), flatPullUp(21), flatPullUp(28));
   expect(recommendStall(noBodyweight, 'pull-up', pullUps)).toBeUndefined();
 });

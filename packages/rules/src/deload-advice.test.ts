@@ -18,13 +18,14 @@ function session(localDate: string, exercise: string, sets: [number, number, num
 }
 const history = (sessions: Session[], deloadWeeks: string[] = []): TrainingHistory => ({ userId: 'ana', sessions, weeklyTargets: [], deloadWeeks });
 
-// A Stall for the Exercise by Sessions on 2026-08-03 (best), then four flat ones, the last three past Calibration.
+// A Stall for the Exercise: two Calibration Sessions, then four equal ones over 3 weeks.
 const stalledSessions = (exercise: string) => [
   session('2026-08-03', exercise, [[60, 10]]),
   session('2026-08-05', exercise, [[60, 10]]),
-  session('2026-09-09', exercise, [[60, 9]]),
-  session('2026-09-14', exercise, [[60, 9]]),
-  session('2026-09-16', exercise, [[60, 9]]),
+  session('2026-08-26', exercise, [[60, 10]]),
+  session('2026-09-02', exercise, [[60, 10]]),
+  session('2026-09-09', exercise, [[60, 10]]),
+  session('2026-09-16', exercise, [[60, 10]]),
 ];
 // Same top weight in three Sessions with the RIR going 3, 2, 1 (falling), after a first Session more than four weeks back.
 const fallingRir = (exercise: string) => [
@@ -169,7 +170,7 @@ test('a Deload Week cancelled before any Session last week does not count as del
 // and 16 Nov, and free to suggest from the week of 23 Nov.
 test('no Deload Week is suggested in the first four weeks after the first Session: Stalled', () => {
   const early = (exercise: string) =>
-    ['2026-10-27', '2026-10-29', '2026-11-03', '2026-11-05', '2026-11-10'].map((day, i) => session(day, exercise, [[60, i === 0 ? 10 : 9]]));
+    ['2026-10-27', '2026-10-29', '2026-10-30', '2026-11-06', '2026-11-13', '2026-11-20'].map((day) => session(day, exercise, [[60, 10]]));
   const ana = history([...early('bench-press'), ...early('back-squat')]);
   expect(recommendDeload(ana, '2026-11-11', routine)).toBeUndefined();
   expect(recommendDeload(ana, '2026-11-22', routine)).toBeUndefined();

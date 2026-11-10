@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { recommendFatigue, type Session } from '../index.ts';
+import { recommendFatigue, recommendStall, type Session, type TrainingHistory } from '../index.ts';
 import { randomSource } from './lifters.ts';
 
 // Fatigue (ADR 0009) on simulated lifters of one lift, run through the real rules, to check the
@@ -91,4 +91,46 @@ test('a lifter with built-in effort creep is flagged within 3 Sessions of it sta
   // RIR repeated once, so the first creep Sessions looked level; they are flagged one Session later.
   expect(within(3)).toBeGreaterThanOrEqual(0.95);
   expect(within(4)).toBe(1);
+});
+
+// The alarms an advice raises from Session `from` on: a run of consecutive Sessions flagged is one alarm.
+function flagRuns(sessions: Session[], from: number, flagged: (history: TrainingHistory) => boolean): number {
+  let runs = 0;
+  let was = false;
+  for (let n = from; n <= sessions.length; n++) {
+    const now = flagged({ userId: 'sim', sessions: sessions.slice(0, n), weeklyTargets: [] });
+    if (now && !was) runs++;
+    was = now;
+  }
+  return runs;
+}
+
+// A flat lifter (true e1RM unchanged, RIR not trending) is Stalled, which is accommodation. With 2% day-to-day
+// noise and whole-number RIR, though, Fatigue (B)'s 3% bar is crossed by chance now and then: over a Season
+// (200 lifters, seed 207) every lifter is Stalled at some point (1.995 Stall alarms each) and 116 of them
+// (0.995 alarms each) also get a Fatigue alarm. The thresholds are the owner's call, so this pins how it is today.
+test('a flat lifter whose RIR does not move is Stalled, and gets fewer Fatigue alarms than Stall ones', () => {
+  const random = randomSource(207);
+  let fatigue = 0;
+  let stall = 0;
+  let withFatigue = 0;
+  let withStall = 0;
+  for (let lifter = 0; lifter < LIFTERS; lifter++) {
+    const trueE1rm = 60 + random.next() * 80;
+    const weightKg = planned(trueE1rm);
+    const sessions: Session[] = [];
+    for (let week = 0; week < LEAD_IN_WEEKS + SEASON_WEEKS; week++) {
+      for (const weekday of [0, 2, 4]) {
+        sessions.push(loggedSession(addDays('2026-08-17', week * 7 + weekday), weightKg, trueE1rm * (1 + random.normal(0, PERFORMANCE_SPREAD))));
+      }
+    }
+    const f = flagRuns(sessions, LEAD_IN_WEEKS * 3, (h) => recommendFatigue(h, 'bench-press', bench) !== undefined);
+    const s = flagRuns(sessions, LEAD_IN_WEEKS * 3, (h) => recommendStall(h, 'bench-press', bench) !== undefined);
+    fatigue += f;
+    stall += s;
+    if (f) withFatigue++;
+    if (s) withStall++;
+  }
+  expect(withStall).toBe(LIFTERS);
+  expect(fatigue).toBeLessThan(stall);
 });

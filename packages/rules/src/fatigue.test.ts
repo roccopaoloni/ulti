@@ -103,7 +103,7 @@ test('a Fatigue reset wins over going heavier', () => {
 
 test('Fatigue wins over a Stall, and a Stall still wins over going heavier', () => {
   expect(recommend(history(...calibration, solid(1), weak(3), weak(5)), 'bench-press', bench)).toEqual({ kind: 'fatigue', weightKg: 52.5, reps: 8 });
-  expect(recommend(history(...calibration, solid(1), solid(3), solid(5), solid(7)), 'bench-press', bench)).toEqual({ kind: 'stall', weightKg: 55, reps: 8 });
+  expect(recommend(history(...calibration, solid(1), solid(8), solid(15), solid(22)), 'bench-press', bench)).toEqual({ kind: 'stall', weightKg: 62.5, reps: 6, repMin: 6, repMax: 8 });
 });
 
 test('missing the bottom of the Rep Range is no longer a Stall', () => {
