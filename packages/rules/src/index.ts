@@ -942,6 +942,10 @@ export const DELOAD_GAP_WEEKS = 4;
 // A Deload Week is suggested when Fatigue shows on Exercises of this many different compound
 // Movement Patterns (ADR 0009).
 const DELOAD_MIN_PATTERNS = 2;
+// ...or on one pattern after this many weeks in a row of hard training (connective tissue adapts more
+// slowly than muscle), a week being hard at this average RIR or less.
+const HARD_STREAK_WEEKS = 6;
+const HARD_STREAK_RIR = 1;
 
 export type DeloadReason = 'fatigue';
 
@@ -967,28 +971,61 @@ export function deloadedLastWeek(history: TrainingHistory, today: string): boole
   return deloadedWeeks(history).some((week) => weeksBetween(week, weekStart(today)) === 1);
 }
 
+// Whether the lifter trained hard for the HARD_STREAK_WEEKS weeks in a row before the week of the
+// local date: each week's average RIR over compound Working Sets with RIR logged is at most
+// HARD_STREAK_RIR (RIR 4 and over as 4). A week with no such Set, or a deloaded week, breaks it, and
+// Deload Sessions do not count. `patternOf` gives an Exercise's Movement Pattern (none: isolation).
+function highIntensityStreak(history: TrainingHistory, today: string, patternOf: (exercise: string) => MovementPattern | null | undefined): boolean {
+  const deloaded = new Set(deloadedWeeks(history));
+  const rirByWeek = new Map<string, number[]>();
+  for (const session of history.sessions) {
+    if (session.deload) continue;
+    const week = weekStart(session.localDate);
+    for (const set of workingSets(session)) {
+      if (set.rir === undefined || !isCompound(patternOf(set.exercise))) continue;
+      rirByWeek.set(week, [...(rirByWeek.get(week) ?? []), Math.min(set.rir, FATIGUE_MAX_RIR)]);
+    }
+  }
+  for (let ago = 1; ago <= HARD_STREAK_WEEKS; ago++) {
+    const week = new Date(Date.parse(`${weekStart(today)}T00:00:00Z`) - ago * 7 * 86_400_000).toISOString().slice(0, 10);
+    const rirs = rirByWeek.get(week);
+    if (deloaded.has(week) || !rirs || rirs.reduce((sum, rir) => sum + rir, 0) / rirs.length > HARD_STREAK_RIR) return false;
+  }
+  return true;
+}
+
 // Why a Deload Week is recommended in the week of the local date, if it is (spec: Deload Week):
 // Fatigue on Exercises of two or more different compound Movement Patterns among `exercises`, which
 // are the Routine's, or the ones trained lately with no Routine. Two Fatigued presses are one
-// pattern; Stalls, isolation and Custom Exercises (no pattern) do not count. `exercises` in the
-// answer are the Fatigued compound ones, one per pattern first, so the first two can be named. None
-// is suggested within DELOAD_GAP_WEEKS of the week of the first Session. `dismissed` holds the
-// Mondays of the weeks the lifter dismissed a suggestion in.
+// pattern; Stalls, isolation and Custom Exercises (no pattern) do not count. After a high-intensity
+// streak one pattern is enough, and `streak` says it decided the answer; the streak alone suggests
+// nothing. `patternOf` reads the Movement Pattern of any Exercise trained in the weeks of the streak,
+// not only `exercises` (the default). `exercises` in the answer are the Fatigued compound ones, one
+// per pattern first, so the first two can be named. None is suggested within DELOAD_GAP_WEEKS of the
+// week of the first Session. `dismissed` holds the Mondays of the weeks the lifter dismissed a
+// suggestion in.
 export function recommendDeload(
   history: TrainingHistory,
   today: string,
   exercises: { exercise: string; rule: GoHeavierRule; pattern?: MovementPattern | null }[],
   dismissed: readonly string[] = [],
-): { reason: DeloadReason; exercises: string[] } | undefined {
+  patternOf: (exercise: string) => MovementPattern | null | undefined = (exercise) => exercises.find((lift) => lift.exercise === exercise)?.pattern,
+): { reason: DeloadReason; exercises: string[]; streak?: true } | undefined {
   const week = weekStart(today);
   if ((history.deloadWeeks ?? []).some((started) => weeksBetween(started, week) < DELOAD_GAP_WEEKS)) return undefined;
   if (dismissed.some((quiet) => weeksBetween(quiet, week) < DELOAD_GAP_WEEKS)) return undefined;
   if (history.sessions[0] && weeksBetween(weekStart(history.sessions[0].localDate), week) < DELOAD_GAP_WEEKS) return undefined;
   const fatigued = exercises.filter(({ exercise, rule, pattern }) => isCompound(pattern) && recommendFatigue(history, exercise, rule));
   const patterns = new Set(fatigued.map(({ pattern }) => pattern));
-  if (patterns.size < DELOAD_MIN_PATTERNS) return undefined;
+  if (patterns.size === 0) return undefined;
+  const streak = patterns.size < DELOAD_MIN_PATTERNS;
+  if (streak && !highIntensityStreak(history, today, patternOf)) return undefined;
   const first = fatigued.filter(({ pattern }, i) => fatigued.findIndex((other) => other.pattern === pattern) === i);
-  return { reason: 'fatigue', exercises: [...first, ...fatigued.filter((lift) => !first.includes(lift))].map(({ exercise }) => exercise) };
+  return {
+    reason: 'fatigue',
+    exercises: [...first, ...fatigued.filter((lift) => !first.includes(lift))].map(({ exercise }) => exercise),
+    ...(streak && { streak }),
+  };
 }
 
 // The rows of an Exercise's Sets in a Deload Week (spec: Deload Week), from the rows a regular

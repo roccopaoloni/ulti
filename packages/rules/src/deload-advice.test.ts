@@ -165,3 +165,65 @@ test('a Deload Week has about half the Sets at about 10% less weight, rounded to
   expect(deloadRows([undefined, undefined, undefined], 2.5)).toEqual([undefined, undefined]);
   expect(deloadRows([{ weightKg: 0, reps: 10 }], 2.5)).toEqual([{ weightKg: 0, reps: 10 }]);
 });
+
+// A high-intensity streak (spec: Deload Week suggestion): the 6 weeks before the week of 14 September
+// (Mondays 3 Aug to 7 Sep) each with an average RIR of 1 or less over compound Working Sets.
+const hardDates = ['2026-08-04', '2026-08-11', '2026-08-18', '2026-08-25', '2026-09-01', '2026-09-08'];
+const hardWeeks = (exercise = 'overhead-press', dates = hardDates, rir = 1) => dates.map((date) => session(date, exercise, [[40, 8, rir]]));
+const without = (date: string) => hardDates.filter((other) => other !== date);
+
+test('after a high-intensity streak, Fatigue on one compound pattern suggests a Deload Week, and says the streak decided it', () => {
+  const ana = history([...fatiguedSessions('back-squat'), ...hardWeeks()]);
+  expect(recommendDeload(ana, today, routine)).toEqual({ reason: 'fatigue', exercises: ['back-squat'], streak: true });
+});
+
+test('without the streak, Fatigue on one pattern is not enough; without Fatigue, the streak alone suggests nothing', () => {
+  expect(recommendDeload(fatigued('back-squat'), today, routine)).toBeUndefined();
+  expect(recommendDeload(history(hardWeeks()), today, routine)).toBeUndefined();
+});
+
+test('Fatigue on two patterns is not decided by the streak, even with one', () => {
+  const ana = history([...fatigued('back-squat', 'bench-press').sessions, ...hardWeeks()]);
+  expect(recommendDeload(ana, today, routine)).toEqual({ reason: 'fatigue', exercises: ['bench-press', 'back-squat'] });
+});
+
+test('the streak needs all 6 weeks before this one', () => {
+  const squat = fatiguedSessions('back-squat');
+  expect(recommendDeload(history([...squat, ...hardWeeks('overhead-press', hardDates.slice(1))]), today, routine)).toBeUndefined();
+  // The current week does not make up for a missing one.
+  expect(recommendDeload(history([...squat, ...hardWeeks('overhead-press', [...without('2026-08-18'), '2026-09-15'])]), today, routine)).toBeUndefined();
+});
+
+test('a week averaging over RIR 1 breaks the streak, with RIR 4 and over counted as 4', () => {
+  const squat = fatiguedSessions('back-squat');
+  const rest = hardWeeks('overhead-press', without('2026-08-25'));
+  expect(recommendDeload(history([...squat, ...rest, ...hardWeeks('overhead-press', ['2026-08-25'], 2)]), today, routine)).toBeUndefined();
+  // RIR 0 and RIR 9 average 2 (9 counts as 4), not 4.5.
+  const spread = session('2026-08-25', 'overhead-press', [[40, 8, 0], [40, 8, 9]]);
+  expect(recommendDeload(history([...squat, ...rest, spread]), today, routine)).toBeUndefined();
+  // RIR 0 and RIR 2 average exactly 1: still hard.
+  const exact = session('2026-08-25', 'overhead-press', [[40, 8, 0], [40, 8, 2]]);
+  expect(recommendDeload(history([...squat, ...rest, exact]), today, routine)?.streak).toBe(true);
+});
+
+test('a week with no compound RIR logged breaks the streak: only isolation or Custom RIR, or none at all', () => {
+  const rest = hardWeeks('overhead-press', without('2026-08-25'));
+  for (const swap of [session('2026-08-25', 'barbell-curl', [[20, 10, 0]]), session('2026-08-25', 'custom-dips', [[0, 10, 0]]), session('2026-08-25', 'overhead-press', [[40, 8]])]) {
+    expect(recommendDeload(history([...fatiguedSessions('back-squat'), ...rest, swap]), today, routine)).toBeUndefined();
+  }
+});
+
+test('a deloaded week breaks the streak, and its Deload Sessions do not count towards it', () => {
+  const base = [...fatiguedSessions('back-squat'), ...hardWeeks('overhead-press', without('2026-08-11'))];
+  // A Deload Week accepted, even with a hard Session in it.
+  expect(recommendDeload(history([...base, session('2026-08-11', 'overhead-press', [[40, 8, 0]])], ['2026-08-10']), today, routine)).toBeUndefined();
+  // A Deload Session at RIR 0 is no hard Set, and its week is deloaded.
+  expect(recommendDeload(history([...base, { ...session('2026-08-12', 'overhead-press', [[40, 8, 0]]), deload: true }]), today, routine)).toBeUndefined();
+});
+
+test("the streak reads each Exercise's pattern from the lookup, so lifts outside the Routine count", () => {
+  const ana = history([...fatiguedSessions('back-squat'), ...hardWeeks('deadlift')]);
+  expect(recommendDeload(ana, today, routine)).toBeUndefined();
+  const patternOf = (exercise: string) => (exercise === 'deadlift' ? ('hinge' as const) : undefined);
+  expect(recommendDeload(ana, today, routine, [], patternOf)).toEqual({ reason: 'fatigue', exercises: ['back-squat'], streak: true });
+});

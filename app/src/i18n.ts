@@ -315,8 +315,9 @@ type Messages = {
   deload: {
     // This week is a Deload Week.
     active: string;
-    // Why a Deload Week is suggested: the lifts showing Fatigue, one or two, by name.
-    fatigue: (lifts: string[]) => string;
+    // Why a Deload Week is suggested: the lifts showing Fatigue, one or two, by name, and whether a
+    // streak of 6 hard weeks decided it.
+    fatigue: (lifts: string[], streak?: boolean) => string;
     accept: string;
     dismiss: string;
     start: string;
@@ -836,7 +837,8 @@ const en: Messages = {
   },
   deload: {
     active: 'Deload Week: about half the sets at about 10% less weight',
-    fatigue: (lifts) => `Your ${lifts.join(' and ')} ${lifts.length > 1 ? 'are' : 'is'} showing fatigue. Take a Deload Week to recover.`,
+    fatigue: (lifts, streak) =>
+      `Your ${lifts.join(' and ')} ${lifts.length > 1 ? 'are' : 'is'} showing fatigue${streak ? ' after 6 weeks of hard training' : ''}. Take a Deload Week to recover.`,
     accept: 'Start Deload Week',
     dismiss: 'Not now',
     start: 'Start a Deload Week',
@@ -1354,7 +1356,8 @@ const es: Messages = {
   },
   deload: {
     active: 'Semana de descarga: más o menos la mitad de las series con un 10% menos de peso',
-    fatigue: (lifts) => `Tenés fatiga en ${lifts.join(' y ')}. Hacé una Semana de descarga para recuperarte.`,
+    fatigue: (lifts, streak) =>
+      `Tenés fatiga en ${lifts.join(' y ')}${streak ? ' después de 6 semanas de entrenamiento duro' : ''}. Hacé una Semana de descarga para recuperarte.`,
     accept: 'Empezar Semana de descarga',
     dismiss: 'Ahora no',
     start: 'Empezar una Semana de descarga',
