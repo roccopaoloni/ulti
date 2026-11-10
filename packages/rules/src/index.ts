@@ -674,7 +674,8 @@ export const incrementInUnits = (incrementKg: number, units: Units) =>
   units === 'kg' ? incrementKg : Math.max(2.5, Math.round(kgToUnits(incrementKg, units) / 2.5) * 2.5);
 
 // A Routine: its Sessions (Routine Days), each listing Exercises with a number of Sets and a Rep Range.
-export type RoutineExercise = { exerciseId: string; sets: number; repMin: number; repMax: number };
+// `rangeSince` is the local date a Stall's Switch moved the Rep Range, if one did.
+export type RoutineExercise = { exerciseId: string; sets: number; repMin: number; repMax: number; rangeSince?: string };
 // `colour` is the Day's slot in the accent rotation. It is stored on the Day so it stays with the
 // Day when Days are reordered and syncs with the Routine; Routines saved before it lack it.
 export type RoutineDay = { id: string; name: string; colour?: number; exercises: RoutineExercise[] };
@@ -776,7 +777,8 @@ export * from './rank.ts';
 export * from './routine-link.ts';
 
 // What an Exercise is trained to in a Routine, and the Increment that applies to it.
-export type GoHeavierRule = { repMin: number; repMax: number; incrementKg: number };
+// `since` is when the Rep Range was last switched by a Stall: only Sessions from then on can fail it.
+export type GoHeavierRule = { repMin: number; repMax: number; incrementKg: number; since?: string };
 export type GoHeavier = { weightKg: number; reps: number; incrementKg: number };
 
 // Double progression (spec: Go heavier): once every Working Set of the Exercise's last Session
@@ -796,15 +798,15 @@ export function recommendGoHeavier(history: TrainingHistory, exercise: string, r
 }
 
 export type Stall = { weightKg: number; reps: number };
+// The Stall's suggestion: the next Rep Range, with the weight and reps to start it at.
+export type RepRangeShift = Stall & { repMin: number; repMax: number };
 
-// How many of the Exercise's Sessions before a Session its "recent best" e1RM looks back over.
-const RECENT_BEST_SESSIONS = 6;
 const STALL_RESET = 0.9;
 
-// The Exercise's regular Sessions that have Working Sets, with their Working Sets. A bodyweight
-// Exercise is lifted at the lifter's average bodyweight plus the added weight, as for Personal
-// Records: `averageKg` holds that bodyweight per Session (0 when not a bodyweight Exercise), and is
-// undefined without a check-in, when a Session can't be judged.
+// The Exercise's regular Sessions that have Working Sets, with their Working Sets and local dates. A
+// bodyweight Exercise is lifted at the lifter's average bodyweight plus the added weight, as for
+// Personal Records: `averageKg` holds that bodyweight per Session (0 when not a bodyweight Exercise),
+// and is undefined without a check-in, when a Session can't be judged.
 function exerciseSessions(history: TrainingHistory, exercise: string) {
   const done = regularSessions(history)
     .map((session) => ({ localDate: session.localDate, working: workingSets(session).filter((set) => set.exercise === exercise && !set.custom) }))
@@ -812,10 +814,10 @@ function exerciseSessions(history: TrainingHistory, exercise: string) {
   const sessions = done.map(({ working }) => working);
   const bodyweight = !!sessions[0]?.[0].bodyweight;
   const averageKg = done.map(({ localDate }) => (bodyweight ? averageBodyweight(history.profile?.bodyweightKg ?? [], localDate) : 0));
-  return { sessions, bodyweight, averageKg };
+  return { sessions, dates: done.map(({ localDate }) => localDate), bodyweight, averageKg };
 }
 
-// The reset both Stall and Fatigue ask for: about 10% under the last Session's training weight,
+// The reset Fatigue asks for: about 10% under the last Session's training weight,
 // rounded to the Increment, back at the bottom of the Rep Range. A bodyweight Exercise drops its
 // added weight by 10% of the total load, never below zero; with none added there is nothing to drop.
 function resetAdvice({ sessions, bodyweight, averageKg }: ReturnType<typeof exerciseSessions>, rule: GoHeavierRule): Stall | undefined {
@@ -826,31 +828,8 @@ function resetAdvice({ sessions, bodyweight, averageKg }: ReturnType<typeof exer
   return { weightKg: Math.round(resetKg / rule.incrementKg) * rule.incrementKg, reps: rule.repMin };
 }
 
-// Stall (spec: Stall), judged on the Exercise's Working Sets only. The Calibration Sessions (its
-// first CALIBRATION_SESSIONS) only set the baseline, so none counts toward a Stall. It is Stalled after
-// three Sessions in a row, all past Calibration, each failing to beat the recent best e1RM, where
-// a Session's e1RM is its best Working Set and the recent best is the best of the up to 6
-// Sessions before it, Calibration Sessions included (equal does not beat it; a Session with none
-// before it cannot fail), so the earliest is the 5th Session.
-// The suggestion is about 10% under the last Session's training weight, rounded to the Increment,
-// back at the bottom of the range.
-export function recommendStall(history: TrainingHistory, exercise: string, rule: GoHeavierRule): Stall | undefined {
-  const done = exerciseSessions(history, exercise);
-  const { sessions, averageKg } = done;
-  const best = sessions.map((working, index) =>
-    averageKg[index] === undefined ? undefined : Math.max(...working.map((set) => e1rm(set.weightKg + averageKg[index]!, set.reps))),
-  );
-  const failedToBeat = (index: number) => {
-    const recent = best.slice(Math.max(0, index - RECENT_BEST_SESSIONS), index).filter((value) => value !== undefined);
-    return best[index] !== undefined && recent.length > 0 && best[index] <= Math.max(...recent);
-  };
-  const last = sessions.length - 1;
-  const stalled = last - 2 >= CALIBRATION_SESSIONS && [last, last - 1, last - 2].every(failedToBeat);
-  return stalled ? resetAdvice(done, rule) : undefined;
-}
-
-// Fatigue (spec: Stall, Fatigue and Deload advice, ADR 0009) compares Sessions on the top Working
-// Set of 1–12 reps, as an RIR-adjusted e1RM, W × (1 + (reps + RIR) / 30) with RIR 4 and over as 4.
+// Fatigue and Stall (spec: Stall, Fatigue and Deload advice, ADR 0009) compare Sessions on the top
+// Working Set of 1–12 reps, as an RIR-adjusted e1RM, W × (1 + (reps + RIR) / 30) with RIR 4 and over as 4.
 // The adjusted figure is the engine's alone: Personal Records, ceilings and Strength Level keep e1rm().
 const FATIGUE_MAX_REPS = 12;
 const FATIGUE_MAX_RIR = 4;
@@ -858,68 +837,143 @@ const FATIGUE_MAX_RIR = 4;
 const FATIGUE_BEST_SESSIONS = 6;
 // ...never reaching past the latest Session whose top Set is this much lighter than the Session before it...
 const FATIGUE_WINDOW_RESET = 0.075;
-// ...and Fatigue (B) is each of the last 2 Sessions at least this far under it.
+// ...and Fatigue is each of the last 2 Sessions at least this far under the average of it.
 const FATIGUE_REGRESSION = 0.03;
 const FATIGUE_REGRESSION_SESSIONS = 2;
-// Fatigue (A) is RIR falling across this many Sessions with RIR at the same top weight.
-const FATIGUE_CREEP_SESSIONS = 3;
 
-// Fatigue on an Exercise (spec: Fatigue), judged on its Working Sets only. The Calibration Sessions
-// only set the baseline: the Sessions judged are all past Calibration, but they can be the "best
-// before". It is Fatigued when either:
-// - (A) effort creep: its last 3 Sessions with RIR logged were trained to the same top weight and
-//   their average RIR fell each time, or
-// - (B) regression: each of its last 2 Sessions is at least 3% under its best before. Two Sessions
-//   are compared on the RIR-adjusted figure only when both logged RIR on their top Set, else on
-//   plain e1RM (RIR is optional, so a skipped chip is never invented).
-// The suggestion is the same reset as a Stall's.
-export function recommendFatigue(history: TrainingHistory, exercise: string, rule: GoHeavierRule): Stall | undefined {
-  const done = exerciseSessions(history, exercise);
-  const judged = done.sessions
+// The Exercise's Sessions with a figure to judge, each with the numbers Fatigue and Stall read from
+// its Working Sets: `index` is its place among all the Exercise's Sessions, so the first
+// CALIBRATION_SESSIONS can be told apart. A Session with no Set of 1–12 reps, or that can't be
+// judged without a bodyweight, is left out.
+function judgedSessions(done: ReturnType<typeof exerciseSessions>) {
+  return done.sessions
     .map((working, index) => {
       const counted = working.filter((set) => set.reps >= 1 && set.reps <= FATIGUE_MAX_REPS);
       const bodyweightKg = done.averageKg[index];
       if (counted.length === 0 || bodyweightKg === undefined) return undefined;
       const figure = (set: Set, reps: number) => (set.weightKg + bodyweightKg) * (1 + reps / 30);
       const top = counted.reduce((a, b) => (figure(b, b.reps) > figure(a, a.reps) ? b : a));
-      const withRir = counted.filter((set) => set.rir !== undefined);
       return {
         index,
+        localDate: done.dates[index],
+        bodyweightKg,
         loadKg: top.weightKg + bodyweightKg,
         plain: figure(top, top.reps),
         adjusted: top.rir === undefined ? undefined : figure(top, top.reps + Math.min(top.rir, FATIGUE_MAX_RIR)),
-        rirTopKg: Math.max(...withRir.map((set) => set.weightKg)),
-        averageRir: withRir.reduce((sum, set) => sum + Math.min(set.rir!, FATIGUE_MAX_RIR), 0) / withRir.length,
-        hasRir: withRir.length > 0,
       };
     })
     .filter((session) => session !== undefined);
-  const past = (sessions: typeof judged) => sessions.every(({ index }) => index >= CALIBRATION_SESSIONS);
+}
+type Judged = ReturnType<typeof judgedSessions>;
 
-  const creep = judged.filter(({ hasRir }) => hasRir).slice(-FATIGUE_CREEP_SESSIONS);
-  const effortCreep =
-    creep.length === FATIGUE_CREEP_SESSIONS &&
-    past(creep) &&
-    creep.every(({ rirTopKg }) => rirTopKg === creep[0].rirTopKg) &&
-    creep.every(({ averageRir }, i) => i === 0 || averageRir < creep[i - 1].averageRir);
+// The Sessions that are the "best before" the one at `position`: up to the 6 before it, never
+// reaching past the latest one whose top Set is 7.5% or more lighter than the Session before it.
+function bestBeforeWindow(judged: Judged, position: number): Judged {
+  let from = Math.max(0, position - FATIGUE_BEST_SESSIONS);
+  for (let at = from + 1; at <= position; at++) if (judged[at].loadKg <= judged[at - 1].loadKg * (1 - FATIGUE_WINDOW_RESET)) from = at;
+  return judged.slice(from, position);
+}
 
-  const underBestBefore = (position: number) => {
-    let from = Math.max(0, position - FATIGUE_BEST_SESSIONS);
-    for (let at = from + 1; at <= position; at++) if (judged[at].loadKg <= judged[at - 1].loadKg * (1 - FATIGUE_WINDOW_RESET)) from = at;
-    const session = judged[position];
-    return judged.slice(from, position).some((before) => {
-      const bothRir = session.adjusted !== undefined && before.adjusted !== undefined;
-      return (bothRir ? session.adjusted! : session.plain) <= (bothRir ? before.adjusted! : before.plain) * (1 - FATIGUE_REGRESSION);
-    });
+// What a Session is compared with: the figures of the Sessions in its window. Both sides are
+// RIR-adjusted when the Session logged RIR, using the window's Sessions that did too (the others can't
+// be put on that scale, so they are left out); with no RIR on the Session, or on any window Session,
+// everything is plain e1RM. RIR is optional, so a skipped chip is never invented.
+function comparison(session: Judged[number], window: Judged): { now: number; before: { session: Judged[number]; figure: number }[] } {
+  const adjusted = session.adjusted === undefined ? [] : window.filter((before) => before.adjusted !== undefined);
+  return adjusted.length > 0
+    ? { now: session.adjusted!, before: adjusted.map((before) => ({ session: before, figure: before.adjusted! })) }
+    : { now: session.plain, before: window.map((before) => ({ session: before, figure: before.plain })) };
+}
+
+// Fatigue on an Exercise (spec: Fatigue), judged on its Working Sets only. The Calibration Sessions
+// only set the baseline: the Sessions judged are all past Calibration, but they can be the "best
+// before". It is Fatigued when each of its last 2 Sessions is at least 3% under the average of its
+// best before window (the up to 6 Sessions before it). On the RIR-adjusted figure this also catches
+// effort creep: the same weight with less and less in reserve is a falling adjusted e1RM.
+// The suggestion is a reset about 10% lighter.
+export function recommendFatigue(history: TrainingHistory, exercise: string, rule: GoHeavierRule): Stall | undefined {
+  const done = exerciseSessions(history, exercise);
+  const judged = judgedSessions(done);
+  const past = (sessions: Judged) => sessions.every(({ index }) => index >= CALIBRATION_SESSIONS);
+
+  const underAverageBefore = (position: number) => {
+    const { now, before } = comparison(judged[position], bestBeforeWindow(judged, position));
+    return before.length > 0 && now <= (before.reduce((sum, { figure }) => sum + figure, 0) / before.length) * (1 - FATIGUE_REGRESSION);
   };
   const lastPositions = judged.slice(-FATIGUE_REGRESSION_SESSIONS).map((_, i) => judged.length - FATIGUE_REGRESSION_SESSIONS + i);
   const regression =
-    judged.length >= FATIGUE_REGRESSION_SESSIONS && past(judged.slice(-FATIGUE_REGRESSION_SESSIONS)) && lastPositions.every(underBestBefore);
+    judged.length >= FATIGUE_REGRESSION_SESSIONS && past(judged.slice(-FATIGUE_REGRESSION_SESSIONS)) && lastPositions.every(underAverageBefore);
 
-  return effortCreep || regression ? resetAdvice(done, rule) : undefined;
+  return regression ? resetAdvice(done, rule) : undefined;
 }
 
-export type Recommendation = ({ kind: 'goHeavier' } & GoHeavier) | ({ kind: 'stall' } & Stall) | ({ kind: 'fatigue' } & Stall);
+// A Stall is at least this many Sessions without beating the best before, the last at least this
+// many days after the Session that set the best (or after the Rep Range was switched, if later): 3
+// weeks counted from date to date, so a Monday and the Monday 3 weeks on qualify, and 20 days do not.
+const STALL_SESSIONS = 3;
+const STALL_DAYS = 21;
+// The remedy puts the new Rep Range's bottom at this many reps in reserve.
+const STALL_RIR = 2;
+// The Rep Ranges a Stall moves between, lightest first.
+const STALL_RANGES = [
+  [4, 6],
+  [6, 8],
+  [8, 10],
+  [10, 12],
+] as const;
+// A range whose midpoint is this or more is on the light side already: the Stall moves it down, else up.
+const STALL_DOWN_FROM = 8;
+
+// The next Rep Range after a Stall: the bracket the range's midpoint falls in (a midpoint on a
+// bracket's edge belongs to the lower one), one bracket down when the midpoint is 8 or more, else
+// one up, within 4–6 and 10–12.
+function nextRepRange({ repMin, repMax }: GoHeavierRule): readonly [number, number] {
+  const midpoint = (repMin + repMax) / 2;
+  const bracket = Math.max(0, STALL_RANGES.findIndex(([, top]) => midpoint <= top));
+  const at = midpoint >= STALL_DOWN_FROM ? bracket - 1 : bracket + 1;
+  return STALL_RANGES[Math.min(STALL_RANGES.length - 1, Math.max(0, at))];
+}
+
+// Stall (spec: Stall, Fatigue and Deload advice), accommodation: the Exercise's figure has been flat
+// for weeks while the lifter is not Fatigued, so the stimulus has gone stale. Judged on the same
+// figure, best-before window and Calibration handling as Fatigue. It is Stalled when the Sessions
+// at the end of its history that are past Calibration and each fail to beat their best before (equal
+// does not beat it; a Session with none before it cannot fail) number at least 3, counting only those
+// on or after `rule.since` (the best before may reach further back), and the last Session is at least
+// 21 days after the Session just before them, the one that set the best, or after `rule.since`,
+// whichever is later (the best before window alone is only 6 Sessions, under 3 weeks for someone
+// training 3 times a week). It is not Stalled while Fatigued.
+// The suggestion is the next Rep Range, at the weight that leaves RIR 2 at its bottom from the recent
+// best, rounded down to the Increment. The recent best is the best figure over the last Session's
+// window and itself. A bodyweight Exercise works on bodyweight plus the added weight, which is never
+// below zero.
+export function recommendStall(history: TrainingHistory, exercise: string, rule: GoHeavierRule): RepRangeShift | undefined {
+  const judged = judgedSessions(exerciseSessions(history, exercise));
+  const failedToBeat = (position: number) => {
+    const { now, before } = comparison(judged[position], bestBeforeWindow(judged, position));
+    return judged[position].index >= CALIBRATION_SESSIONS && before.length > 0 && now <= Math.max(...before.map(({ figure }) => figure));
+  };
+  let first = judged.length;
+  while (first > 0 && failedToBeat(first - 1)) first--;
+  const failing = judged.slice(first).filter(({ localDate }) => rule.since === undefined || localDate >= rule.since);
+  if (failing.length < STALL_SESSIONS) return undefined;
+
+  const lastPosition = judged.length - 1;
+  const last = judged[lastPosition];
+  const setTheBest = judged[Math.max(0, first - 1)].localDate;
+  const from = rule.since !== undefined && rule.since > setTheBest ? rule.since : setTheBest;
+  const days = (Date.parse(`${last.localDate}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000;
+  if (days < STALL_DAYS || recommendFatigue(history, exercise, rule)) return undefined;
+
+  const { now, before } = comparison(last, bestBeforeWindow(judged, lastPosition));
+  const bestE1rm = Math.max(now, ...before.map(({ figure }) => figure));
+  const [repMin, repMax] = nextRepRange(rule);
+  const addedKg = Math.max(0, bestE1rm / (1 + (repMin + STALL_RIR) / 30) - last.bodyweightKg);
+  // Rounded down to the Increment (the nudge keeps a float like 74.999999 from dropping a step).
+  return { weightKg: Math.floor(addedKg / rule.incrementKg + 1e-9) * rule.incrementKg, reps: repMin, repMin, repMax };
+}
+
+export type Recommendation = ({ kind: 'goHeavier' } & GoHeavier) | ({ kind: 'stall' } & RepRangeShift) | ({ kind: 'fatigue' } & Stall);
 
 // The one piece of advice for an Exercise: Fatigue, else Stall, else go heavier. Fatigue wins over
 // everything, since a tired lifter needs less, not more. A Stall wins over going heavier: heavier

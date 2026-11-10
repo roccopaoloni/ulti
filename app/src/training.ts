@@ -675,10 +675,41 @@ export async function openTraining(userId: string, options: Options) {
     },
 
     // Creates the Routine, or replaces its Sessions: the same Routine written again, so the latest
-    // write wins.
+    // write wins. An Exercise whose Rep Range differs from the saved Routine's gets today as its
+    // `rangeSince`, as a Stall's Switch does: any Rep Range change is a fresh start for a Stall.
     async saveRoutine(days: RoutineDay[]) {
-      const id = (await this.routine())?.id ?? crypto.randomUUID();
-      await write({ id: crypto.randomUUID(), kind: 'saveRoutine', routine: { id, days, updatedAt: stamp() } });
+      const saved = await this.routine();
+      const today = localDate(options.now(), options.timeZone());
+      const stamped = days.map((day) => {
+        const before = saved?.days.find(({ id }) => id === day.id);
+        return {
+          ...day,
+          exercises: day.exercises.map((exercise) => {
+            const was = before?.exercises.find(({ exerciseId }) => exerciseId === exercise.exerciseId);
+            return was && (was.repMin !== exercise.repMin || was.repMax !== exercise.repMax) ? { ...exercise, rangeSince: today } : exercise;
+          }),
+        };
+      });
+      const id = saved?.id ?? crypto.randomUUID();
+      await write({ id: crypto.randomUUID(), kind: 'saveRoutine', routine: { id, days: stamped, updatedAt: stamp() } });
+    },
+
+    // Accepts a Stall's advice (spec: Stall): the Exercise's Rep Range changes to the new one on the
+    // Routine Day the Session in progress came from, and on that Session's plan, as an ordinary
+    // Routine edit. Other Days keep theirs. It notes the Session's local date as `rangeSince`, from when a
+    // Stall counts Sessions again.
+    async switchRepRange(sessionId: string, exerciseId: string, repMin: number, repMax: number) {
+      const inProgress = await db.get('state', 'sessionInProgress');
+      const started = await db.get('sessions', sessionId);
+      const dayId = started?.routineDayId;
+      const routine = await this.routine();
+      if (inProgress?.sessionId !== sessionId || !started || !dayId || !routine) return;
+      const switched = (exercise: RoutineExercise) => (exercise.exerciseId === exerciseId ? { ...exercise, repMin, repMax, rangeSince: started.localDate } : exercise);
+      const days = routine.days.map((day) => (day.id === dayId ? { ...day, exercises: day.exercises.map(switched) } : day));
+      await write(
+        { id: crypto.randomUUID(), kind: 'saveRoutine', routine: { id: routine.id, days, updatedAt: stamp() } },
+        { ...inProgress, plan: inProgress.plan?.map(switched) },
+      );
     },
 
     // Whether the lifter said they don't follow a routine. Saving a Routine clears it.
@@ -767,12 +798,13 @@ export async function openTraining(userId: string, options: Options) {
     // The advice for the Exercise's next Session: a Stall reset (spec: Stall), else going heavier
     // (spec: Go heavier), else none. Judged on the Sessions before the one in progress. Custom
     // Exercises never get a recommendation, and neither do the lifts a suggested Deload Week covers.
-    async recommendation(exerciseId: string, repRange: { repMin: number; repMax: number }) {
+    async recommendation(exerciseId: string, repRange: { repMin: number; repMax: number; rangeSince?: string }) {
       if ((await this.deload()).suggestion?.exercises.includes(exerciseId)) return undefined;
       const exercise = (await this.exercises()).find(({ id }) => id === exerciseId);
       const inProgress = await db.get('state', 'sessionInProgress');
       const { history } = await this.scoring(inProgress?.sessionId);
-      return recommend(history, exerciseId, { ...repRange, incrementKg: exercise?.incrementKg ?? DEFAULT_INCREMENT_KG });
+      const { rangeSince, ...range } = repRange;
+      return recommend(history, exerciseId, { ...range, since: rangeSince, incrementKg: exercise?.incrementKg ?? DEFAULT_INCREMENT_KG });
     },
 
     // The Mondays of the Deload Weeks the lifter started or accepted.

@@ -107,7 +107,7 @@ _Avoid_: Plateau
 _Rioplatense_: Estancamiento
 
 **Fatigue**:
-An Exercise whose effort is creeping up to hold its numbers, or whose RIR-adjusted e1RM is falling across Sessions. On one Exercise the app recommends dropping the weight and building back up; on two or more Movement Patterns, a Deload Week.
+An Exercise whose RIR-adjusted e1RM is falling across Sessions, which also catches effort creeping up to hold the same numbers. On one Exercise the app recommends dropping the weight and building back up; on two or more Movement Patterns, a Deload Week.
 _Avoid_: Overreaching, overtraining
 _Rioplatense_: Fatiga
 

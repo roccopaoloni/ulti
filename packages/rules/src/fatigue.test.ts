@@ -28,6 +28,13 @@ test('two Sessions each at least 3% under the best before are Fatigue, reset abo
   expect(recommendFatigue(ana, 'bench-press', bench)).toEqual({ weightKg: 52.5, reps: 8 });
 });
 
+test('Fatigue is measured against the average of the Sessions before, not the best of them', () => {
+  const peak = session(day(2), [[60, 12]]);
+  const dip = (n: number) => session(day(n), [[59, 10]]);
+  // 59 kg x 10 is 6% under the peak but 2.9% under the 81 kg average of the Sessions before it.
+  expect(recommendFatigue(history(...calibration, solid(1), peak, dip(4), dip(6)), 'bench-press', bench)).toBeUndefined();
+});
+
 test('one Session under the best, or a dip under 3%, is not Fatigue', () => {
   const close = (n: number) => session(day(n), [[58.5, 10]]);
   expect(recommendFatigue(history(...calibration, solid(1), solid(3), weak(5)), 'bench-press', bench)).toBeUndefined();
@@ -40,21 +47,16 @@ test('a Session back at the best breaks the run', () => {
 
 test('the Calibration Sessions only set the baseline: two weak Sessions right after them are not judged', () => {
   expect(recommendFatigue(history(solid(1), weak(3), weak(5)), 'bench-press', bench)).toBeUndefined();
-  expect(recommendFatigue(history(solid(1), weak(3), weak(5), weak(7)), 'bench-press', bench)).toEqual({ weightKg: 52.5, reps: 8 });
+  expect(recommendFatigue(history(solid(1), solid(2), weak(3), weak(5)), 'bench-press', bench)).toEqual({ weightKg: 52.5, reps: 8 });
 });
 
-test('the best before is only the up to 6 Sessions before, so an old peak is forgotten', () => {
+test('the average is over the up to 6 Sessions before, so an old peak is forgotten', () => {
   const peak = session(day(1), [[60, 12]]);
   const steady = (n: number) => session(day(n), [[60, 10]]);
-  const flat = [2, 3, 4, 5, 6, 7].map(steady);
-  // The peak is within 6 Sessions of both weak Sessions...
-  expect(recommendFatigue(history(...calibration, peak, ...flat.slice(0, 4), weak(10), weak(12)), 'bench-press', bench)).toEqual({ weightKg: 52.5, reps: 8 });
-  // ...but six steady Sessions later it is forgotten, and the weak ones sit under only 60 kg x 10 (-5%): still Fatigue.
-  expect(recommendFatigue(history(...calibration, peak, ...flat, weak(10), weak(12)), 'bench-press', bench)).toEqual({ weightKg: 52.5, reps: 8 });
-  // Weak Sessions that are under the old peak but not under the recent 60 kg x 10 are not Fatigue once it is forgotten.
-  const mild = (n: number) => session(day(n), [[59, 10]]);
-  expect(recommendFatigue(history(...calibration, peak, ...flat.slice(0, 4), mild(10), mild(12)), 'bench-press', bench)).toEqual({ weightKg: 52.5, reps: 8 });
-  expect(recommendFatigue(history(...calibration, peak, ...flat, mild(10), mild(12)), 'bench-press', bench)).toBeUndefined();
+  // 58.3 kg x 10 is 2.8% under 60 x 10: Fatigue only while the peak lifts the average of the 6 before it.
+  const dip = (n: number) => session(day(n), [[58.3, 10]]);
+  expect(recommendFatigue(history(...calibration, peak, steady(2), steady(3), dip(4), dip(5)), 'bench-press', bench)).toEqual({ weightKg: 52.5, reps: 8 });
+  expect(recommendFatigue(history(...calibration, peak, ...[2, 3, 4, 5, 6, 7].map(steady), dip(8), dip(9)), 'bench-press', bench)).toBeUndefined();
 });
 
 test('Sets over 12 reps and Deload Sessions are ignored', () => {
@@ -86,24 +88,25 @@ test('RIR 4 and over counts as 4', () => {
   expect(recommendFatigue(history(...calibrationRir.map((s) => ({ ...s, sets: s.sets.map((set) => ({ ...set, reps: 7, rir: 4 })) })), four, lots(3), lots(5)), 'bench-press', bench)).toBeUndefined();
 });
 
-test('effort creep is Fatigue: the last 3 Sessions at the same weight, with average RIR falling each time', () => {
+test('effort creep is caught through the adjusted e1RM: the same weight with less in reserve each Session', () => {
   const creep = (n: number, rir: number) => session(day(n), [[60, 8, rir], [60, 8, rir]]);
-  expect(recommendFatigue(history(...calibration8, creep(1, 3), creep(3, 2), creep(5, 1)), 'bench-press', bench)).toEqual({ weightKg: 55, reps: 8 });
-  // Held (not falling), or a different weight, is no creep.
-  expect(recommendFatigue(history(...calibration8, creep(1, 3), creep(3, 2), creep(5, 2)), 'bench-press', bench)).toBeUndefined();
-  const heavier = session(day(5), [[62.5, 8, 1]]);
-  expect(recommendFatigue(history(...calibration8, creep(1, 3), creep(3, 2), heavier), 'bench-press', bench)).toBeUndefined();
+  // 8 reps at RIR 4, 3, 2, 1, 0 is an adjusted e1RM of 84, 82, 80, 78, 76: the last two are 4.9% and 6.2% under the average before.
+  expect(recommendFatigue(history(...calibration8, creep(1, 4), creep(3, 3), creep(5, 2), creep(7, 1), creep(9, 0)), 'bench-press', bench)).toEqual({ weightKg: 55, reps: 8 });
+  // The same reserve each time is no creep, and neither is a single step down.
+  const held = (n: number) => creep(n, 2);
+  expect(recommendFatigue(history(...calibration8, held(1), held(3), held(5), held(7), held(9)), 'bench-press', bench)).toBeUndefined();
+  expect(recommendFatigue(history(...calibration8, creep(1, 4), creep(3, 4), creep(5, 4), creep(7, 3), creep(9, 2)), 'bench-press', bench)).toBeUndefined();
 });
 
 test('a Fatigue reset wins over going heavier', () => {
   const top = (n: number, rir: number) => session(day(n), [[60, 12, rir], [60, 12, rir]]);
-  const ana = history(...calibration8, top(1, 3), top(3, 2), top(5, 1));
+  const ana = history(...calibration8, top(1, 4), top(3, 3), top(5, 2), top(7, 1));
   expect(recommend(ana, 'bench-press', bench)).toEqual({ kind: 'fatigue', weightKg: 55, reps: 8 });
 });
 
 test('Fatigue wins over a Stall, and a Stall still wins over going heavier', () => {
   expect(recommend(history(...calibration, solid(1), weak(3), weak(5)), 'bench-press', bench)).toEqual({ kind: 'fatigue', weightKg: 52.5, reps: 8 });
-  expect(recommend(history(...calibration, solid(1), solid(3), solid(5), solid(7)), 'bench-press', bench)).toEqual({ kind: 'stall', weightKg: 55, reps: 8 });
+  expect(recommend(history(...calibration, solid(1), solid(8), solid(15), solid(22)), 'bench-press', bench)).toEqual({ kind: 'stall', weightKg: 62.5, reps: 6, repMin: 6, repMax: 8 });
 });
 
 test('missing the bottom of the Rep Range is no longer a Stall', () => {

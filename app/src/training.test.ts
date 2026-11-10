@@ -762,6 +762,79 @@ test('a Routine saved offline shows at once, and editing it later sends the same
   training.close();
 });
 
+test("switching a Stall's Rep Range changes that Exercise on that Routine Day only, and reaches the server as a Routine edit", async () => {
+  const network = server();
+  network.offline = true;
+  const phone = anasPhone(network);
+  const training = await phone.open();
+  const otherPush = { id: 'push-2', name: 'Push 2', exercises: [{ exerciseId: 'bench-press', sets: 3, repMin: 8, repMax: 12 }] };
+  await training.saveRoutine([pushDay, otherPush, pullDay]);
+  const session = await training.startSession('push');
+
+  await training.switchRepRange(session.id, 'bench-press', 6, 8);
+
+  const days = (await training.routine())!.days;
+  expect(days.find(({ id }) => id === 'push')!.exercises).toEqual([{ exerciseId: 'bench-press', sets: 3, repMin: 6, repMax: 8, rangeSince: '2026-10-19' }]);
+  expect(days.find(({ id }) => id === 'push-2')).toEqual(otherPush);
+  expect(days.find(({ id }) => id === 'pull')).toEqual(pullDay);
+  // The Session in progress now targets the new range...
+  expect((await training.sessionInProgress())!.plan).toEqual([{ exerciseId: 'bench-press', sets: 3, repMin: 6, repMax: 8, rangeSince: '2026-10-19' }]);
+  // ...and so does the next Session from that Day.
+  await training.finishSession(session.id);
+  await training.startSession('push');
+  expect((await training.sessionInProgress())!.plan).toEqual([{ exerciseId: 'bench-press', sets: 3, repMin: 6, repMax: 8, rangeSince: '2026-10-19' }]);
+
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  network.offline = false;
+  phone.connectivity.dispatchEvent(new Event('online'));
+  await vi.waitFor(() => expect(network.batches).toHaveLength(1));
+  const sent = routines(network.batches[0]);
+  expect(sent.at(-1)!.days.find(({ id }) => id === 'push')!.exercises[0]).toMatchObject({ repMin: 6, repMax: 8, rangeSince: '2026-10-19' });
+  training.close();
+});
+
+test('a Stall only counts Sessions from the day its Rep Range was switched', async () => {
+  const network = server();
+  network.offline = true;
+  const phone = anasPhone(network);
+  // Calibration, a best, then three Sessions under it, the last 21 days after the best.
+  for (const day of [0, 1, 2]) {
+    const training = await phone.open(Date.UTC(2026, 9, 19 + day, 21, 5));
+    if (day === 0) await training.saveExercises(benchCatalog);
+    await benchSession(training, [[75, 10]]);
+    training.close();
+  }
+  for (const day of [9, 16, 23]) {
+    const training = await phone.open(Date.UTC(2026, 9, 19 + day, 21, 5));
+    await benchSession(training, [[74, 10]]);
+    training.close();
+  }
+  const training = await phone.open(Date.UTC(2026, 10, 12, 21, 5));
+  expect(await training.recommendation('bench-press', benchRange)).toMatchObject({ kind: 'stall', repMin: 6, repMax: 8 });
+  // The Rep Range was switched on 4 November: only the Session of the 11th is on or after it.
+  expect(await training.recommendation('bench-press', { ...benchRange, rangeSince: '2026-11-04' })).toBeUndefined();
+  training.close();
+});
+
+test("editing an Exercise's Rep Range by hand on the Routine also dates it, and editing anything else does not", async () => {
+  const network = server();
+  network.offline = true;
+  const training = await anasPhone(network).open();
+  await training.saveRoutine([pushDay, pullDay]);
+  expect((await training.routine())!.days).toEqual([pushDay, pullDay]);
+
+  // A new Set count leaves the Rep Range, so no date.
+  const moreSets = { ...pushDay, exercises: [{ ...pushDay.exercises[0]!, sets: 4 }] };
+  await training.saveRoutine([moreSets, pullDay]);
+  expect((await training.routine())!.days).toEqual([moreSets, pullDay]);
+
+  // A new Rep Range on one Day is dated with the local date of the edit (Monday 19 October in Buenos Aires).
+  const heavier = { ...moreSets, exercises: [{ ...moreSets.exercises[0]!, repMin: 6, repMax: 8 }] };
+  await training.saveRoutine([heavier, pullDay]);
+  expect((await training.routine())!.days).toEqual([{ ...heavier, exercises: [{ ...heavier.exercises[0]!, rangeSince: '2026-10-19' }] }, pullDay]);
+  training.close();
+});
+
 test('a Session started from a Routine Day sets up its Exercises with their Sets and Rep Range, and an unplanned one starts empty', async () => {
   const network = server();
   network.offline = true;

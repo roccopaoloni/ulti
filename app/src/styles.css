@@ -1622,6 +1622,7 @@ button.cell {
 /* The "go heavier" recommendation on the pre-filled rows. */
 .go-heavier {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   margin: 0;

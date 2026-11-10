@@ -75,14 +75,14 @@ test('go heavier looks past a Deload Week Session', () => {
 });
 
 test('a Deload Week Session neither completes nor breaks a Stall', () => {
-  const first = benchSession('2026-09-28', 60, 10);
-  const best = benchSession('2026-10-01', 60, 10);
-  const flat = (day: string) => benchSession(`2026-10-${day}`, 60, 9);
-  const deload = benchSession('2026-10-12', 54, 9);
+  const first = benchSession('2026-09-24', 60, 10);
+  const second = benchSession('2026-09-28', 60, 10);
+  const flat = (date: string) => benchSession(date, 60, 10);
   // Two flat Sessions and a deload Session are not three flat Sessions.
-  expect(recommendStall(ana([first, best, flat('05'), flat('08'), deload], ['2026-10-12']), 'bench-press', bench)).toBeUndefined();
+  expect(recommendStall(ana([first, second, flat('2026-10-05'), flat('2026-10-08'), benchSession('2026-10-29', 54, 10)], ['2026-10-26']), 'bench-press', bench)).toBeUndefined();
   // A deload in the middle of three flat Sessions does not break the run.
-  expect(recommendStall(ana([first, best, flat('05'), flat('08'), deload, flat('19')], ['2026-10-12']), 'bench-press', bench)).toEqual({ weightKg: 55, reps: 8 });
+  const sessions = [first, second, flat('2026-10-05'), flat('2026-10-08'), benchSession('2026-10-15', 54, 10), flat('2026-10-26')];
+  expect(recommendStall(ana(sessions, ['2026-10-12']), 'bench-press', bench)).toEqual({ weightKg: 62.5, reps: 6, repMin: 6, repMax: 8 });
 });
 
 test('the app still says Calibration counting only non-deload Sessions', () => {

@@ -466,6 +466,10 @@ export function SessionScreen({ training, units, layout: chosen, practice = fals
               await reload();
               return set.id;
             }}
+            onSwitchRepRange={async (repMin, repMax) => {
+              await training.switchRepRange(sessionId, exerciseId, repMin, repMax);
+              await reload();
+            }}
             onRir={async (setId, rir) => {
               await training.setRir(setId, rir);
               await reload();

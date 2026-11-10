@@ -300,8 +300,11 @@ type Messages = {
     target: (sets: number, repMin: number, repMax: number) => string;
     // The Go heavier recommendation on the pre-filled rows, and the way to dismiss it.
     dismissGoHeavier: string;
-    // The Stall and Fatigue badges on the pre-filled rows (the reset weight, with its units) and the way to dismiss either.
-    stall: (weight: string, units: string) => string;
+    // The Stall badge (the Rep Range suggested), its Switch button, and Keep with the current Rep Range.
+    stall: (repMin: number, repMax: number) => string;
+    switchRepRange: string;
+    keepRepRange: (repMin: number, repMax: number) => string;
+    // The Fatigue badge on the pre-filled rows (the reset weight, with its units) and the way to dismiss it.
     fatigue: (weight: string, units: string) => string;
     dismissStall: string;
     // The chips after ✓ asking for RIR (0 to 4+), and the Exercise's Increment that ± step by.
@@ -827,7 +830,9 @@ const en: Messages = {
     noRoutineNever: "I don't follow a routine",
     target: (sets, repMin, repMax) => `${sets} × ${repMin}–${repMax} reps`,
     dismissGoHeavier: 'Keep the same weight',
-    stall: (weight, units) => `Stalled: drop to ${weight} ${units} and build back up`,
+    stall: (repMin, repMax) => `Stalled: try ${repMin}–${repMax} reps`,
+    switchRepRange: 'Switch',
+    keepRepRange: (repMin, repMax) => `Keep ${repMin}–${repMax}`,
     fatigue: (weight, units) => `Fatigue: drop to ${weight} ${units} and build back up`,
     dismissStall: 'Keep the same weight',
     rir: 'Reps in reserve (RIR)',
@@ -1346,7 +1351,9 @@ const es: Messages = {
     noRoutineNever: 'No sigo una rutina',
     target: (sets, repMin, repMax) => `${sets} × ${repMin}–${repMax} repeticiones`,
     dismissGoHeavier: 'Mantener el mismo peso',
-    stall: (weight, units) => `Estancado: bajá a ${weight} ${units} y volvé a subir`,
+    stall: (repMin, repMax) => `Estancado: probá ${repMin}–${repMax} repes`,
+    switchRepRange: 'Cambiar',
+    keepRepRange: (repMin, repMax) => `Seguir con ${repMin}–${repMax}`,
     fatigue: (weight, units) => `Fatiga: bajá a ${weight} ${units} y volvé a subir`,
     dismissStall: 'Mantener el mismo peso',
     rir: 'Repeticiones en reserva (RIR)',
