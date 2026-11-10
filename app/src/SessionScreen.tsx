@@ -162,7 +162,7 @@ export function StartSession({ logging, training, practice = false }: { logging:
       {deload?.suggestion && (
         <section className="card">
           <p>
-            {d.fatigue(deload.suggestion.exercises.slice(0, 2).map(liftName))} <Info term="deload" />
+            {d.fatigue(deload.suggestion.exercises.slice(0, 2).map(liftName), deload.suggestion.streak)} <Info term="deload" />
           </p>
           <p className="go-heavier">
             <button type="button" className="btn-ghost" onClick={() => answer(true)}>

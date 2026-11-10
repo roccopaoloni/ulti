@@ -831,7 +831,7 @@ export async function openTraining(userId: string, options: Options) {
         active: history.deloadWeeks!.includes(weekStart(today)),
         canStart: canStartDeload(history, today),
         deloadedLastWeek: deloadedLastWeek(history, today),
-        suggestion: recommendDeload(history, today, [...routine.values()], dismissed),
+        suggestion: recommendDeload(history, today, [...routine.values()], dismissed, (id) => catalog.find((exercise) => exercise.id === id)?.pattern),
       };
     },
 
