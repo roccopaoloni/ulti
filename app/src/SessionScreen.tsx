@@ -1,6 +1,7 @@
 import { asksRir, inCalibration, type RoutineDayChoice, type Units } from '@ulti/rules';
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { dayColourVar } from './dayColour.ts';
+import { finishCount } from './finishCount.ts';
 import { Sheet } from './GroupsScreens.tsx';
 import { useI18n } from './i18n.ts';
 import { navigate, routinePath } from './navigation.ts';
@@ -342,6 +343,7 @@ export function SessionScreen({ training, units, layout: chosen, practice = fals
   // The Focus layout shows one Exercise at a time: the one picked, or else the first.
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const discardDialog = useRef<HTMLDialogElement>(null);
+  const finishDialog = useRef<HTMLDialogElement>(null);
   const implausible = useImplausibleSheet();
   useWakeLock();
   useEffect(() => {
@@ -362,6 +364,7 @@ export function SessionScreen({ training, units, layout: chosen, practice = fals
   if (summary) return <SessionSummary {...summary} practice={practice} onClose={onLeave} />;
   if (!session) return null;
   const sessionId = session.session.id;
+  const count = finishCount(session.plan, session.sets);
   const focused = session.exerciseIds.includes(focusedId ?? '') ? focusedId : session.exerciseIds[0];
   const nameOf = (exercise: Exercise) => (language === 'es' ? exercise.nameEs : exercise.nameEn);
   const name = (id: string) => {
@@ -376,11 +379,13 @@ export function SessionScreen({ training, units, layout: chosen, practice = fals
     await reload();
   }
 
+  // Both Finish buttons ask first: a stray tap on a notification must not end the Session.
+  function askFinish() {
+    (session!.sets.length === 0 ? discardDialog : finishDialog).current?.showModal();
+  }
+
   async function finish() {
-    if (session!.sets.length === 0) {
-      discardDialog.current?.showModal();
-      return;
-    }
+    finishDialog.current?.close();
     const profile = await training.profile();
     const progressOf = async (without?: string) => weekProgress((await training.scoring(without)).consistency, profile);
     const before = await progressOf(sessionId);
@@ -402,7 +407,7 @@ export function SessionScreen({ training, units, layout: chosen, practice = fals
           </h1>
           <div className="s-sub">{s.sets(session.sets.length)}</div>
         </div>
-        <button type="button" className="btn-ghost s-finish" onClick={finish}>
+        <button type="button" className="btn-ghost s-finish" onClick={askFinish}>
           {s.finish}
         </button>
       </header>
@@ -503,11 +508,21 @@ export function SessionScreen({ training, units, layout: chosen, practice = fals
         >
           {s.addExercise}
         </button>
-        <button type="button" className="btn-primary" onClick={finish}>
+        <button type="button" className="btn-primary" onClick={askFinish}>
           {s.finish}
         </button>
       </main>
       {implausible.sheet}
+      <Sheet dialog={finishDialog} label={s.finishTitle}>
+        <h2 className="disp sheet-title">{s.finishTitle}</h2>
+        <p className="muted">{s.finishLogged(count.logged, count.planned)}</p>
+        <button type="button" className="btn-primary" onClick={finish}>
+          {s.finish}
+        </button>
+        <form method="dialog">
+          <button className="btn-ghost">{s.finishKeep}</button>
+        </form>
+      </Sheet>
       <Sheet dialog={discardDialog} label={s.discardTitle}>
         <h2 className="disp sheet-title">{s.discardTitle}</h2>
         <button
