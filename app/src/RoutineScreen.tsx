@@ -215,19 +215,17 @@ export function RoutineScreen({ userId, training, profile, onProfileSaved }: { u
                 />
                 {!unfolded.has(day.id) && <small className="muted">{r.exerciseCount(day.exercises.length)}</small>}
               </div>
-              {unfolded.has(day.id) && (
-                <button
-                  type="button"
-                  className="quiet"
-                  aria-label={r.removeDay}
-                  onClick={() => {
-                    setRemoving(day);
-                    removeDialog.current?.showModal();
-                  }}
-                >
-                  {closeIcon}
-                </button>
-              )}
+              <button
+                type="button"
+                className="quiet"
+                aria-label={r.removeDay}
+                onClick={() => {
+                  setRemoving(day);
+                  removeDialog.current?.showModal();
+                }}
+              >
+                {closeIcon}
+              </button>
               <span className="grip" role="button" aria-label={r.moveDay} {...days.handle(dayIndex)}>
                 {gripIcon}
               </span>
