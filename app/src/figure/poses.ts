@@ -1,5 +1,5 @@
 import type { Muscle } from '@ulti/rules';
-import { FLOOR, LENGTHS, type Anchor, type Figure, type Gear, type Pose } from './rig.ts';
+import { FLOOR, LENGTHS, solve, type Anchor, type Figure, type Gear, type Pose } from './rig.ts';
 
 // The figure of every catalog Exercise: a start pose and an end pose (angles only, the body never
 // changes size), its gear, and the muscles it works and assists. The same body does them all, so a
@@ -59,8 +59,8 @@ const seat = (hip: P2, from = -14, to = 26): Gear[] => [
   { t: 'rect', x: hip[0] + 4, y: hip[1] + 15, w: 6, h: FLOOR - hip[1] - 15, rx: 2 },
 ];
 
-type Spec = { view?: Figure['view']; start: Pose; end?: Pose; gear?: Gear[]; worked: Muscle[]; assist?: Muscle[] };
-const figure = ({ view = 'side', start, end = start, gear = [], worked, assist = [] }: Spec): Figure => ({ view, start, end, gear, worked, assist });
+type Spec = { view?: Figure['view']; start: Pose; end?: Pose; gear?: Gear[]; worked: Muscle[]; assist?: Muscle[]; thumb?: number };
+const figure = ({ view = 'side', start, end = start, gear = [], worked, assist = [], thumb }: Spec): Figure => ({ view, start, end, gear, worked, assist, thumb });
 
 // ---- Squats ---------------------------------------------------------------------------------
 
@@ -74,7 +74,9 @@ const squat = ({ top, lean, depth, rack, gear, pin = stand(), worked = ['quads',
     assist,
   });
 const BAR_ON_BACK: P2 = [-35, 163];
-const BAR_IN_FRONT: P2 = [75, 255];
+// Racked on the front of the shoulders: elbows high and forward, the hands just in front of the
+// collarbones.
+const BAR_IN_FRONT: P2 = [70, 232];
 const SMITH_RAIL: Gear[] = [line([100, -20], [100, FLOOR], 3, { fit: false })];
 
 // ---- Pulls from the floor -------------------------------------------------------------------
@@ -98,6 +100,9 @@ const seatedGear: Gear[] = [...seat([84, 136]), backPad([84, 136], -4)];
 const LYING: Pose['pin'] = { j: 'hip', at: [112, 133] };
 const lyingBody = { torso: -90, leg: [60, 0] as P2, hip: [-30, -45] as P2 };
 const BENCH = flatBench(32);
+// The bar down on the lower chest: the forearm upright under it, the elbow below and towards the
+// feet.
+const BAR_ON_CHEST: P2 = [51, 180];
 
 const press = (start: P2, end: P2, gear: Gear[], worked: Muscle[], assist: Muscle[], neckEnd = 0): Figure =>
   figure({
@@ -115,6 +120,16 @@ const benchPress = (start: P2, end: P2, gear: Gear[], worked: Muscle[], assist: 
 // ---- Hanging and dipping ----------------------------------------------------------------------
 
 const HANGING: Pose['pin'] = { j: 'hand', at: [100, -25] };
+// A pull-up bar seen from the front, the hands wide on it: the hips rise from a dead hang until the
+// chin clears the bar, the elbows bending out to the sides.
+const PULL_UP_BAR: P2 = [136, 0];
+const pullUpBar: Gear[] = [
+  line([30, 0], [150, 0], 4),
+  { t: 'rect', x: 26, y: -4, w: 6, h: FLOOR + 4, rx: 3, fit: false },
+  { t: 'rect', x: 148, y: -4, w: 6, h: FLOOR + 4, rx: 3, fit: false },
+  { t: 'plate', at: hand, r: 3.5, front: true },
+  { t: 'plate', at: hand2, r: 3.5, front: true },
+];
 const chinUpStation: Gear[] = [
   { t: 'plate', at: hand, r: 3.5, front: true },
   line([100, -25], [133, -25], 4),
@@ -130,8 +145,8 @@ const FIGURES_1: Record<string, Figure> = {
   deadlift: deadlift(50, [-31.5, -41.5]),
   'sumo-deadlift': deadlift(35, [-22, -33]),
   'power-clean': figure({
-    start: { torso: 45, neck: -22, leg: [0, 0], hip: [-28.6, -38.4], arm: [0, 0], pin: stand(80) },
-    end: { torso: 4, leg: [0, 0], hip: [-10, -72], arm: onTorso(4, [75, 255]), pin: stand(80) },
+    start: { torso: 45, neck: -22, leg: [0, 0], hip: [-28.6, -38.4], arm: [0, 0], grab: [86, 168.8], elbow: 1, pin: stand(80) },
+    end: { torso: 4, leg: [0, 0], hip: [-10, -72], arm: onTorso(4, BAR_IN_FRONT), grab: [77.6, 48], elbow: 1, pin: stand(80) },
     gear: [barbell([0, 0], 17)],
     worked: ['full-body'],
   }),
@@ -155,16 +170,17 @@ const FIGURES_1: Record<string, Figure> = {
   'machine-shoulder-press': seatedPress(RACK, UP, [handle, line(hand, [58, 66], 4)], ['shoulders', 'triceps'], []),
   'smith-machine-shoulder-press': seatedPress([10, 182], UP, [line([88, -20], [88, FLOOR], 3, { fit: false }), line(hand, [88, 30], 2), handle], ['shoulders', 'triceps'], []),
 
-  'bench-press': benchPress(UP, [100, 235], [barbell([0, 0], 14)], ['chest', 'triceps'], ['shoulders']),
-  'close-grip-bench-press': benchPress(UP, [125, 215], [barbell([0, 0], 14)], ['triceps', 'chest'], ['shoulders']),
-  'dumbbell-bench-press': benchPress(UP, [100, 235], [dumbbell], ['chest'], ['triceps', 'shoulders']),
-  'smith-machine-bench-press': benchPress(UP, [100, 235], [line([66, -20], [66, FLOOR], 3, { fit: false }), line(hand, [66, 60], 2), handle], ['chest', 'triceps'], ['shoulders']),
+  'bench-press': benchPress(UP, BAR_ON_CHEST, [barbell([0, 0], 14)], ['chest', 'triceps'], ['shoulders']),
+  'close-grip-bench-press': benchPress(UP, [45, 180], [barbell([0, 0], 14)], ['triceps', 'chest'], ['shoulders']),
+  'dumbbell-bench-press': benchPress(UP, BAR_ON_CHEST, [dumbbell], ['chest'], ['triceps', 'shoulders']),
+  'smith-machine-bench-press': benchPress(UP, BAR_ON_CHEST, [line([66, -20], [66, FLOOR], 3, { fit: false }), line(hand, [66, 60], 2), handle], ['chest', 'triceps'], ['shoulders']),
   'machine-chest-press': seatedPress([-70, 90], [90, 90], [handle, line(hand, [58, 90], 4)], ['chest', 'triceps'], ['shoulders']),
 
   'pull-up': figure({
-    start: hangingFrom([4, 4]),
-    end: { torso: -6, neck: -12, leg: [4, -6], arm: [30, 165], pin: HANGING },
-    gear: chinUpStation,
+    view: 'front',
+    start: { torso: 0, leg: [2, 0], foot: 0, arm: UP, grab: PULL_UP_BAR, elbow: 1, pin: { j: 'hip', at: [90, 106] } },
+    end: { torso: 0, leg: [2, 0], foot: 0, arm: UP, grab: PULL_UP_BAR, elbow: 1, pin: { j: 'hip', at: [90, 62] } },
+    gear: pullUpBar,
     worked: ['back', 'biceps'],
     assist: ['shoulders', 'core'],
   }),
@@ -220,10 +236,11 @@ const FIGURES_2: Record<string, Figure> = {
     worked: ['back', 'biceps'],
     assist: ['shoulders'],
   }),
+  // A straight body hanging under a low bar from the heels, pulled up until the chest meets the bar.
   'inverted-row': figure({
-    start: { torso: -84, neck: 20, leg: [0, 0], hip: [-82.5, -14], arm: UP, pin: { j: 'ankle', at: [181, ANKLE_Y] } },
-    end: { torso: -62, neck: 20, leg: [0, 0], hip: [-72, -43], arm: [-70, 153], pin: { j: 'ankle', at: [181, ANKLE_Y] } },
-    gear: [{ t: 'plate', at: [50, 95], r: 3.5, front: true }, { t: 'rect', x: 56, y: 95, w: 6, h: 91, fit: false }],
+    start: { torso: -66, neck: 8, leg: [66, 66], arm: UP, grab: [85.4, 65.6], elbow: -1, pin: { j: 'ankle', at: [181, ANKLE_Y] } },
+    end: { torso: -40, neck: 8, leg: [40, 40], arm: UP, grab: [85.4, 65.6], elbow: -1, pin: { j: 'ankle', at: [181, ANKLE_Y] } },
+    gear: [{ t: 'plate', at: [85.4, 65.6], r: 3.5, front: true }, { t: 'rect', x: 82.5, y: 66, w: 6, h: FLOOR - 66, rx: 2, fit: false }],
     worked: ['back', 'biceps'],
     assist: ['core'],
   }),
@@ -255,14 +272,22 @@ const lunge = (gear: Gear[], arm: P2): Figure =>
     assist: ['hamstrings'],
   });
 const pinHip: Pose['pin'] = { j: 'hip', at: [84, 136] };
+// A calf raise: the foot turns from -8° (heel below the toes) to 50° about the ball of the foot, so
+// the ankle moves by RISE. The step is under the toes, its top at the sole.
+const TOE = (angle: number): P2 => [Math.cos((angle * Math.PI) / 180) * LENGTHS.toe, Math.sin((angle * Math.PI) / 180) * LENGTHS.toe];
+const RISE: P2 = [TOE(-8)[0] - TOE(50)[0], TOE(-8)[1] - TOE(50)[1]];
+const STEP_ANKLE = ANKLE_Y - 16;
+const step = (ankleX: number): Gear => ({ t: 'rect', x: ankleX + TOE(-8)[0] - 12, y: STEP_ANKLE + TOE(-8)[1] + 4, w: 22, h: FLOOR - (STEP_ANKLE + TOE(-8)[1] + 4), rx: 2 });
 const FIGURES_3: Record<string, Figure> = {
   'romanian-deadlift': hinge([barbell([0, 0], 15)], 75, [-28, -68], [-6, -6], [2, 2], ['hamstrings', 'glutes'], ['back']),
   'dumbbell-romanian-deadlift': hinge([dumbbell], 75, [-28, -68], [-6, -6], [2, 2], ['hamstrings', 'glutes'], ['back']),
   'good-morning': hinge([barbell()], 70, [-30, -66], onTorso(70, BAR_ON_BACK), onTorso(3, BAR_ON_BACK), ['hamstrings', 'glutes'], ['back']),
+  // The upper back on the edge of a bench, the hips low, then driven up until the body is a level
+  // line from knees to shoulders. The hands hold the bar on the hips.
   'barbell-hip-thrust': figure({
-    start: { torso: -44, neck: 20, leg: [0, 0], hip: [-34, -18], arm: [50, 60], pin: { j: 'ankle', at: [130, ANKLE_Y] } },
-    end: { torso: -85, neck: 20, leg: [0, 0], hip: [-42, -42], arm: [88, 95], pin: { j: 'ankle', at: [130, ANKLE_Y] } },
-    gear: [...flatBench(24, 143, 62).slice(0, 2), { t: 'plate', at: at('hip', [4, -9]), r: 13 }],
+    start: { torso: -58, neck: 24, leg: [0, 0], hip: [-38.4, -16], arm: UP, grab: [98, 151.8], elbow: -1, pin: { j: 'ankle', at: [130, ANKLE_Y] } },
+    end: { torso: -88, neck: 24, leg: [0, 0], hip: [-31, -40.3], arm: UP, grab: [99.4, 125.7], elbow: -1, pin: { j: 'ankle', at: [130, ANKLE_Y] } },
+    gear: [...flatBench(-4, 143, 60).slice(0, 2), { t: 'plate', at: hand, r: 13 }],
     worked: ['glutes'],
     assist: ['hamstrings', 'core'],
   }),
@@ -297,10 +322,12 @@ const FIGURES_3: Record<string, Figure> = {
   }),
   'lying-leg-curl': figure({
     start: { torso: 92, neck: -22, leg: [-92, -92], arm: [100, 100], pin: { j: 'hip', at: [112, 138] } },
-    end: { torso: 92, neck: -22, leg: [-92, 150], arm: [100, 100], pin: { j: 'hip', at: [112, 138] } },
+    end: { torso: 92, neck: -22, leg: [-92, -210], arm: [100, 100], pin: { j: 'hip', at: [112, 138] } },
     gear: [line([40, 152], [185, 152], 7), { t: 'rect', x: 150, y: 156, w: 6, h: 30 }, { t: 'rect', x: 60, y: 156, w: 6, h: 30 }, { t: 'plate', at: at('ankle', [0, -4]), r: 4.5, front: true }],
     worked: ['hamstrings'],
     assist: ['calves'],
+    // Lying flat, the start is a thin line at 48px: the small figure shows the curl halfway up.
+    thumb: 0.65,
   }),
   'seated-leg-curl': figure({
     start: { ...seatedBody, leg: [90, 86], arm: [5, 70], pin: pinHip },
@@ -309,29 +336,34 @@ const FIGURES_3: Record<string, Figure> = {
     worked: ['hamstrings'],
     assist: ['calves'],
   }),
+  // The balls of the feet on a step: the heels drop below it, then rise as high as they go. The
+  // toes stay put, so the ankle travels up and a little forward.
   'standing-calf-raise': figure({
-    start: { torso: 0, leg: [0, 0], hip: TALL, foot: 16, arm: onTorso(0, [30, 185]), pin: stand() },
-    end: { torso: 0, leg: [0, 0], hip: TALL, foot: 63, arm: onTorso(0, [30, 185]), pin: { j: 'ankle', at: [92, ANKLE_Y - 8] } },
-    gear: [{ t: 'plate', at: at('shoulder', [0, -8]), r: 8, front: true }],
+    start: { torso: 0, leg: [0, 0], hip: TALL, foot: -8, arm: onTorso(0, [30, 185]), pin: { j: 'ankle', at: [92, STEP_ANKLE] } },
+    end: { torso: 0, leg: [0, 0], hip: TALL, foot: 50, arm: onTorso(0, [30, 185]), pin: { j: 'ankle', at: [92 + RISE[0], STEP_ANKLE + RISE[1]] } },
+    gear: [{ t: 'plate', at: at('shoulder', [0, -8]), r: 8, front: true }, step(92)],
     worked: ['calves'],
   }),
   'seated-calf-raise': figure({
-    start: { torso: -4, leg: [0, 0], hip: [-42, -42], foot: 16, arm: [5, 70], pin: pinHip },
-    end: { torso: -4, leg: [0, 0], hip: [-42, -34], foot: 63, arm: [5, 70], pin: pinHip },
-    gear: [...seatedGear, line(at('knee', [-22, -12]), at('knee', [4, -12]), 9, { front: true })],
+    start: { torso: -4, leg: [0, 0], hip: [-42, 136 - STEP_ANKLE], foot: -8, arm: [5, 70], pin: pinHip },
+    end: { torso: -4, leg: [0, 0], hip: [-42 - RISE[0], 136 - STEP_ANKLE - RISE[1]], foot: 50, arm: [5, 70], pin: pinHip },
+    gear: [...seatedGear, line(at('knee', [-22, -12]), at('knee', [4, -12]), 9, { front: true }), step(126)],
     worked: ['calves'],
   }),
+  // Seen from the front, so the shoulders can be seen rising to the ears.
   'barbell-shrug': figure({
-    start: { torso: 0, leg: [0, 0], hip: TALL, arm: [0, 0], shrug: 0, pin: stand() },
-    end: { torso: 0, leg: [0, 0], hip: TALL, arm: [0, 0], shrug: 8, pin: stand() },
-    gear: [barbell([0, 0], 15)],
+    view: 'front',
+    start: { torso: 0, leg: [2, 0], foot: 0, arm: [4, 4], shrug: 0, pin: stand(100) },
+    end: { torso: 0, leg: [2, 0], foot: 0, arm: [4, 4], shrug: 11, pin: stand(100) },
+    gear: [line(at('hand2', [-16, 0]), at('hand', [16, 0]), 3, { front: true }), line(at('hand', [16, -14]), at('hand', [16, 14]), 6, { front: true }), line(at('hand2', [-16, -14]), at('hand2', [-16, 14]), 6, { front: true })],
     worked: ['shoulders'],
     assist: ['back'],
   }),
   'dumbbell-shrug': figure({
-    start: { torso: 0, leg: [0, 0], hip: TALL, arm: [0, 0], shrug: 0, pin: stand() },
-    end: { torso: 0, leg: [0, 0], hip: TALL, arm: [0, 0], shrug: 8, pin: stand() },
-    gear: [dumbbell],
+    view: 'front',
+    start: { torso: 0, leg: [2, 0], foot: 0, arm: [4, 4], shrug: 0, pin: stand(100) },
+    end: { torso: 0, leg: [2, 0], foot: 0, arm: [4, 4], shrug: 11, pin: stand(100) },
+    gear: dumbbells,
     worked: ['shoulders'],
     assist: ['back'],
   }),
@@ -364,10 +396,12 @@ const FIGURES_4: Record<string, Figure> = {
     worked: ['triceps'],
   }),
   'skull-crusher': benchPress(UP, [178, 300], [barbell([0, 0], 11)], ['triceps'], ['shoulders']),
+  // Held up on straight arms between two bars, the knees bent and the feet off the floor, lowered
+  // until the upper arms are level.
   dip: figure({
-    start: { torso: 8, neck: -12, leg: [-10, -85], arm: [0, 0], pin: { j: 'hand', at: [100, 112] } },
-    end: { torso: 28, neck: -25, leg: [-10, -85], arm: [-40, 5], pin: { j: 'hand', at: [100, 112] } },
-    gear: [{ t: 'plate', at: hand, r: 3.5, front: true }, { t: 'rect', x: 97, y: 116, w: 6, h: FLOOR - 116, fit: false }],
+    start: { torso: 6, neck: -6, leg: [8, -75], arm: [0, 0], pin: { j: 'hand', at: [100, 92] } },
+    end: { torso: 28, neck: -18, leg: [8, -75], arm: [-72, 22], pin: { j: 'hand', at: [100, 92] } },
+    gear: [line([70, 95], [128, 95], 5), { t: 'rect', x: 72, y: 95, w: 6, h: FLOOR - 95, rx: 2, fit: false }, { t: 'rect', x: 120, y: 95, w: 6, h: FLOOR - 95, rx: 2, fit: false }, { t: 'plate', at: hand, r: 3.5, front: true }],
     worked: ['triceps'],
     assist: ['chest', 'shoulders'],
   }),
@@ -382,27 +416,42 @@ const DECLINE = -108;
 const declineHip: P2 = [118, 112];
 const declineGear: Gear[] = [backPad(declineHip, DECLINE, 13, 14), { t: 'rect', x: 150, y: 120, w: 6, h: FLOOR - 120, rx: 2 }, { t: 'plate', at: [150, 140], r: 5, front: true }];
 const FIGURES_5: Record<string, Figure> = {
-  'incline-bench-press': benchPress(UP, [100, 235], [barbell([0, 0], 14)], ['chest', 'shoulders'], ['triceps'], INCLINE, { j: 'hip', at: inclineHip }, inclineGear, { hip: [-30, -50] }),
-  'dumbbell-incline-bench-press': benchPress(UP, [100, 235], [dumbbell], ['chest', 'shoulders'], ['triceps'], INCLINE, { j: 'hip', at: inclineHip }, inclineGear, { hip: [-30, -50] }),
-  'decline-bench-press': benchPress(UP, [100, 235], [barbell([0, 0], 14)], ['chest'], ['triceps', 'shoulders'], DECLINE, { j: 'hip', at: declineHip }, declineGear, { hip: [-34, -66] }),
-  'dumbbell-fly': benchPress(UP, [120, 150], [dumbbell], ['chest'], ['shoulders']),
+  'incline-bench-press': benchPress(UP, [91, 180], [barbell([0, 0], 14)], ['chest', 'shoulders'], ['triceps'], INCLINE, { j: 'hip', at: inclineHip }, inclineGear, { hip: [-30, -50] }),
+  'dumbbell-incline-bench-press': benchPress(UP, [91, 180], [dumbbell], ['chest', 'shoulders'], ['triceps'], INCLINE, { j: 'hip', at: inclineHip }, inclineGear, { hip: [-30, -50] }),
+  'decline-bench-press': benchPress(UP, [33, 180], [barbell([0, 0], 14)], ['chest'], ['triceps', 'shoulders'], DECLINE, { j: 'hip', at: declineHip }, declineGear, { hip: [-34, -66] }),
+  // From the side, arms that open out to the sides turn towards the viewer: the dumbbells come down
+  // from over the chest to beside the shoulders, the arms foreshortened as a camera would see them.
+  'dumbbell-fly': figure({
+    start: { ...lyingBody, torso: -90, arm: UP, depth: [0, 0], pin: LYING },
+    end: { ...lyingBody, torso: -90, arm: UP, depth: [85, 80], pin: LYING },
+    gear: [...BENCH, dumbbell],
+    worked: ['chest'],
+    assist: ['shoulders'],
+  }),
+  // A cable crossover seen from the front: from the high pulleys on both sides, the arms sweep
+  // down and in until the hands meet in front of the hips.
   'cable-fly': figure({
-    start: { torso: 8, leg: [0, 0], hip: TALL, arm: [-85, -85], pin: stand() },
-    end: { torso: 8, leg: [0, 0], hip: TALL, arm: [75, 90], pin: stand() },
-    gear: [pulley(34, 24), cable([34, 24]), handle, stack(10, 60, 110)],
+    view: 'front',
+    start: { torso: 0, leg: [2, 0], foot: 0, arm: [128, 118], pin: stand(100) },
+    end: { torso: 0, leg: [2, 0], foot: 0, arm: [-12, -22], depth: [35, 35], pin: stand(100) },
+    gear: [pulley(10, 20), pulley(168, 20), cable([10, 20], hand2), cable([168, 20], hand), handle, { t: 'plate', at: hand2, r: 3.4, front: true }, stack(-6, 20, 160), stack(174, 20, 160)],
     worked: ['chest'],
     assist: ['shoulders'],
   }),
+  // From the side, the arms open out to the sides turn towards the viewer, so the elbows start
+  // close to the shoulders and swing forward until the pads meet in front of the chest.
   'pec-deck': figure({
-    start: { ...seatedBody, arm: [60, 175], pin: SEATED },
-    end: { ...seatedBody, arm: [95, 185], pin: SEATED },
-    gear: [...seatedGear, line(at('hand', [0, -16]), at('hand', [0, 8]), 6, { front: true })],
+    start: { ...seatedBody, arm: [90, 180], depth: [80, 0], pin: SEATED },
+    end: { ...seatedBody, arm: [90, 180], depth: [0, 0], pin: SEATED },
+    gear: [...seatedGear, line(at('hand', [0, -10]), at('hand', [0, 22]), 7, { front: true })],
     worked: ['chest'],
     assist: ['shoulders'],
   }),
+  // The hands and the toes stay planted; the straight body lowers until the chest nearly meets the
+  // floor, the elbows bending back.
   'push-up': figure({
-    start: { torso: 64, neck: -35, leg: [-64, -64], arm: [0, 0], pin: { j: 'hand', at: [140, 182] } },
-    end: { torso: 81, neck: -35, leg: [-81, -81], arm: [-70, 66], pin: { j: 'hand', at: [140, 182] } },
+    start: { torso: 64, neck: -35, leg: [-64, -64], arm: [0, 0], grab: [140, 182], elbow: 1, pin: { j: 'ankle', at: [20.46, 176.3] } },
+    end: { torso: 82, neck: -35, leg: [-82, -82], arm: [0, 0], grab: [140, 182], elbow: 1, pin: { j: 'ankle', at: [20.46, 176.3] } },
     worked: ['chest', 'triceps'],
     assist: ['shoulders', 'core'],
   }),
@@ -435,7 +484,24 @@ const FIGURES_5: Record<string, Figure> = {
   }),
 };
 
-export const FIGURES: Record<string, Figure> = { ...FIGURES_1, ...FIGURES_2, ...FIGURES_3, ...FIGURES_4, ...FIGURES_5 };
+// A loaded bar, a handle or the floor under the hands travels in a straight line from where the
+// hands start to where they end (blending the arm angles would swing it in an arc): the hands hold
+// that line and the elbows bend to fit, on the side the end pose bends them.
+function straightPath(figure: Figure): Figure {
+  const start = solve(figure.start, figure.view).arms[0]!;
+  const end = solve(figure.end, figure.view).arms[0]!;
+  const bend = (arm: typeof end) => Math.sign((arm.hand[0] - arm.shoulder[0]) * (arm.elbow[1] - arm.shoulder[1]) - (arm.hand[1] - arm.shoulder[1]) * (arm.elbow[0] - arm.shoulder[0]));
+  const elbow = bend(end) || bend(start) || 1;
+  return { ...figure, start: { ...figure.start, grab: start.hand, elbow }, end: { ...figure.end, grab: end.hand, elbow } };
+}
+const STRAIGHT_PATHS = [
+  'overhead-press', 'push-press', 'snatch-press', 'dumbbell-shoulder-press', 'machine-shoulder-press', 'smith-machine-shoulder-press',
+  'bench-press', 'close-grip-bench-press', 'dumbbell-bench-press', 'smith-machine-bench-press', 'machine-chest-press',
+  'incline-bench-press', 'dumbbell-incline-bench-press', 'decline-bench-press',
+  'barbell-row', 'pendlay-row', 'dumbbell-row', 'machine-row', 'seated-cable-row', 'lat-pulldown',
+];
+const ALL: Record<string, Figure> = { ...FIGURES_1, ...FIGURES_2, ...FIGURES_3, ...FIGURES_4, ...FIGURES_5 };
+export const FIGURES: Record<string, Figure> = Object.fromEntries(Object.entries(ALL).map(([id, figure]) => [id, STRAIGHT_PATHS.includes(id) ? straightPath(figure) : figure]));
 
 export const STANDING_FIGURE: Figure = figure({ start: { torso: 0, leg: [0, 0], arm: HANG, pin: stand() }, worked: [] });
 

@@ -39,6 +39,13 @@ export type Pose = {
   arm2?: [number, number];
   // Shoulders lifted towards the ears, in scene units.
   shrug?: number;
+  // The hands hold a fixed spot of the scene (a bar), and the elbows bend to fit, on the side of
+  // the shoulder-to-hand line that `elbow` names (1 or -1). `arm` is then unused.
+  grab?: [number, number];
+  elbow?: number;
+  // How far the upper arm and the forearm turn towards the viewer, in degrees, as in a fly whose
+  // arms open out to the sides: a camera sees each bone shorter by the cosine of its turn.
+  depth?: [number, number];
   pin: { j: 'ankle' | 'hip' | 'hand'; at: [number, number] };
 };
 
@@ -98,13 +105,15 @@ export function solve(pose: Pose, view: View): Joints {
   const arms = sides.map((side) => {
     const shoulder = toward(front ? toward(torsoTop, forward, 18 * side) : torsoTop, up, pose.shrug ?? 0);
     const angles = side === 1 ? pose.arm : (pose.arm2 ?? [-pose.arm[0], -pose.arm[1]]);
-    const elbow = toward(shoulder, down(angles[0]), LENGTHS.upperArm);
-    const wrist = toward(elbow, down(angles[1]), LENGTHS.foreArm);
-    return { shoulder, elbow, wrist, hand: toward(wrist, down(angles[1]), LENGTHS.grip), tip: toward(wrist, down(angles[1]), LENGTHS.hand) };
+    const [upper, fore] = (pose.depth ?? [0, 0]).map((turn) => Math.cos(turn * RAD));
+    const elbow = toward(shoulder, down(angles[0]), LENGTHS.upperArm * upper!);
+    const wrist = toward(elbow, down(angles[1]), LENGTHS.foreArm * fore!);
+    return { shoulder, elbow, wrist, hand: toward(wrist, down(angles[1]), LENGTHS.grip * fore!), tip: toward(wrist, down(angles[1]), LENGTHS.hand * fore!) };
   });
   const pinned = pose.pin.j === 'ankle' ? legs[0]!.ankle : pose.pin.j === 'hip' ? hip : arms[0]!.hand;
   const shift: Point = [pose.pin.at[0] - pinned[0], pose.pin.at[1] - pinned[1]];
   const move = (p: Point): Point => [p[0] + shift[0], p[1] + shift[1]];
+  const moved = arms.map((a) => ({ shoulder: move(a.shoulder), elbow: move(a.elbow), wrist: move(a.wrist), hand: move(a.hand), tip: move(a.tip) }));
   return {
     view,
     up,
@@ -113,8 +122,24 @@ export function solve(pose: Pose, view: View): Joints {
     torsoTop: move(torsoTop),
     head: move(head),
     legs: legs.map((l) => ({ hip: move(l.hip), knee: move(l.knee), ankle: move(l.ankle), heel: move(l.heel), toe: move(l.toe) })),
-    arms: arms.map((a) => ({ shoulder: move(a.shoulder), elbow: move(a.elbow), wrist: move(a.wrist), hand: move(a.hand), tip: move(a.tip) })),
+    arms: pose.grab ? moved.map((a, i) => reach(a.shoulder, front && i === 1 ? [2 * (hip[0] + shift[0]) - pose.grab![0], pose.grab![1]] : pose.grab!, (pose.elbow ?? 1) * (front && i === 1 ? -1 : 1))) : moved,
   };
+}
+
+// An arm from the shoulder to a hand on `target`, its two bones at their fixed lengths (the
+// forearm and the fist are one bone). Out of reach, the arm points at the target, straight.
+function reach(shoulder: Point, target: Point, side: number) {
+  const lower = LENGTHS.foreArm + LENGTHS.grip;
+  const dx = target[0] - shoulder[0];
+  const dy = target[1] - shoulder[1];
+  const distance = Math.hypot(dx, dy) || 1;
+  const span = Math.min(distance, LENGTHS.upperArm + lower - 0.001);
+  const unit: Point = [dx / distance, dy / distance];
+  const along = (LENGTHS.upperArm ** 2 - lower ** 2 + span ** 2) / (2 * span);
+  const across = Math.sqrt(Math.max(0, LENGTHS.upperArm ** 2 - along ** 2)) * side;
+  const elbow: Point = [shoulder[0] + unit[0] * along - unit[1] * across, shoulder[1] + unit[1] * along + unit[0] * across];
+  const fore: Point = [(shoulder[0] + unit[0] * span - elbow[0]) / lower, (shoulder[1] + unit[1] * span - elbow[1]) / lower];
+  return { shoulder, elbow, wrist: toward(elbow, fore, LENGTHS.foreArm), hand: toward(elbow, fore, lower), tip: toward(elbow, fore, LENGTHS.foreArm + LENGTHS.hand) };
 }
 
 // Every number between two poses, in a straight line (a pose is only numbers, arrays of them and
@@ -180,7 +205,9 @@ export function anchorPoint(anchor: Anchor, joints: Joints): Point {
 
 // What an Exercise's figure is: the body moving from the start pose to the end pose, with its gear
 // and the muscles it works (pink) and those that assist (pale pink).
-export type Figure = { view: View; start: Pose; end: Pose; gear: Gear[]; worked: Muscle[]; assist: Muscle[] };
+// `thumb` is the moment of the movement the small figure shows when the start pose alone doesn't
+// read (0, the start, unless set).
+export type Figure = { view: View; start: Pose; end: Pose; gear: Gear[]; worked: Muscle[]; assist: Muscle[]; thumb?: number };
 
 // The square of the scene that frames a figure at its start, middle and end, with its gear.
 export function frameOf(figure: Figure): { x: number; y: number; size: number } {

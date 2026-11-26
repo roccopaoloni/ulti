@@ -5,11 +5,12 @@ import { figureFor } from './figure/poses.ts';
 import { Sheet } from './GroupsScreens.tsx';
 import { useI18n } from './i18n.ts';
 
-// The small figure (the start pose) beside an Exercise in the Picker and the Routine editor.
+// The small figure (the start pose, or the moment its `thumb` names) beside an Exercise in the Picker and the Routine editor.
 export function ExerciseThumb({ exerciseId, muscle }: { exerciseId: string; muscle: Muscle }) {
+  const figure = figureFor(exerciseId, muscle);
   return (
     <span className="ex-thumb" aria-hidden="true">
-      <FigureSvg figure={figureFor(exerciseId, muscle)} t={0} thumb />
+      <FigureSvg figure={figure} t={figure.thumb ?? 0} thumb />
     </span>
   );
 }

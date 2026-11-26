@@ -51,10 +51,25 @@ test('every pose has the same body: limb and torso lengths never change, only an
         expect(dist(leg.hip, leg.knee), at).toBeCloseTo(LENGTHS.thigh, 6);
         expect(dist(leg.knee, leg.ankle), at).toBeCloseTo(LENGTHS.shank, 6);
       }
+      // An arm bone turned towards the viewer is seen shorter, by exactly the cosine of the turn,
+      // as a camera would see it; it never grows or shrinks otherwise.
+      const pose = blendPose(figure.start, figure.end, t);
+      const seen = (bone: 0 | 1) => Math.cos(((pose.depth?.[bone] ?? 0) * Math.PI) / 180);
       for (const arm of joints.arms) {
-        expect(dist(arm.shoulder, arm.elbow), at).toBeCloseTo(LENGTHS.upperArm, 6);
-        expect(dist(arm.elbow, arm.wrist), at).toBeCloseTo(LENGTHS.foreArm, 6);
+        expect(dist(arm.shoulder, arm.elbow), at).toBeCloseTo(LENGTHS.upperArm * seen(0), 6);
+        expect(dist(arm.elbow, arm.wrist), at).toBeCloseTo(LENGTHS.foreArm * seen(1), 6);
       }
+    }
+  }
+});
+
+test('a hand that holds a bar stays on it all through the movement', () => {
+  const holding = Object.entries(FIGURES).filter(([, figure]) => figure.start.grab);
+  expect(holding.map(([id]) => id)).toEqual(expect.arrayContaining(['inverted-row', 'pull-up']));
+  for (const [id, figure] of holding) {
+    for (const t of [0, 0.25, 0.5, 0.75, 1]) {
+      const pose = blendPose(figure.start, figure.end, t);
+      expect(dist(solve(pose, figure.view).arms[0]!.hand, pose.grab!), `${id} at ${t}`).toBeLessThan(0.01);
     }
   }
 });
