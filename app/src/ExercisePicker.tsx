@@ -1,6 +1,7 @@
 import { matchesSearch, muscles, type Muscle } from '@ulti/rules';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { ExerciseThumb } from './ExerciseFigure.tsx';
 import { useI18n } from './i18n.ts';
 import { backIcon, checkIcon } from './icons.tsx';
 import { Info } from './Info.tsx';
@@ -123,6 +124,7 @@ export function ExercisePicker({
                 aria-pressed={multiple ? picked.includes(exercise.id) : undefined}
                 onClick={() => choose(exercise.id)}
               >
+                <ExerciseThumb exerciseId={exercise.id} muscle={exercise.muscle} />
                 <span>{nameOf(exercise)}</span>
                 <small className="muted">{equipmentOf(exercise)}</small>
                 {multiple && (

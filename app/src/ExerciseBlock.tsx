@@ -1,6 +1,7 @@
-import { deloadRows, incrementInUnits, kgToUnits, labelSets, plannedRows, predictLabels, rowsWithAdvice, stepValue, unitsToKg, type Recommendation,type PersonalRecord, type RoutineExercise, type SetLabel, type Units } from '@ulti/rules';
+import { deloadRows, incrementInUnits, kgToUnits, labelSets, plannedRows, predictLabels, rowsWithAdvice, stepValue, unitsToKg, type Muscle, type Recommendation,type PersonalRecord, type RoutineExercise, type SetLabel, type Units } from '@ulti/rules';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { ExerciseName } from './ExerciseFigure.tsx';
 import { useI18n } from './i18n.ts';
 import { checkIcon, gripIcon, trophyIcon, undoIcon } from './icons.tsx';
 import { Info } from './Info.tsx';
@@ -18,6 +19,7 @@ export function ExerciseBlock({
   name,
   training,
   exerciseId,
+  muscle,
   incrementKg,
   bodyweight,
   dumbbell,
@@ -41,6 +43,8 @@ export function ExerciseBlock({
   name: string;
   training: Training;
   exerciseId: string;
+  // The main muscle it is filed under: a Custom Exercise's figure is drawn with it.
+  muscle: Muscle;
   incrementKg: number;
   // A bodyweight Exercise: its weight is the weight added to the lifter's own, shown as "BW +10 kg".
   bodyweight: boolean;
@@ -140,7 +144,9 @@ export function ExerciseBlock({
     );
   return (
     <section className={focus ? 'ex focus' : 'ex'}>
-      <h2 className="ex-name">{name}</h2>
+      <h2 className="ex-name">
+        <ExerciseName exerciseId={exerciseId} muscle={muscle} name={name} />
+      </h2>
       {calibrating && (
         <p className="calibration">
           {t.session.calibration} <Info term="calibration" />
