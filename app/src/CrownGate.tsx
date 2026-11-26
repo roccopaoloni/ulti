@@ -27,6 +27,7 @@ export function CrownGate() {
     <CrownMoment
       key={crown.id}
       title={c.title[crown.period]}
+      groupName={crown.group_name}
       headline={c.headline(crown.period, crown.group_name, crown.shared_with)}
       chips={[c.points(crown.points), ...(crown.shared_with > 0 ? [c.shared(crown.shared_with)] : [])]}
       strings={{ news: c.news, tapHint: c.tapHint, continue: c.continue }}
