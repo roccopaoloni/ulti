@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ULTI History calendar prototype (issue 219)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@700;800;900&display=swap" rel="stylesheet">
+<style>
+/* PROTOTYPE, throwaway. Three month-calendar versions for History. Open the file in a browser; switch version, EN/ES, theme at the top.
+   URL params for screenshots: ?v=a|b|c&lang=en|es&theme=dark|light&month=2026-10&sheet=2026-10-14&detail=2026-10-12 */
+:root {
+  --bg: #0e0b1f; --surface: #17132f; --surface-2: #211c42; --line: #2f2a58; --fg: #f4f1ff; --muted: #a49fc7;
+  --accent: #ff4d9d; --accent-ink: #1a0614; --accent-text: #ff4d9d; --page: #08061a; --gold: #ffc83d;
+  --d1: #ff4d9d; --d2: #7be7ff; --d3: #c5e46a; --d4: #ff8f6b; --d5: #a98bff; --dink: #1a0614;
+  --scrim: rgba(6, 4, 18, 0.66);
+  --display: 'Unbounded', 'Arial Black', sans-serif;
+  --body: 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color-scheme: dark;
+}
+:root[data-theme="light"] {
+  --bg: #f7f4ff; --surface: #ffffff; --surface-2: #ece8fa; --line: #d9d3f0; --fg: #1a1433; --muted: #5c5680;
+  --accent-text: #c2185f; --page: #ebe6fa; --gold: #a87900;
+  --d1: #e0337f; --d2: #0f8fae; --d3: #5f8a00; --d4: #d2582f; --d5: #6a3fe0; --dink: #ffffff;
+  --scrim: rgba(26, 20, 51, 0.45);
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--page); color: var(--fg); font: 15px/1.45 var(--body); font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; border-radius: 10px; }
+
+.shot .bar, .shot .vnote { display: none; }
+.shot .stage { padding: 20px 0; }
+.bar { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; padding: 14px 12px 10px; }
+.seg { display: flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; background: var(--surface); }
+.seg button { padding: 8px 14px; font-weight: 700; font-size: 13px; color: var(--muted); }
+.seg button.on { background: var(--accent); color: var(--accent-ink); }
+.stage { display: flex; flex-direction: column; align-items: center; gap: 8px; padding-bottom: 32px; }
+.vnote { color: var(--muted); font-size: 13px; max-width: 390px; text-align: center; margin: 0 16px; min-height: 38px; }
+
+.phone { position: relative; background: var(--bg); border: 1px solid var(--line); border-radius: 34px; overflow: hidden; display: flex; flex-direction: column; width: 390px; height: 800px; }
+.screen { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 22px 16px 8px; gap: 14px; position: relative; }
+.tabbar { border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(4, 1fr); padding: 10px 0 14px; }
+.tabbar span { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11.5px; color: var(--muted); font-weight: 600; }
+.tabbar span.on { color: var(--fg); }
+.tabbar span.on svg { color: var(--accent); }
+.tabbar svg { width: 22px; height: 22px; }
+
+.top { display: flex; align-items: center; gap: 10px; }
+.top h1 { font: 800 22px/1 var(--display); text-transform: uppercase; margin: 0; }
+.back { width: 32px; height: 32px; display: grid; place-items: center; }
+.back svg { width: 22px; height: 22px; }
+
+.mhead { display: flex; align-items: center; justify-content: space-between; }
+.mhead h2 { font: 800 15px/1.1 var(--display); margin: 0; }
+.mhead h2::first-letter { text-transform: uppercase; }
+.arrows { display: flex; gap: 6px; }
+.arrow { width: 36px; height: 36px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); display: grid; place-items: center; }
+.arrow:disabled { opacity: .3; cursor: default; }
+.arrow svg { width: 18px; height: 18px; }
+.sub { color: var(--muted); font-size: 13.5px; font-weight: 600; margin-top: 3px; }
+.sub b { color: var(--fg); }
+
+.grid-wrap { touch-action: pan-y; user-select: none; }
+.dow, .week { display: grid; gap: 6px; }
+.dow { margin-bottom: 4px; }
+.dow span { text-align: center; font-size: 11.5px; font-weight: 700; color: var(--muted); }
+.week { margin-bottom: 6px; align-items: center; }
+
+.cell { position: relative; display: grid; place-items: center; font-weight: 700; font-size: 14px; }
+.cell.empty { color: var(--muted); font-weight: 600; cursor: default; }
+.cell.future { color: var(--muted); opacity: .45; cursor: default; }
+.cell.today::after { content: ""; position: absolute; inset: -3px; border: 2px solid var(--fg); border-radius: inherit; pointer-events: none; }
+.cell.out { visibility: hidden; }
+.trophy { position: absolute; width: 14px; height: 14px; color: var(--gold); filter: drop-shadow(0 0 2px var(--bg)); }
+.two { position: absolute; font-size: 9.5px; font-weight: 800; border-radius: 6px; padding: 0 4px; line-height: 14px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); }
+.stamp { display: grid; place-items: center; }
+.stamp svg { width: 14px; height: 14px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; color: var(--muted); font-size: 12px; font-weight: 600; margin-top: auto; padding-bottom: 6px; }
+.legend i { display: inline-block; vertical-align: -2px; margin-right: 5px; }
+.dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+.dot.neutral { border: 2px solid var(--muted); background: none; }
+
+/* ===== Version A: filled rounded squares, Week Stamp in a right-hand column ===== */
+.A .dow, .A .week { grid-template-columns: repeat(7, 1fr) 30px; }
+.A .cell { aspect-ratio: 1; border-radius: 12px; background: var(--surface); }
+.A .cell.has { color: var(--dink); background: var(--c); }
+.A .cell.has.neutral { background: var(--surface-2); color: var(--fg); border: 2px solid var(--muted); }
+.A .cell.empty, .A .cell.future { background: transparent; }
+.A .trophy { top: -4px; right: -3px; }
+.A .two { bottom: -3px; right: -3px; }
+.A .stamp i { width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; }
+.A .stamp.no i { background: none; border: 1.5px dashed var(--line); }
+
+/* ===== Version B: round day circles, a pink ribbon behind stamped weeks ===== */
+.B .dow, .B .week { grid-template-columns: repeat(7, 1fr); }
+.B .week { position: relative; padding: 3px 0; border-radius: 999px; }
+.B .week.stamped { background: color-mix(in srgb, var(--accent) 16%, transparent); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 55%, transparent); }
+.B .week .stamp { position: absolute; right: -6px; top: -7px; width: 20px; height: 20px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); z-index: 2; }
+.B .week .stamp svg { width: 12px; height: 12px; }
+.B .cell { aspect-ratio: 1; border-radius: 50%; width: 80%; margin: 0 auto; }
+.B .cell.has { background: var(--c); color: var(--dink); }
+.B .cell.has.neutral { background: none; border: 2.5px solid var(--muted); color: var(--fg); }
+.B .trophy { top: -5px; right: -5px; }
+.B .two { bottom: -4px; left: 50%; transform: translateX(-50%); }
+.B .summary { display: flex; gap: 8px; }
+.B .summary div { flex: 1; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 8px 10px; }
+.B .summary b { display: block; font: 800 20px/1.1 var(--display); }
+.B .summary span { font-size: 11.5px; color: var(--muted); font-weight: 600; }
+
+/* ===== Version C: tall tiles, colour fills from the bottom, stamp as a left edge tab ===== */
+.C .dow, .C .week { grid-template-columns: 18px repeat(7, 1fr); gap: 5px; }
+.C .cell { height: 54px; border-radius: 10px; background: var(--surface); place-items: start center; padding-top: 5px; padding-right: 0; overflow: hidden; border: 1px solid var(--line); }
+.C .cell .fill { position: absolute; left: 0; right: 0; bottom: 0; height: 56%; background: var(--c); }
+.C .cell .n { position: relative; z-index: 1; }
+.C .cell.has { border-color: var(--c); }
+.C .cell.has.neutral { border-color: var(--muted); }
+.C .cell.has.neutral .fill { background: repeating-linear-gradient(135deg, var(--muted) 0 3px, transparent 3px 7px); opacity: .55; }
+.C .cell.empty, .C .cell.future { background: transparent; border-color: transparent; }
+.C .trophy { bottom: 4px; left: 50%; margin-left: -7px; z-index: 2; color: #fff7d6; filter: drop-shadow(0 0 2px #7a5a00); }
+.C .two { top: 3px; left: 2px; transform: scale(.85); }
+.C .stamp { height: 54px; border-radius: 6px; background: var(--line); }
+.C .stamp.yes { background: var(--accent); color: var(--accent-ink); }
+.C .stamp svg { width: 12px; height: 12px; }
+.C .stamp.no { opacity: .35; }
+.C .summary { display: flex; align-items: center; gap: 14px; }
+.C .bigcount { font: 900 40px/1 var(--display); }
+.C .summary p { margin: 0; color: var(--muted); font-size: 13px; font-weight: 600; line-height: 1.3; }
+.C .summary p b { color: var(--fg); }
+.C .bars { display: flex; gap: 3px; height: 8px; margin-top: 6px; }
+.C .bars i { border-radius: 4px; background: var(--c); }
+
+.scrim { position: absolute; inset: 0; background: var(--scrim); z-index: 10; display: flex; align-items: flex-end; }
+.sheet { width: 100%; background: var(--surface); border-top: 1px solid var(--line); border-radius: 24px 24px 0 0; padding: 12px 16px 26px; display: flex; flex-direction: column; gap: 10px; }
+.sheet .grab { width: 40px; height: 4px; border-radius: 2px; background: var(--line); margin: 0 auto 6px; }
+.sheet h3 { margin: 0; font: 800 14px/1.2 var(--display); text-transform: capitalize; }
+.srow { display: flex; align-items: center; gap: 12px; background: var(--surface-2); border-radius: 16px; padding: 12px 14px; text-align: left; width: 100%; }
+.srow .dot { width: 12px; height: 12px; }
+.srow b { display: block; font-size: 15px; }
+.srow small { color: var(--muted); font-size: 12.5px; font-weight: 600; }
+.srow .chev { margin-left: auto; width: 18px; height: 18px; color: var(--muted); }
+.srow .pr + .chev { margin-left: 0; }
+.srow .pr { margin-left: auto; }
+.pr { display: inline-flex; align-items: center; gap: 4px; background: var(--accent); color: var(--accent-ink); font-weight: 800; font-size: 11.5px; border-radius: 999px; padding: 2px 9px; }
+.pr svg { width: 12px; height: 12px; }
+.detail { position: absolute; inset: 0; background: var(--bg); z-index: 20; padding: 22px 16px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
+.dtitle { font: 800 20px/1.1 var(--display); text-transform: uppercase; }
+.dsub { color: var(--muted); font-weight: 600; font-size: 14px; text-transform: capitalize; }
+.ex { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px; }
+.ex > b { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 15px; }
+.ex ul { list-style: none; padding: 0; margin: 6px 0 0; color: var(--muted); font-size: 13.5px; font-weight: 600; }
+.note { color: var(--muted); font-size: 12px; text-align: center; margin-top: auto; }
+</style>
+</head>
+<body>
+<div class="bar">
+  <div class="seg" id="sv"></div>
+  <div class="seg" id="sl"></div>
+  <div class="seg" id="st"></div>
+</div>
+<div class="stage">
+  <div class="phone" id="phone"></div>
+  <p class="vnote" id="vnote"></p>
+</div>
+
+<script>
+const T = {
+  en: { title: 'History', sessions: n => n === 1 ? '1 Session' : n + ' Sessions', stamps: n => n === 1 ? '1 Week Stamp' : n + ' Week Stamps',
+        prs: n => n === 1 ? '1 Personal Record' : n + ' Personal Records', noDay: 'No Routine Day', exs: n => n + ' exercises',
+        pick: 'Two Sessions this day', pr: 'PR', stamp: 'Week Stamp', pickHint: 'Pick one', back: 'Back', detailNote: 'Session detail (existing screen, stubbed here)',
+        sets: 'sets', tabs: ['Home', 'Train', 'Groups', 'Profile'], inMonth: 'this month',
+        notes: { a: 'A. Filled squares. The Routine Day colour floods the whole cell; Week Stamp is a check in a column at the right edge of each row; trophy sits on the corner.',
+                 b: 'B. Round dots. Stamped weeks get a pink ribbon behind the row with a check on its end; three tiles above the grid (Sessions, Week Stamps, Records).',
+                 c: 'C. Tall tiles filled from the bottom like a gauge; Week Stamp is a pink tab on the left edge; big Session count with a colour bar per Routine Day above.' } },
+  es: { title: 'Historial', sessions: n => n === 1 ? '1 sesión' : n + ' sesiones', stamps: n => n === 1 ? '1 sello semanal' : n + ' sellos semanales',
+        prs: n => n === 1 ? '1 récord personal' : n + ' récords personales', noDay: 'Sin rutina', exs: n => n + ' ejercicios',
+        pick: 'Dos sesiones este día', pr: 'PR', stamp: 'Sello semanal', pickHint: 'Elegí una', back: 'Volver', detailNote: 'Detalle de la sesión (pantalla existente, simulada)',
+        sets: 'series', tabs: ['Inicio', 'Entrenar', 'Grupos', 'Perfil'], inMonth: 'este mes',
+        notes: { a: 'A. Cuadrados rellenos. El color del día de rutina llena toda la celda; el sello semanal es un tilde en una columna al borde derecho de cada fila; el trofeo va en la esquina.',
+                 b: 'B. Círculos. Las semanas con sello llevan una cinta rosa detrás de la fila con un tilde en la punta; tres tarjetas arriba de la grilla (sesiones, sellos, récords).',
+                 c: 'C. Fichas altas que se llenan desde abajo como un medidor; el sello semanal es una pestaña rosa en el borde izquierdo; contador grande de sesiones con una barra de color por día.' } }
+};
+const DAYS = { es: ['Empuje', 'Tirón', 'Piernas', 'Hombros'], en: ['Push', 'Pull', 'Legs', 'Shoulders'] };
+const EX = {
+  en: [['Bench Press', 'Overhead Press', 'Incline Dumbbell Press', 'Triceps Pushdown'], ['Barbell Row', 'Pull-up', 'Lat Pulldown', 'Dumbbell Curl'],
+       ['Back Squat', 'Romanian Deadlift', 'Leg Press', 'Calf Raise'], ['Military Press', 'Lateral Raise', 'Face Pull', 'Shrug']],
+  es: [['Press de banca', 'Press militar', 'Press inclinado con mancuernas', 'Extensión de tríceps'], ['Remo con barra', 'Dominadas', 'Jalón al pecho', 'Curl con mancuernas'],
+       ['Sentadilla', 'Peso muerto rumano', 'Prensa', 'Gemelos'], ['Press militar', 'Elevaciones laterales', 'Face pull', 'Encogimientos']] };
+
+// Weeks start Monday; Weekly Target 3 Sessions; a Week Stamp when the week's Sessions reach it.
+const iso = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+const TODAY = '2026-11-25';
+const SESS = {};
+(function seed() {
+  let r = 7; const rnd = () => (r = (r * 1103515245 + 12345) % 2147483648) / 2147483648;
+  const start = new Date(2026, 5, 1);
+  for (let w = 0; w < 28; w++) {
+    const mon = new Date(start); mon.setDate(start.getDate() + w * 7);
+    [[0, 0], [2, 1], [4, 2]].forEach(([off, slot], i) => {
+      const d = new Date(mon); d.setDate(mon.getDate() + off); const k = iso(d);
+      if (k > TODAY) return;
+      if ([4, 11, 17, 22].includes(w) && i === 2) return;
+      if ([9, 18].includes(w) && i === 1) return;
+      SESS[k] = [{ slot: w % 7 === 3 && i === 2 ? 3 : slot, ex: 3 + (i % 2), pr: rnd() < 0.3 }];
+    });
+  }
+  const add = (k, s) => (SESS[k] = (SESS[k] || []).concat(s));
+  add('2026-10-14', [{ slot: 0, ex: 3, pr: false }]);
+  add('2026-10-17', [{ slot: null, ex: 3, pr: false }]);
+  add('2026-07-04', [{ slot: null, ex: 4, pr: false }]);
+  add('2026-08-22', [{ slot: 3, ex: 4, pr: false }, { slot: 2, ex: 4, pr: true }]);
+  ['2026-11-02', '2026-10-12', '2026-10-16', '2026-09-07'].forEach(k => { SESS[k][0].pr = true; });
+})();
+const monOf = d => { const x = new Date(d); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };
+const weekCount = mon => { let n = 0; for (let i = 0; i < 7; i++) { const d = new Date(mon); d.setDate(mon.getDate() + i); n += (SESS[iso(d)] || []).length; } return n; };
+const stamped = mon => weekCount(mon) >= 3;
+
+const q = new URLSearchParams(location.search);
+const S = { v: q.get('v') || 'a', lang: q.get('lang') || 'es', theme: q.get('theme') || 'dark', month: q.get('month') || '2026-11', sheet: q.get('sheet'), detail: q.get('detail'), pick: null };
+const MIN = '2026-06', MAX = '2026-11';
+const L = () => T[S.lang];
+const svg = {
+  chev: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>',
+  left: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m15 6-6 6 6 6"/></svg>',
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7"/></svg>',
+  trophyPath: 'M7 3h10v3h3v2a4 4 0 0 1-4 4h-.3A5 5 0 0 1 13 14.9V17h3v3H8v-3h3v-2.1A5 5 0 0 1 8.3 12H8a4 4 0 0 1-4-4V6h3V3Z',
+  tabs: ['<path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/>', '<path d="M3 9v6M7 6v12M17 6v12M21 9v6M7 12h10"/>', '<circle cx="9" cy="9" r="3"/><circle cx="17" cy="10" r="2.5"/><path d="M3 19a6 6 0 0 1 12 0M15 19a4 4 0 0 1 6 0"/>', '<circle cx="12" cy="8" r="4"/><path d="M4 20a8 8 0 0 1 16 0"/>']
+};
+const trophy = () => `<svg class="trophy" viewBox="0 0 24 24" fill="currentColor"><path d="${svg.trophyPath}"/></svg>`;
+const trophySm = () => `<svg viewBox="0 0 24 24" fill="currentColor"><path d="${svg.trophyPath}"/></svg>`;
+const colour = s => s.slot == null ? null : `var(--d${s.slot + 1})`;
+const loc = () => S.lang === 'es' ? 'es-AR' : 'en-US';
+const monthName = () => new Date(S.month + '-01T12:00').toLocaleDateString(loc(), { month: 'long', year: 'numeric' });
+const dowLabels = () => [...Array(7)].map((_, i) => new Date(2026, 5, 1 + i).toLocaleDateString(loc(), { weekday: 'narrow' }).toUpperCase());
+const dayLong = k => new Date(k + 'T12:00').toLocaleDateString(loc(), { weekday: 'long', day: 'numeric', month: 'long' });
+const dayName = s => s.slot == null ? L().noDay : DAYS[S.lang][s.slot];
+
+function monthStats() {
+  const [y, m] = S.month.split('-').map(Number);
+  let n = 0, prs = 0, stamps = 0; const per = [0, 0, 0, 0, 0];
+  Object.entries(SESS).forEach(([k, ss]) => { const d = new Date(k + 'T12:00'); if (d.getFullYear() === y && d.getMonth() === m - 1) ss.forEach(s => { n++; if (s.pr) prs++; per[s.slot == null ? 4 : s.slot]++; }); });
+  for (let d = new Date(y, m - 1, 1); d.getMonth() === m - 1; d.setDate(d.getDate() + 1)) if (d.getDay() === 0 && stamped(monOf(d))) stamps++;
+  return { n, prs, stamps, per };
+}
+
+function cell(date, inMonth) {
+  if (!inMonth) return '<div class="cell out"></div>';
+  const k = iso(date), ss = SESS[k] || [], has = ss.length > 0;
+  const cls = ['cell']; let style = '', fill = '';
+  if (has) { cls.push('has'); const s = ss[0]; if (s.slot == null) cls.push('neutral'); else style = `--c:${colour(s)}`; fill = '<i class="fill"></i>'; }
+  else cls.push(k > TODAY ? 'future' : 'empty');
+  if (k === TODAY) cls.push('today');
+  const pr = ss.some(s => s.pr) ? trophy() : '';
+  const two = ss.length > 1 ? '<span class="two">2</span>' : '';
+  const body = S.v === 'c' ? `${fill}<span class="n">${date.getDate()}</span>` : date.getDate();
+  return `<button class="${cls.join(' ')}" style="${style}" data-day="${k}" ${has ? '' : 'tabindex="-1"'}>${body}${pr}${two}</button>`;
+}
+
+function grid() {
+  const [y, m] = S.month.split('-').map(Number);
+  const mon = monOf(new Date(y, m - 1, 1)); let html = '';
+  const dow = dowLabels().map(x => `<span>${x}</span>`).join('');
+  html += S.v === 'a' ? `<div class="dow">${dow}<span></span></div>` : S.v === 'c' ? `<div class="dow"><span></span>${dow}</div>` : `<div class="dow">${dow}</div>`;
+  while (mon.getMonth() === m - 1 || new Date(mon.getTime() + 6 * 864e5).getMonth() === m - 1) {
+    const cells = [...Array(7)].map((_, i) => { const d = new Date(mon); d.setDate(mon.getDate() + i); return cell(d, d.getMonth() === m - 1); }).join('');
+    const done = stamped(mon);
+    if (S.v === 'a') html += `<div class="week">${cells}<div class="stamp ${done ? 'yes' : 'no'}"><i>${done ? svg.check : ''}</i></div></div>`;
+    else if (S.v === 'b') html += `<div class="week${done ? ' stamped' : ''}">${cells}${done ? `<div class="stamp">${svg.check}</div>` : ''}</div>`;
+    else html += `<div class="week"><div class="stamp ${done ? 'yes' : 'no'}">${done ? svg.check : ''}</div>${cells}</div>`;
+    mon.setDate(mon.getDate() + 7);
+  }
+  return html;
+}
+
+function header() {
+  const st = monthStats(), t = L();
+  const nav = `<div class="arrows"><button class="arrow" id="prev" aria-label="prev" ${S.month <= MIN ? 'disabled' : ''}>${svg.left}</button><button class="arrow" id="next" aria-label="next" ${S.month >= MAX ? 'disabled' : ''}>${svg.chev}</button></div>`;
+  if (S.v === 'a') return `<div class="mhead"><div><h2>${monthName()}</h2><div class="sub"><b>${t.sessions(st.n)}</b> · ${t.stamps(st.stamps)}</div></div>${nav}</div>`;
+  const word = f => f.replace(/^\d+ /, '');
+  if (S.v === 'b') return `<div class="mhead"><h2>${monthName()}</h2>${nav}</div>
+    <div class="summary"><div><b>${st.n}</b><span>${word(t.sessions(st.n))}</span></div><div><b>${st.stamps}</b><span>${word(t.stamps(st.stamps))}</span></div><div><b>${st.prs}</b><span>${word(t.prs(st.prs))}</span></div></div>`;
+  const bars = st.per.map((c, i) => c ? `<i style="--c:${i === 4 ? 'var(--muted)' : `var(--d${i + 1})`};flex:${c}"></i>` : '').join('');
+  return `<div class="mhead"><h2>${monthName()}</h2>${nav}</div>
+    <div class="summary"><div class="bigcount">${st.n}</div><div style="flex:1"><p><b>${word(t.sessions(st.n))}</b> ${t.inMonth}<br>${t.stamps(st.stamps)} · ${t.prs(st.prs)}</p><div class="bars">${bars}</div></div></div>`;
+}
+
+function legend() {
+  const t = L();
+  return `<div class="legend">${DAYS[S.lang].map((n, i) => `<span><i class="dot" style="background:var(--d${i + 1})"></i>${n}</span>`).join('')}<span><i class="dot neutral"></i>${t.noDay}</span><span><svg class="trophy" style="position:static;vertical-align:-3px;margin-right:3px" viewBox="0 0 24 24" fill="currentColor"><path d="${svg.trophyPath}"/></svg>${t.pr}</span></div>`;
+}
+
+function sessRow(k, i) {
+  const s = SESS[k][i], t = L();
+  const dot = s.slot == null ? '<i class="dot neutral"></i>' : `<i class="dot" style="background:${colour(s)}"></i>`;
+  return `<button class="srow" data-open="${k}:${i}">${dot}<div><b>${dayName(s)}</b><small>${t.exs(s.ex)}</small></div>${s.pr ? `<span class="pr">${trophySm()}${t.pr}</span>` : ''}${svg.chev.replace('<svg', '<svg class="chev"')}</button>`;
+}
+
+function detail(k, i) {
+  const s = SESS[k][i], t = L(), exs = EX[S.lang][s.slot == null ? 0 : s.slot].slice(0, s.ex);
+  const c = s.slot == null ? 'var(--muted)' : colour(s);
+  return `<div class="detail"><div class="top"><button class="back" id="closeDetail" aria-label="${t.back}">${svg.left}</button><div><div class="dtitle" style="color:${c}">${dayName(s)}</div><div class="dsub">${dayLong(k)}</div></div></div>
+    ${exs.map((e, j) => `<div class="ex"><b>${e}${s.pr && j === 0 ? `<span class="pr">${trophySm()}${t.pr}</span>` : ''}</b><ul><li>3 ${t.sets} · 8-10 reps</li></ul></div>`).join('')}
+    <p class="note">${t.detailNote}</p></div>`;
+}
+
+function render() {
+  document.documentElement.dataset.theme = S.theme;
+  document.documentElement.lang = S.lang;
+  const t = L();
+  const mk = (id, items, cur, key) => { document.getElementById(id).innerHTML = items.map(([v, l]) => `<button class="${cur === v ? 'on' : ''}" data-k="${key}" data-v="${v}">${l}</button>`).join(''); };
+  mk('sv', [['a', 'A'], ['b', 'B'], ['c', 'C']], S.v, 'v'); mk('sl', [['en', 'EN'], ['es', 'ES']], S.lang, 'lang'); mk('st', [['dark', 'Dark'], ['light', 'Light']], S.theme, 'theme');
+  document.getElementById('vnote').textContent = t.notes[S.v];
+  const overlay = S.pick ? detail(...S.pick) : '';
+  const sheet = !S.pick && S.sheet ? `<div class="scrim" id="scrim"><div class="sheet"><div class="grab"></div><h3>${dayLong(S.sheet)}</h3><div class="sub" style="margin:-4px 0 2px">${t.pick} · ${t.pickHint}</div>${SESS[S.sheet].map((_, i) => sessRow(S.sheet, i)).join('')}</div></div>` : '';
+  document.getElementById('phone').className = 'phone ' + S.v.toUpperCase();
+  document.getElementById('phone').innerHTML = `<div class="screen"><div class="top"><button class="back" aria-label="${t.back}">${svg.left}</button><h1>${t.title}</h1></div>${header()}<div class="grid-wrap" id="gw">${grid()}</div>${legend()}${sheet}${overlay}</div>
+    <div class="tabbar">${t.tabs.map((n, i) => `<span class="${i === 1 ? 'on' : ''}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${svg.tabs[i]}</svg>${n}</span>`).join('')}</div>`;
+}
+
+function shift(dir) { const [y, m] = S.month.split('-').map(Number); const d = new Date(y, m - 1 + dir, 1); const k = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); if (k < MIN || k > MAX) return; S.month = k; render(); }
+
+document.addEventListener('click', e => {
+  if (e.target.id === 'scrim') { S.sheet = null; return render(); }
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.k) { S[b.dataset.k] = b.dataset.v; S.sheet = S.pick = null; return render(); }
+  if (b.id === 'prev') return shift(-1);
+  if (b.id === 'next') return shift(1);
+  if (b.id === 'closeDetail') { S.pick = null; S.detail = null; return render(); }
+  if (b.dataset.open) { const [k, i] = b.dataset.open.split(':'); S.pick = [k, +i]; return render(); }
+  if (b.dataset.day) { const ss = SESS[b.dataset.day]; if (!ss) return; if (ss.length === 1) S.pick = [b.dataset.day, 0]; else S.sheet = b.dataset.day; render(); }
+});
+let x0 = null;
+document.addEventListener('pointerdown', e => { if (e.target.closest('#gw')) x0 = e.clientX; });
+document.addEventListener('pointerup', e => { if (x0 == null) return; const dx = e.clientX - x0; x0 = null; if (Math.abs(dx) > 60) shift(dx < 0 ? 1 : -1); });
+if (q.get('shot')) document.body.classList.add('shot');
+if (S.detail) S.pick = [S.detail, 0];
+render();
+</script>
+</body>
+</html>
