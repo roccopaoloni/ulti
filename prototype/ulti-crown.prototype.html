@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROTOTYPE (throwaway): the crown moment, issue #218</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400..800&family=Unbounded:wght@600..900&display=swap" rel="stylesheet">
+<style>
+/* PROTOTYPE, throwaway. Question: what should the crown moment (winning a Period) look like?
+   Three versions: A Spotlight, B Medal, C Stage. Open the file, tap the phone to play it, use the bar to switch.
+   Hash params (for screenshots): #v=a|b|c &n=1|3 &l=en|es &t=dark|light &p=week|month|year &skip=1 &shot=1 */
+:root {
+  --bg: #f7f4ff; --surface: #ffffff; --line: #d9d3f0; --fg: #1a1433; --muted: #5c5680;
+  --accent: #ff4d9d; --accent-ink: #1a0614; --gold: #a87900; --beam: 236,160,0;
+  --display: 'Unbounded', 'Arial Black', sans-serif;
+  --body: 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --ds: 0.66; color-scheme: light;
+}
+:root[data-t="dark"] {
+  --bg: #0e0b1f; --surface: #17132f; --line: #2f2a58; --fg: #f4f1ff; --muted: #a49fc7;
+  --gold: #ffc83d; --beam: 255,200,61; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { font: 15px/1.45 var(--body); background: #2a2540; color: #f4f1ff; min-height: 100vh; -webkit-font-smoothing: antialiased; }
+body.shot { background: transparent; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+
+/* The bar: outside the phone, not part of the design. */
+.bar { display: flex; flex-wrap: wrap; gap: 10px 22px; justify-content: center; padding: 16px; }
+.bar .g { display: flex; gap: 4px; align-items: center; }
+.bar .g b { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #a49fc7; margin-right: 4px; }
+.bar button.o { padding: 7px 12px; border-radius: 999px; background: #3a3460; font-weight: 700; font-size: 13px; }
+.bar button.o[aria-pressed="true"] { background: #ffc83d; color: #1a0614; }
+.bar button.rp { padding: 7px 14px; border-radius: 999px; background: #ff4d9d; color: #1a0614; font-weight: 800; font-size: 13px; }
+.note { text-align: center; font-size: 12px; color: #a49fc7; margin: 0 0 12px; }
+body.shot .bar, body.shot .note { display: none; }
+.phone { position: relative; width: 390px; height: 844px; margin: 0 auto 30px; border-radius: 44px; overflow: hidden; box-shadow: 0 0 0 8px #0a0816, 0 20px 60px rgba(0,0,0,.5); }
+body.shot .phone { margin: 0; border-radius: 0; box-shadow: none; }
+
+/* ---------- the moment (tokens and structure from the Rank-up's `ru` classes) ---------- */
+.m { position: absolute; inset: 0; color: var(--fg); background: var(--bg); overflow: clip; contain: strict; cursor: pointer; user-select: none; -webkit-user-select: none; }
+.flood { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .8s;
+  background: radial-gradient(circle at 50% 34%, rgba(var(--beam), .42), rgba(var(--beam), .12) 50%, transparent 82%); }
+.m.fired .flood { opacity: 1; }
+.in { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; padding: 56px 16px 22px; }
+.kicker { font: 700 11px/1 var(--body); letter-spacing: .16em; text-transform: uppercase; color: var(--muted); min-height: 14px; }
+.m.rest .kicker { color: var(--gold); }
+.tap { font-weight: 600; color: var(--muted); min-height: 1.4em; animation: breathe 1.6s ease-in-out infinite; }
+.m.started .tap { visibility: hidden; }
+.stage { position: relative; width: 270px; height: 235px; display: grid; place-items: center; }
+.stage > * { grid-area: 1/1; }
+.m.n3 .stage { width: 190px; height: 160px; }
+.crown { width: 100%; height: auto; overflow: visible; filter: brightness(.22) saturate(.3); opacity: .7; transform: scale(.82); transition: all .3s; }
+.m.fired .crown { filter: none; opacity: 1; transform: none; animation: land .75s cubic-bezier(.2,1.5,.4,1); }
+.m.flashing .flash { animation: flash .14s ease-out; }
+.flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 4; }
+.m.shake .in { animation: shake .4s linear; }
+.shine { animation: shine 3.4s 1.2s ease-in-out infinite; }
+.glow { position: absolute; left: 50%; top: 50%; margin: -180px 0 0 -180px; width: 360px; height: 360px; border-radius: 50%; background: radial-gradient(circle, rgba(var(--beam), .55), transparent 62%); opacity: 0; transition: opacity .5s; pointer-events: none; }
+.m.fired .glow { opacity: 1; }
+
+.title { font: 800 min(calc(64px * var(--ds)), 9.4vw)/1.12 var(--display); margin: 4px 0 0; text-wrap: balance; max-width: 358px; min-height: 1.1em; word-spacing: .22em; }
+.title .w { display: inline-block; white-space: nowrap; word-spacing: 0; }
+.title .l { display: inline-block; opacity: 0; transform: scale(1.6); }
+.m.slam .title .l { opacity: 1; transform: none; transition: opacity .12s calc(var(--i) * 35ms), transform .3s cubic-bezier(.2, 1.6, .4, 1) calc(var(--i) * 35ms); }
+
+.proof { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%; max-width: 358px; }
+.chip { padding: 8px 14px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); font-weight: 700; font-size: 14px; opacity: 0; transform: translateY(14px); }
+.m.stats .chip, .m.stats .row { opacity: 1; transform: none; transition: all .35s calc(var(--i) * 130ms); }
+.row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 14px; text-align: left; opacity: 0; transform: translateY(14px); }
+.row .nm { font-weight: 800; font-size: 15px; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .sub { color: var(--muted); font-size: 12.5px; font-weight: 600; line-height: 1.3; }
+.row .tx { flex: 1; min-width: 0; }
+.row .pts { font-weight: 800; font-size: 15px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mini { width: 28px; height: 25px; flex: none; }
+.msg { font-weight: 700; font-size: 18px; line-height: 1.35; max-width: 28ch; text-wrap: balance; margin: 2px 0 0; opacity: 0; transform: translateY(8px); min-height: 1.35em; }
+.m.showmsg .msg { opacity: 1; transform: none; transition: all .5s; }
+.cont { display: none; width: 100%; max-width: 340px; min-height: 52px; margin-top: 6px; border-radius: 16px; background: var(--accent); color: var(--accent-ink); font: 800 16px var(--display); letter-spacing: .03em; align-items: center; justify-content: center; text-transform: uppercase; }
+.m.showmsg .cont { display: flex; animation: fade .4s .3s both; }
+.m.skip *, .m.skip *::before, .m.skip *::after { animation: none !important; transition: none !important; }
+.m.skip .shine { animation: shine 3.4s ease-in-out infinite !important; }
+body.shot .m.skip .shine { animation: none !important; opacity: 0; }
+
+/* ---------- beams: hard-edged cones and rays, never a blurred box ---------- */
+.beam, .beam > * { position: absolute; pointer-events: none; }
+.beam { inset: 0; z-index: 1; }
+.cone { top: 0; left: 50%; transform-origin: 50% 0; opacity: 0; transform: translateX(-50%) scaleY(0); }
+.m.fired .cone { opacity: 1; transform: translateX(-50%) scaleY(1); transition: transform .9s cubic-bezier(.1, .8, .2, 1), opacity .3s; }
+
+/* A Spotlight: one cone from the top of the screen onto the crown, a bright core inside it, edges crisp. */
+.v-a .cone.c1 { width: 380px; height: 56%; background: linear-gradient(to bottom, rgba(var(--beam), .62), rgba(var(--beam), 0) 98%); clip-path: polygon(44% 0, 56% 0, 100% 100%, 0 100%); }
+.v-a .cone.c2 { width: 380px; height: 56%; background: linear-gradient(to bottom, rgba(255,255,255,.55), rgba(255,255,255,0) 90%); clip-path: polygon(48.5% 0, 51.5% 0, 70% 100%, 30% 100%); }
+.v-a .cone.c3 { width: 380px; height: 56%; background: repeating-linear-gradient(90deg, transparent 0 18px, rgba(var(--beam), .22) 18px 21px); clip-path: polygon(44% 0, 56% 0, 100% 100%, 0 100%); -webkit-mask: linear-gradient(to bottom, #000, transparent 85%); mask: linear-gradient(to bottom, #000, transparent 85%); }
+.v-a .pool { left: 50%; top: 40%; width: 300px; height: 40px; margin: 0 0 0 -150px; border-radius: 50%; background: radial-gradient(ellipse, rgba(var(--beam), .5), transparent 70%); opacity: 0; }
+.v-a.fired .pool { opacity: 1; transition: opacity .8s; }
+
+/* B Medal: a hard sunburst of rays turning behind the medal. */
+.v-b .burst { left: 50%; top: 31%; width: 900px; height: 900px; margin: -450px 0 0 -450px; opacity: 0; transition: opacity .8s;
+  background: repeating-conic-gradient(from 0deg, rgba(var(--beam), .5) 0 5deg, transparent 5deg 15deg);
+  -webkit-mask: radial-gradient(circle, #000 4%, transparent 54%); mask: radial-gradient(circle, #000 4%, transparent 54%); }
+.v-b.fired .burst { opacity: 1; animation: spin 40s linear infinite; }
+.v-b .burst.b2 { background: repeating-conic-gradient(from 7deg, rgba(255,255,255,.22) 0 1.4deg, transparent 1.4deg 15deg); }
+.v-b.fired .burst.b2 { animation: spin 40s linear infinite reverse; }
+.v-b .cone { display: none; }
+
+/* C Stage: two crossing stage lights from the top corners, and a lit ring on the floor. */
+.v-c .cone { width: 150px; height: 68%; background: linear-gradient(to bottom, rgba(var(--beam), .6), rgba(var(--beam), 0) 98%); clip-path: polygon(45% 0, 55% 0, 100% 100%, 0 100%); left: 50%; }
+.v-c .cone.c1 { margin-left: -92px; transform: translateX(-50%) rotate(-17deg) scaleY(0); }
+.v-c.fired .cone.c1 { transform: translateX(-50%) rotate(-17deg) scaleY(1); }
+.v-c .cone.c2 { margin-left: 92px; transform: translateX(-50%) rotate(17deg) scaleY(0); }
+.v-c.fired .cone.c2 { transform: translateX(-50%) rotate(17deg) scaleY(1); }
+.v-c .cone.c3 { width: 24px; height: 44%; background: linear-gradient(to bottom, rgba(255,255,255,.7), rgba(255,255,255,0)); clip-path: polygon(30% 0, 70% 0, 100% 100%, 0 100%); }
+.v-c .ring { left: 50%; top: 36%; width: 260px; height: 44px; margin: 0 0 0 -130px; border-radius: 50%; border: 2px solid rgba(var(--beam), .75); box-shadow: 0 0 0 7px rgba(var(--beam), .12), inset 0 0 22px rgba(var(--beam), .3); opacity: 0; transform: scale(.2); }
+.v-c.fired .ring { opacity: 1; transform: none; transition: all .7s cubic-bezier(.2, 1.2, .3, 1) .15s; }
+.v-a .ring, .v-b .ring, .v-c .pool, .v-b .pool, .v-b .cone, .v-c .burst, .v-a .burst { display: none; }
+
+/* ---------- per-version styling of the content ---------- */
+.v-a .title { color: var(--fg); }
+.v-a .row { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; }
+.v-a .row .pts { color: var(--gold); }
+
+.v-b .title { color: var(--fg); position: relative; padding-bottom: 14px; }
+.v-b .title::after { content: ""; position: absolute; left: 50%; bottom: 0; width: 70px; height: 3px; margin-left: -35px; border-radius: 2px; background: linear-gradient(90deg, transparent, var(--gold), transparent); }
+.v-b .chip { background: linear-gradient(180deg, #ffd75e, #e8a51c 55%, #9a6205); color: #2a1700; border: 0; box-shadow: inset 0 1px 0 #fff7d1, 0 3px 8px rgba(0,0,0,.3); }
+.v-b .row { background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 8px 16px 8px 10px; }
+.v-b .row .badge { flex: none; padding: 5px 9px; border-radius: 999px; font: 800 10.5px var(--body); letter-spacing: .06em; text-transform: uppercase; color: #2a1700; background: linear-gradient(180deg, #ffd75e, #e8a51c 55%, #b87a0a); box-shadow: inset 0 1px 0 #fff7d1; min-width: 58px; text-align: center; }
+.v-b .row .pts { font-size: 14px; }
+.v-b .m-stage-plate { display: none; }
+.medal { width: 100%; height: auto; overflow: visible; }
+.v-b .stage { width: 250px; height: 250px; }
+.v-b.n3 .stage { width: 190px; height: 190px; }
+
+.v-c .title { color: var(--gold); text-shadow: 0 2px 0 rgba(0,0,0,.25); }
+.v-c .chip { background: none; border: 0; border-top: 1px solid var(--gold); border-bottom: 1px solid var(--gold); border-radius: 0; padding: 7px 18px; color: var(--fg); letter-spacing: .04em; }
+.v-c .proof { gap: 0; }
+.v-c .row { border-top: 1px solid color-mix(in srgb, var(--gold) 45%, transparent); padding: 11px 4px; border-radius: 0; }
+.v-c .row:last-of-type { border-bottom: 1px solid color-mix(in srgb, var(--gold) 45%, transparent); }
+.v-c .row .nm { font-size: 16px; }
+.v-c .row .pts { color: var(--gold); font-family: var(--display); font-weight: 700; font-size: 14px; }
+.v-c .msg { margin-top: 10px; }
+
+@keyframes land { 0% { transform: translateY(-260px) scale(1.6) rotate(-7deg); opacity: 0 } 55% { transform: translateY(14px) scale(.95) rotate(2deg); opacity: 1 } 100% { transform: none } }
+@keyframes flash { 0% { opacity: .85 } 100% { opacity: 0 } }
+@keyframes shake { 0%,100% { transform: none } 20% { transform: translate(-5px, 3px) } 40% { transform: translate(4px, -3px) } 60% { transform: translate(-3px, 2px) } 80% { transform: translate(2px, -1px) } }
+@keyframes breathe { 50% { opacity: .45 } }
+@keyframes fade { from { opacity: 0 } }
+@keyframes spin { to { transform: rotate(360deg) } }
+@keyframes shine { 0%, 55% { transform: translateX(-120px); opacity: 0 } 60% { opacity: 1 } 90%, 100% { transform: translateX(260px); opacity: 0 } }
+</style>
+</head>
+<body>
+<div class="bar" id="bar"></div>
+<p class="note">PROTOTYPE, throwaway (#218). Tap the phone to open the moment; tap again after a second to skip to the end. No sound here: the real one reuses the Rank-up's impact.</p>
+<div class="phone" id="phone"></div>
+
+<!-- Shared metal, drawn like the Rank crests (app/src/Badge.tsx): face gradient, bevel band lit from above, bright rim, soft drop shadow. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="cf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd75e"/><stop offset=".55" stop-color="#e8a51c"/><stop offset="1" stop-color="#9a6205"/></linearGradient>
+    <linearGradient id="cb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff7d1"/><stop offset=".4" stop-color="#ffd75e"/><stop offset=".6" stop-color="#9a6205"/><stop offset="1" stop-color="#4a2c00"/></linearGradient>
+    <linearGradient id="crim" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".9"/><stop offset=".35" stop-color="#fff" stop-opacity=".25"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <linearGradient id="cband" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe58a"/><stop offset=".5" stop-color="#d9981a"/><stop offset="1" stop-color="#7a4a02"/></linearGradient>
+    <radialGradient id="corb" cx=".38" cy=".32" r=".75"><stop offset="0" stop-color="#fff7d1"/><stop offset=".35" stop-color="#ffd75e"/><stop offset=".75" stop-color="#e8a51c"/><stop offset="1" stop-color="#7a4a02"/></radialGradient>
+    <radialGradient id="cruby" cx=".4" cy=".35" r=".75"><stop offset="0" stop-color="#fff"/><stop offset=".35" stop-color="#ff8cc0"/><stop offset=".75" stop-color="#ff2d87"/><stop offset="1" stop-color="#7a0b3c"/></radialGradient>
+    <radialGradient id="cruby-g"><stop offset="0" stop-color="#ff2d87" stop-opacity=".75"/><stop offset="1" stop-color="#ff2d87" stop-opacity="0"/></radialGradient>
+    <radialGradient id="camb" cx=".4" cy=".35" r=".75"><stop offset="0" stop-color="#fff6e0"/><stop offset=".35" stop-color="#ffd08a"/><stop offset=".75" stop-color="#ff9a2e"/><stop offset="1" stop-color="#7a3a05"/></radialGradient>
+    <radialGradient id="cmedal" cx=".5" cy=".3" r=".8"><stop offset="0" stop-color="#ffe9a0"/><stop offset=".5" stop-color="#d9981a"/><stop offset="1" stop-color="#6e4204"/></radialGradient>
+    <linearGradient id="cmedal-b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff7d1"/><stop offset=".45" stop-color="#e8a51c"/><stop offset=".55" stop-color="#9a6205"/><stop offset="1" stop-color="#3a2000"/></linearGradient>
+    <clipPath id="k-body"><path d="M34 140L24 58L68 96L100 34L132 96L176 58L166 140Z"/></clipPath>
+    <clipPath id="k-band"><path d="M32 140H168L164 166Q100 174 36 166Z"/></clipPath>
+    <clipPath id="k-all"><path d="M34 140L24 58L68 96L100 34L132 96L176 58L166 140Z"/><path d="M32 140H168L164 166Q100 174 36 166Z"/></clipPath>
+    <filter id="cds" x="-20%" y="-20%" width="140%" height="170%"><feDropShadow dx="0" dy="3" stdDeviation="2.2" flood-color="#0a0418" flood-opacity=".6"/></filter>
+    <filter id="cmd" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="8" stdDeviation="7" flood-color="#0a0418" flood-opacity=".55"/></filter>
+  </defs>
+</svg>
+
+<script>
+// ---- the crown: polished gold metal, lit from above (same recipe as the Rank crests) ----
+const BODY = 'M34 140L24 58L68 96L100 34L132 96L176 58L166 140Z';
+const BAND = 'M32 140H168L164 166Q100 174 36 166Z';
+function crownInner() {
+  const piece = (d, face, bev, clip) => `<g filter="url(#cds)"><path d="${d}" fill="url(#${face})"/><path d="${d}" fill="none" stroke="url(#${bev})" stroke-width="7" clip-path="url(#${clip})"/><path d="${d}" fill="none" stroke="url(#crim)" stroke-width="1.1"/></g>`;
+  const orb = (x, y, r) => `<g filter="url(#cds)"><circle cx="${x}" cy="${y}" r="${r}" fill="url(#corb)"/><circle cx="${x - r * .32}" cy="${y - r * .38}" r="${r * .3}" fill="#fff" opacity=".85"/><circle cx="${x}" cy="${y}" r="${r}" fill="none" stroke="url(#crim)" stroke-width="1"/></g>`;
+  const gem = (x, y, w, h, f, glow) => {
+    const T = `${x} ${y - h / 2}`, R = `${x + w / 2} ${y}`, B = `${x} ${y + h / 2}`, L = `${x - w / 2} ${y}`;
+    return `${glow ? `<circle cx="${x}" cy="${y}" r="${w * 1.6}" fill="url(#cruby-g)"/>` : ''}<path d="M${T}L${R}L${B}L${L}Z" fill="url(#${f})"/><path d="M${T}L${x} ${y}L${L}Z" fill="#fff" opacity=".45"/><path d="M${x} ${y}L${R}L${B}Z" fill="#000" opacity=".22"/>`;
+  };
+  return `
+    ${piece(BODY, 'cf', 'cb', 'k-body')}
+    <g clip-path="url(#k-body)"><path d="M24 58L68 96L34 140Z" fill="#fff" opacity=".2"/><path d="M100 34L132 96L100 140L68 96Z" fill="#fff" opacity=".16"/><path d="M176 58L166 140L132 96Z" fill="#000" opacity=".2"/><path d="M68 96L100 140L34 140Z" fill="#000" opacity=".12"/></g>
+    ${orb(24, 55, 8.5)}${orb(100, 31, 10.5)}${orb(176, 55, 8.5)}
+    ${piece(BAND, 'cband', 'cb', 'k-band')}
+    <path d="M40 152H160" stroke="#4a2c00" stroke-opacity=".35" stroke-width="1.4"/><path d="M40 154H160" stroke="#fff" stroke-opacity=".3" stroke-width="1"/>
+    ${gem(62, 153, 11, 15, 'camb')}${gem(138, 153, 11, 15, 'camb')}${gem(100, 152, 15, 25, 'cruby', true)}
+    <g clip-path="url(#k-all)"><g class="shine"><path d="M70 0H92L56 190H34Z" fill="#fff" opacity=".35"/><path d="M100 0H106L70 190H64Z" fill="#fff" opacity=".35"/></g></g>`;
+}
+const crownSVG = () => `<svg class="crown" viewBox="0 0 200 180" aria-hidden="true">${crownInner()}</svg>`;
+// A small flat crown for list rows.
+const miniSVG = () => `<svg class="mini" viewBox="14 20 172 160" aria-hidden="true">${crownInner().replace(/class="shine"/, 'style="display:none"')}</svg>`;
+// B: the crown on a round medal: rim, bevel, a recessed field, a soft shadow.
+const medalSVG = () => `<svg class="medal" viewBox="0 0 250 250" aria-hidden="true">
+  <g filter="url(#cmd)"><circle cx="125" cy="125" r="112" fill="url(#cmedal)"/><circle cx="125" cy="125" r="108" fill="none" stroke="url(#cmedal-b)" stroke-width="9"/><circle cx="125" cy="125" r="112" fill="none" stroke="url(#crim)" stroke-width="1.4"/></g>
+  <circle cx="125" cy="125" r="90" fill="#4a2c00" opacity=".38"/><circle cx="125" cy="125" r="90" fill="none" stroke="#fff" stroke-opacity=".25" stroke-width="1.2"/>
+  <circle cx="125" cy="125" r="90" fill="none" stroke="#ffe58a" stroke-opacity=".5" stroke-width="1" stroke-dasharray="2 5"/>
+  <g transform="translate(40 52) scale(.85)">${crownInner()}</g></svg>`;
+
+// ---- copy ----
+const T = {
+  en: { news: 'You have news', tap: 'Tap to open', cont: 'Continue', tied: n => `tied with ${n}`,
+    won: { week: 'Week won', month: 'Month won', year: 'Year won' }, per: { week: 'Week', month: 'Month', year: 'Year' },
+    one: (p, g) => `You won the ${p} in ${g}.`, pl: { week: 'week', month: 'month', year: 'year' }, many: n => `You won in ${n} groups.`, crowns: n => `${n} crowns` },
+  es: { news: 'Tenés novedades', tap: 'Tocá para abrir', cont: 'Seguir', tied: n => `empatado con ${n}`,
+    won: { week: 'Semana ganada', month: 'Mes ganado', year: 'Año ganado' }, per: { week: 'Semana', month: 'Mes', year: 'Año' },
+    one: (p, g) => `Ganaste ${p === 'semana' ? 'la' : 'el'} ${p} en ${g}.`, pl: { week: 'semana', month: 'mes', year: 'año' }, many: n => `Ganaste en ${n} grupos.`, crowns: n => `${n} coronas` },
+};
+const WINS = [
+  { group: 'Meso', period: 'week', pts: '201', tied: 0 },
+  { group: 'Los del gym', period: 'month', pts: '640', tied: 1 },
+  { group: 'Chest Day Club', period: 'year', pts: '5.120', tied: 0 },
+];
+
+// ---- state ----
+const S = { v: 'a', n: 1, l: 'es', t: 'dark', p: 'week', skip: false, shot: false };
+const q = new URLSearchParams(location.hash.slice(1));
+for (const k of ['v', 'l', 't', 'p']) if (q.get(k)) S[k] = q.get(k);
+if (q.get('n')) S.n = +q.get('n');
+S.skip = q.get('skip') === '1'; S.shot = q.get('shot') === '1';
+document.body.classList.toggle('shot', S.shot);
+
+const esc = s => s.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+const words = (text) => { let i = 0; return text.toUpperCase().split(' ').map(w => `<span class="w">${[...w].map(c => `<span class="l" style="--i:${i++}">${esc(c)}</span>`).join('')}</span>`).join(' '); };
+
+function wins() { return S.n === 1 ? [{ ...WINS[0], period: S.p, pts: S.p === 'week' ? '201' : S.p === 'month' ? '640' : '5.120' }] : WINS; }
+function biggest(ws) { return ['year', 'month', 'week'].find(p => ws.some(w => w.period === p)); }
+
+let timers = [], started = false, firedAt = 0, done = false, M;
+function build() {
+  timers.forEach(clearTimeout); timers = []; started = false; done = false;
+  document.documentElement.dataset.t = S.t; document.documentElement.lang = S.l;
+  const t = T[S.l], ws = wins(), top = biggest(ws), multi = ws.length > 1;
+  const title = t.won[top];
+  const label = multi ? t.crowns(ws.length) : ws[0].group;     // the Group name, never the title again
+  const msg = multi ? t.many(ws.length) : t.one(t.pl[ws[0].period], ws[0].group);
+  const sub = w => [t.per[w.period], w.pts + ' pts'].concat(w.tied ? [t.tied(w.tied)] : []).join(' · ');
+  const rows = ws.map((w, i) => {
+    const left = S.v === 'a' ? miniSVG() : S.v === 'b' ? `<span class="badge">${t.per[w.period]}</span>` : '';
+    const body = S.v === 'b'
+      ? `<div class="tx"><div class="nm">${esc(w.group)}</div>${w.tied ? `<div class="sub">${t.tied(w.tied)}</div>` : ''}</div><div class="pts">${w.pts} pts</div>`
+      : S.v === 'c'
+        ? `<div class="tx"><div class="nm">${esc(w.group)}</div><div class="sub">${t.per[w.period]}${w.tied ? ' · ' + t.tied(w.tied) : ''}</div></div><div class="pts">${w.pts}</div>`
+        : `<div class="tx"><div class="nm">${esc(w.group)}</div><div class="sub">${sub(w)}</div></div>`;
+    return `<div class="row" style="--i:${i}">${left}${body}</div>`;
+  }).join('');
+  const single = `<span class="chip" style="--i:0">${ws[0].pts} pts</span>${ws[0].tied ? `<span class="chip" style="--i:1">${t.tied(ws[0].tied)}</span>` : ''}`;
+  const proof = multi ? rows : (S.v === 'c' ? rows : single);
+  const crown = S.v === 'b' ? medalSVG() : crownSVG();
+  const beam = `<div class="beam"><div class="burst"></div><div class="burst b2"></div><div class="cone c1"></div><div class="cone c2"></div><div class="cone c3"></div><div class="pool"></div><div class="ring"></div></div>`;
+  const ph = document.getElementById('phone');
+  ph.innerHTML = `<div class="m v-${S.v} n${S.n}" id="m" role="dialog" aria-label="${esc(title)}">
+    <div class="flood"></div>${beam}
+    <div class="in">
+      <div class="kicker" id="kick">${t.news}</div>
+      <div class="stage"><div class="glow"></div>${crown}</div>
+      <p class="tap">${t.tap}</p>
+      <h1 class="title">${words(title)}</h1>
+      <div class="proof">${proof}</div>
+      <p class="msg">${esc(msg)}</p>
+      <button type="button" class="cont">${t.cont}</button>
+    </div><div class="flash"></div></div>`;
+  M = document.getElementById('m');
+  M.classList.add('v-' + S.v); // beam rules key on both .v-x and .v-x.fired
+  const at = (ms, f) => timers.push(setTimeout(f, ms));
+  const kick = document.getElementById('kick');
+  const finish = () => { done = true; M.classList.add('started', 'fired', 'slam', 'stats', 'showmsg', 'rest', 'skip'); kick.textContent = label; };
+  M.onclick = () => {
+    if (done) return;
+    if (!started) {
+      started = true; firedAt = performance.now();
+      M.classList.add('started', 'fired', 'flashing', 'shake');
+      at(500, () => M.classList.add('slam'));
+      at(1000, () => { M.classList.add('stats'); kick.textContent = label; M.classList.add('rest'); });
+      at(1600, () => M.classList.add('showmsg'));
+    } else if (performance.now() - firedAt > 800) { timers.forEach(clearTimeout); finish(); }
+  };
+  M.querySelector('.cont').onclick = e => { e.stopPropagation(); build(); };
+  if (S.skip) { started = true; finish(); }
+}
+
+// ---- the bar ----
+const BAR = [
+  ['Version', 'v', [['a', 'A Spotlight'], ['b', 'B Medal'], ['c', 'C Stage']]],
+  ['Wins', 'n', [[1, '1 win'], [3, '3 wins']]],
+  ['Period (1 win)', 'p', [['week', 'Week'], ['month', 'Month'], ['year', 'Year']]],
+  ['Lang', 'l', [['en', 'EN'], ['es', 'ES']]],
+  ['Theme', 't', [['light', 'Light'], ['dark', 'Dark']]],
+];
+function bar() {
+  document.getElementById('bar').innerHTML = BAR.map(([lab, key, opts]) => `<div class="g"><b>${lab}</b>${opts.map(([val, txt]) => `<button class="o" data-k="${key}" data-v="${val}" aria-pressed="${S[key] === val}">${txt}</button>`).join('')}</div>`).join('') + '<button class="rp" id="rp">Replay</button>';
+  document.querySelectorAll('.o').forEach(b => b.onclick = () => { S[b.dataset.k] = b.dataset.k === 'n' ? +b.dataset.v : b.dataset.v; S.skip = false; bar(); build(); });
+  document.getElementById('rp').onclick = () => { S.skip = false; build(); };
+}
+bar(); build();
+</script>
+</body>
+</html>
