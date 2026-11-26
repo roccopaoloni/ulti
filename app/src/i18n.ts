@@ -443,11 +443,15 @@ type Messages = {
     recent: string;
     seeAll: string;
     empty: string;
-    // A week with no Sessions, a week's Sessions against its Weekly Target ("1 of 3"), and the way to load older weeks.
-    noSessions: string;
-    weekProgress: (done: number, target: number) => string;
-    showEarlier: string;
+    // The calendar: the month's Session and Week Stamp counts, the arrows, the stamped week's ribbon,
+    // the sheet to pick one of a day's two Sessions, and the colour key's Personal Record.
+    monthSessions: (count: number) => string;
+    monthStamps: (count: number) => string;
+    previousMonth: string;
+    nextMonth: string;
     weekStamp: string;
+    pickSession: string;
+    recordKey: string;
     // A row's second line: no Routine Day, and how many Exercises.
     noRoutine: string;
     exercises: (count: number) => string;
@@ -466,8 +470,6 @@ type Messages = {
     deleteConfirm: string;
     save: string;
     cancel: string;
-    // A week's points, on its header.
-    points: (points: number) => string;
   };
 };
 
@@ -975,10 +977,13 @@ const en: Messages = {
     recent: 'Recent sessions',
     seeAll: 'See all',
     empty: 'Your finished sessions will show up here.',
-    noSessions: 'No sessions',
-    weekProgress: (done, target) => `${done} of ${target}`,
-    showEarlier: 'Show earlier weeks',
+    monthSessions: (count) => (count === 1 ? '1 Session' : `${count} Sessions`),
+    monthStamps: (count) => (count === 1 ? '1 Week Stamp' : `${count} Week Stamps`),
+    previousMonth: 'Previous month',
+    nextMonth: 'Next month',
     weekStamp: 'Week Stamp',
+    pickSession: 'Two sessions this day. Pick one',
+    recordKey: 'PR',
     noRoutine: 'No routine',
     exercises: (count) => (count === 1 ? '1 exercise' : `${count} exercises`),
     recordChip: (exercise, percentGain) => `${exercise} +${percentGain}%`,
@@ -991,7 +996,6 @@ const en: Messages = {
     deleteConfirm: 'Delete set',
     save: 'Save',
     cancel: 'Cancel',
-    points: (points) => `${points} pts`,
   },
 };
 
@@ -1496,10 +1500,13 @@ const es: Messages = {
     recent: 'Últimas sesiones',
     seeAll: 'Ver todas',
     empty: 'Acá vas a ver las sesiones que termines.',
-    noSessions: 'Sin sesiones',
-    weekProgress: (done, target) => `${done} de ${target}`,
-    showEarlier: 'Ver semanas anteriores',
+    monthSessions: (count) => (count === 1 ? '1 sesión' : `${count} sesiones`),
+    monthStamps: (count) => (count === 1 ? '1 sello semanal' : `${count} sellos semanales`),
+    previousMonth: 'Mes anterior',
+    nextMonth: 'Mes siguiente',
     weekStamp: 'Sello semanal',
+    pickSession: 'Dos sesiones este día. Elegí una',
+    recordKey: 'PR',
     noRoutine: 'Sin rutina',
     exercises: (count) => (count === 1 ? '1 ejercicio' : `${count} ejercicios`),
     recordChip: (exercise, percentGain) => `${exercise} +${percentGain}%`,
@@ -1512,7 +1519,6 @@ const es: Messages = {
     deleteConfirm: 'Borrar serie',
     save: 'Guardar',
     cancel: 'Cancelar',
-    points: (points) => `${points} pts`,
   },
 };
 

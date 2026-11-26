@@ -38,6 +38,7 @@
   --day-3: #c5e46a;
   --day-4: #ff8f6b;
   --day-5: #a98bff;
+  --day-ink: #1a0614;
   --scrim: rgba(6, 4, 18, 0.66);
 
   --display: 'Unbounded', 'Arial Black', sans-serif;
@@ -69,6 +70,7 @@
     --day-3: #5f8a00;
     --day-4: #d2582f;
     --day-5: #6a3fe0;
+    --day-ink: #ffffff;
     --scrim: rgba(26, 20, 51, 0.45);
     color-scheme: light;
   }
@@ -1326,72 +1328,158 @@ button.cell {
   color: var(--accent-text);
   border: 1px solid var(--accent);
 }
-/* A week of history: its header says how the week went. */
-.week {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.week-head {
+/* The History calendar: filled squares in the Routine Day's colour, a ribbon behind a stamped week. */
+.cal-head {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 0 4px;
+  justify-content: space-between;
+  gap: 12px;
 }
-.week-head .when {
-  flex: 1;
-  min-width: 0;
+.cal-month {
+  font-size: calc(22px * var(--ds));
+  text-transform: none;
 }
-.week-head .when b {
-  display: block;
-  font-weight: 800;
+.cal-month::first-letter {
+  text-transform: uppercase;
 }
-.week-head .when small {
+.cal-sub {
+  margin-top: 4px;
   color: var(--muted);
-  font-size: 12.5px;
+  font-size: 13.5px;
+  font-weight: 600;
 }
-.tally {
+.cal-sub b {
+  color: var(--fg);
+}
+.cal-arrows {
   display: flex;
-  gap: 4px;
+  gap: 6px;
 }
-.tally i {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  border: 2px solid var(--accent);
+.cal-arrows .iconbtn {
+  border: 1px solid var(--line);
+  background: var(--surface);
 }
-.tally i.f {
-  background: var(--accent);
+.cal-arrows .iconbtn:disabled {
+  opacity: 0.3;
+  cursor: default;
 }
-.wk-pts {
-  font: 800 13px/1 var(--display);
-  min-width: 64px;
-  text-align: right;
+.cal {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  touch-action: pan-y;
+  user-select: none;
 }
-.wk-stamp {
-  width: 26px;
-  height: 26px;
+.cal-week {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  padding: 4px;
+  border-radius: 16px;
+}
+.cal-week.stamped {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+.cal-dow {
+  padding-block: 0;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 700;
+  text-align: center;
+}
+.cal-stamp {
+  position: absolute;
+  right: -6px;
+  top: -7px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   display: grid;
   place-items: center;
-  flex: none;
   background: var(--accent);
   color: var(--accent-ink);
 }
-.wk-stamp svg {
-  width: 15px;
-  height: 15px;
+.cal-stamp svg {
+  width: 12px;
+  height: 12px;
 }
-.wk-stamp.no {
-  background: none;
-  border: 1.5px dashed var(--line);
+.cal-day {
+  position: relative;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 14px;
   color: var(--muted);
 }
-.empty-week {
-  margin: 0;
-  padding: 2px 4px;
+.cal-day.future {
+  opacity: 0.45;
+}
+.cal-day.today::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border: 2px solid var(--fg);
+  border-radius: inherit;
+  pointer-events: none;
+}
+.cal-day.has {
+  background: var(--c);
+  color: var(--day-ink);
+}
+.cal-day.has.none {
+  background: var(--surface-2);
+  border: 2px solid var(--muted);
+  color: var(--fg);
+}
+.cal-day .trophy {
+  position: absolute;
+  top: -4px;
+  right: -3px;
+  width: 14px;
+  height: 14px;
+  filter: drop-shadow(0 0 2px var(--bg));
+}
+.cal-two {
+  position: absolute;
+  bottom: -3px;
+  right: -3px;
+  padding: 0 4px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 9.5px;
+  font-weight: 800;
+  line-height: 14px;
+}
+.cal-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
   color: var(--muted);
-  font-size: 13.5px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.cal-key span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.cal-key .dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+}
+.cal-key .dot.none {
+  border: 2px solid var(--muted);
+}
+.cal-key .trophy {
+  width: 14px;
+  height: 14px;
 }
 /* A past Session: a flat logbook list, a subheading per Exercise and a hairline between groups. */
 .summary-line {
