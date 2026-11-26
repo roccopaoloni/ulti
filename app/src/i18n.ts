@@ -215,6 +215,10 @@ type Messages = {
     legend: string;
     leave: string;
     finish: string;
+    finishTitle: string;
+    // The finish sheet's line: Sets logged, against the Routine Day's planned Sets when the Session follows one.
+    finishLogged: (logged: number, planned?: number) => string;
+    finishKeep: string;
     discardTitle: string;
     discardConfirm: string;
     discardKeep: string;
@@ -763,6 +767,10 @@ const en: Messages = {
     legend: 'Sets: weight × reps',
     leave: 'Back',
     finish: 'Finish',
+    finishTitle: 'Finish this session?',
+    finishLogged: (logged, planned) =>
+      planned === undefined ? (logged === 1 ? '1 set logged' : `${logged} sets logged`) : `${logged} of ${planned} planned sets logged`,
+    finishKeep: 'Keep training',
     discardTitle: 'Nothing logged. Discard this session?',
     discardConfirm: 'Discard session',
     discardKeep: 'Keep logging',
@@ -1284,6 +1292,10 @@ const es: Messages = {
     legend: 'Series: peso × repeticiones',
     leave: 'Volver',
     finish: 'Terminar',
+    finishTitle: '¿Terminar la sesión?',
+    finishLogged: (logged, planned) =>
+      planned === undefined ? (logged === 1 ? '1 serie registrada' : `${logged} series registradas`) : `${logged} de ${planned} series planeadas registradas`,
+    finishKeep: 'Seguir entrenando',
     discardTitle: 'No registraste nada. ¿Descartar la sesión?',
     discardConfirm: 'Descartar sesión',
     discardKeep: 'Seguir registrando',
