@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ULTI exercise figure prototype (#230)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400..800&family=Unbounded:wght@600..800&display=swap" rel="stylesheet">
+<style>
+/* PROTOTYPE, throwaway (issue #230). One posable SVG rig, three renderings of the same pose data.
+   Colour tokens are the app's own (app/src/styles.css, docs/design.md). */
+:root {
+  --bg: #f7f4ff; --surface: #ffffff; --surface-2: #ece8fa; --line: #d9d3f0;
+  --fg: #1a1433; --muted: #5c5680; --accent: #ff4d9d; --accent-text: #c2185f; --accent-ink: #1a0614;
+  --display: 'Unbounded', 'Arial Black', sans-serif;
+  --body: 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color-scheme: light;
+}
+:root[data-app="dark"] {
+  --bg: #0e0b1f; --surface: #17132f; --surface-2: #211c42; --line: #2f2a58;
+  --fg: #f4f1ff; --muted: #a49fc7; --accent-text: #ff4d9d;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--fg); font: 15px/1.45 var(--body); -webkit-font-smoothing: antialiased; }
+button, select { font: inherit; color: inherit; }
+button { background: none; border: 0; padding: 0; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; border-radius: 10px; }
+
+.page { max-width: 1240px; margin: 0 auto; padding: 20px 16px 48px; display: flex; flex-direction: column; gap: 18px; }
+h1 { font: 800 19px/1.2 var(--display); margin: 0; }
+h2 { font: 700 12px/1 var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0; }
+.lede { margin: 0; color: var(--muted); max-width: 75ch; font-size: 14px; }
+.bar { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; }
+.grp { display: flex; align-items: center; gap: 8px; }
+.seg { display: inline-flex; gap: 4px; padding: 3px; border: 1px solid var(--line); border-radius: 999px; }
+.seg button { padding: 6px 12px; border-radius: 999px; font-weight: 600; font-size: 13px; }
+.seg button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+.note { font-size: 13px; color: var(--muted); min-height: 2.6em; max-width: 90ch; }
+.state { font: 600 12px/1.4 var(--body); color: var(--muted); font-variant-numeric: tabular-nums; }
+.chkl { font-size: 13px; font-weight: 600; display: inline-flex; gap: 6px; align-items: center; }
+select { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 5px 8px; }
+
+.layout { display: grid; grid-template-columns: 340px 1fr; gap: 24px; align-items: start; }
+@media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+
+/* Picker-like rows */
+.picker { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 4px 14px; }
+.prow { display: grid; grid-template-columns: 48px 1fr 14px; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+.prow:first-child { border-top: 0; }
+.tile { width: 48px; height: 48px; border-radius: 12px; background: var(--surface-2); display: block; overflow: hidden; --figbg: var(--surface-2); }
+.tile svg { display: block; width: 48px; height: 48px; }
+.pname { font-weight: 700; font-size: 15px; line-height: 1.25; }
+.psub { font-size: 12.5px; font-weight: 600; color: var(--muted); }
+.psub.cust { color: var(--accent-text); }
+.chev { color: var(--muted); }
+
+/* Sheet-like cards */
+.sheets { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 16px; }
+.sheet { background: var(--surface); border: 1px solid var(--line); border-radius: 22px; padding: 10px 14px 14px; display: flex; flex-direction: column; gap: 10px; }
+.grab { width: 36px; height: 4px; border-radius: 2px; background: var(--line); margin: 0 auto; }
+.stitle { font: 800 14px/1.2 var(--display); margin: 2px 0 0; }
+.fig { border-radius: 16px; background: var(--surface-2); --figbg: var(--surface-2); }
+.fig svg { display: block; width: 100%; height: auto; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.mchip { font: 700 12px/1 var(--body); padding: 6px 10px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); }
+.mchip.as { background: color-mix(in srgb, var(--accent) 38%, transparent); color: var(--fg); }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pair figure { margin: 0; }
+.pair .fig { border-radius: 12px; }
+.pair figcaption { font: 700 11px/1 var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-top: 5px; text-align: center; }
+details { font-size: 13px; color: var(--muted); }
+details pre { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px; overflow: auto; color: var(--fg); font-size: 12px; line-height: 1.45; }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Exercise figure prototype</h1>
+  <p class="lede">PROTOTYPE (issue #230, throwaway). One posable SVG rig driven by pose data (angles per joint plus a few grab and pin points). The three styles are three renderings of the very same data. Pink is the worked muscle, pale pink the assisting one.</p>
+
+  <div class="bar">
+    <div class="grp"><h2>Style</h2><div class="seg" id="styleSeg"></div></div>
+    <div class="grp"><h2>Theme</h2><div class="seg" id="themeSeg"></div></div>
+    <div class="grp"><h2>Pose</h2><div class="seg" id="poseSeg"></div></div>
+    <label class="chkl"><input type="checkbox" id="rm"> Simulate reduced motion</label>
+    <label class="chkl">Custom muscle <select id="cmus"></select></label>
+  </div>
+  <div class="note" id="note"></div>
+  <div class="state" id="state"></div>
+
+  <div class="layout">
+    <section style="display:flex;flex-direction:column;gap:10px">
+      <h2>Picker rows, 48px, start pose</h2>
+      <div class="picker" id="picker"></div>
+    </section>
+    <section style="display:flex;flex-direction:column;gap:10px">
+      <h2>Sheet cards, large, looping start to end</h2>
+      <div class="sheets" id="sheets"></div>
+    </section>
+  </div>
+
+  <details>
+    <summary>Pose data for the Pull-up (the shape #217 would use for all 63)</summary>
+    <pre id="data"></pre>
+  </details>
+</div>
+
+<script>
+/* ================= the rig ================= */
+// Angles are degrees. Limbs: 0 = pointing straight down, +90 = toward the way the figure faces (+x), 180 = up.
+// Torso: 0 = upright, +ve leans forward, -90 = lying on the back (head toward -x).
+const L = { torso: 50, ua: 32, fa: 30, th: 40, sh: 40, ft: 14 };
+const D = Math.PI / 180;
+const dn = a => [Math.sin(a * D), Math.cos(a * D)];
+const upv = a => [Math.sin(a * D), -Math.cos(a * D)];
+const add = (p, q, k = 1) => [p[0] + q[0] * k, p[1] + q[1] * k];
+const mix = (p, q, t) => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t];
+const deepLerp = (a, b, t) => typeof a === 'number' ? a + (b - a) * t
+  : Array.isArray(a) ? a.map((x, i) => deepLerp(x, b[i], t))
+  : (a && typeof a === 'object') ? Object.fromEntries(Object.keys(a).map(k => [k, b && k in b ? deepLerp(a[k], b[k], t) : a[k]])) : a;
+
+function ik(s, g, bend) {
+  const dx = g[0] - s[0], dy = g[1] - s[1];
+  let d = Math.hypot(dx, dy) || 1;
+  const dv = [dx / d, dy / d];
+  d = Math.min(Math.max(d, Math.abs(L.ua - L.fa) + 1), L.ua + L.fa - 0.01);
+  const a = (L.ua * L.ua - L.fa * L.fa + d * d) / (2 * d);
+  const h = Math.sqrt(Math.max(0, L.ua * L.ua - a * a));
+  const elbow = add(add(s, dv, a), [-dv[1], dv[0]], h * bend);
+  return { sh: s, elbow, hand: add(s, dv, d) };
+}
+
+// pose params -> world joints
+function solve(P, view) {
+  const front = view === 'front';
+  const u = upv(P.torso), nf = [Math.cos(P.torso * D), Math.sin(P.torso * D)];
+  const hip = [0, 0];
+  const shC = add(hip, u, L.torso - 2);
+  const head = add(shC, upv(P.torso + (P.neck || 0)), 17);
+  const sides = front ? [1, -1] : [1];
+  const ft = (P.foot ?? 16) * D;
+  const legs = sides.map(s => {
+    const lh = front ? add(hip, nf, 7 * s) : hip;
+    const ang = s === 1 ? P.leg : (P.legF || [-P.leg[0], -P.leg[1]]);
+    const knee = add(lh, dn(ang[0]), L.th), ankle = add(knee, dn(ang[1]), L.sh);
+    const toe = front ? add(ankle, [s * 10, 3]) : add(ankle, [Math.cos(ft) * L.ft, Math.sin(ft) * L.ft]);
+    return { hip: lh, knee, ankle, toe };
+  });
+  const arms = sides.map(s => {
+    const sh = front ? add(shC, nf, 15 * s) : shC;
+    if (s === 1 && P.grab) return { sh };
+    const a = s === 1 ? P.arm : (P.armF || [-P.arm[0], -P.arm[1]]);
+    const elbow = add(sh, dn(a[0]), L.ua);
+    return { sh, elbow, hand: add(elbow, dn(a[1]), L.fa) };
+  });
+  const loc = P.pin.j === 'ankle' ? legs[0].ankle : P.pin.j === 'hip' ? hip : arms[0].hand;
+  const T = [P.pin.at[0] - loc[0], P.pin.at[1] - loc[1]];
+  if (P.grab) {
+    const g = P.grab.w ? [P.grab.w[0] - T[0], P.grab.w[1] - T[1]]
+      : add(add(arms[0].sh, u, P.grab.sh[0]), nf, P.grab.sh[1]);
+    arms[0] = ik(arms[0].sh, g, P.bend || 1);
+  }
+  const tr = p => [p[0] + T[0], p[1] + T[1]];
+  return {
+    view, u, nf, hip: tr(hip), sh: tr(shC), head: tr(head), torsoTop: tr(add(hip, u, L.torso)),
+    legs: legs.map(l => ({ hip: tr(l.hip), knee: tr(l.knee), ankle: tr(l.ankle), toe: tr(l.toe) })),
+    arms: arms.map(a => ({ sh: tr(a.sh), elbow: tr(a.elbow), hand: tr(a.hand) })),
+  };
+}
+
+/* ================= muscles ================= */
+// seg: thigh | shank | uarm | torso (a stretch t0..t1 along it, on the front (+1) or back (-1) face); c: a circle at a joint.
+const MUS = {
+  chest: [{ s: 'torso', t: [.5, .94], side: 1 }],
+  back: [{ s: 'torso', t: [.26, .96], side: -1 }],
+  shoulders: [{ c: 'sh', r: 8.5 }],
+  biceps: [{ s: 'uarm', t: [.12, .9], side: 1 }],
+  triceps: [{ s: 'uarm', t: [.12, .9], side: -1 }],
+  quads: [{ s: 'thigh', t: [.1, .94], side: 1 }],
+  hamstrings: [{ s: 'thigh', t: [.1, .94], side: -1 }],
+  glutes: [{ c: 'glute', r: 10 }],
+  calves: [{ s: 'shank', t: [.06, .72], side: -1 }],
+  core: [{ s: 'torso', t: [.06, .5], side: 1 }],
+};
+MUS['full-body'] = Object.values(MUS).flat();
+const MUSCLE_NAMES = { chest: 'Chest', back: 'Back', shoulders: 'Shoulders', biceps: 'Biceps', triceps: 'Triceps', quads: 'Quads', hamstrings: 'Hamstrings', glutes: 'Glutes', calves: 'Calves', core: 'Core', 'full-body': 'Full body' };
+
+/* ================= styles ================= */
+const STYLES = {
+  1: { name: 'Silhouette', blurb: 'Solid flat figure in the ink colour, round limbs, a small gap round head and arms so they read over the body. Muscles are pink inlays; gear is solid muted.', mode: 'solid', k: 1, mus: { off: .3, w: .62 }, gear: { fill: 'var(--muted)', stroke: 'none', sw: 0 } },
+  2: { name: 'Outline', blurb: 'Same body drawn as an ink contour on a paper-white fill, like a muscle chart. Muscles are pink fills inside the contour; gear is drawn in line.', mode: 'outline', k: .93, o: 1.7, mus: { off: .22, w: .58 }, gear: { fill: 'var(--surface)', stroke: 'var(--muted)', sw: 2 } },
+  3: { name: 'Blocks', blurb: 'Geometric mannequin: rounded blocks with gaps at every joint, a square head. A worked muscle lights up as a pink slab on the block.', mode: 'blocks', k: 1, mus: { off: .5, w: .5 }, gear: { fill: 'var(--muted)', stroke: 'var(--figbg)', sw: 1.4 } },
+};
+
+const f1 = n => Math.round(n * 100) / 100;
+function blob(a, b, ra, rb, rc, fill, expand) {
+  const dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy) || 1, nx = -dy / len, ny = dx / len;
+  const r1 = Math.max(ra - rc, .01), r2 = Math.max(rb - rc, .01);
+  const p = [[a[0] + nx * r1, a[1] + ny * r1], [b[0] + nx * r2, b[1] + ny * r2], [b[0] - nx * r2, b[1] - ny * r2], [a[0] - nx * r1, a[1] - ny * r1]];
+  return `<path d="M${p.map(q => f1(q[0]) + ' ' + f1(q[1])).join('L')}Z" fill="${fill}" stroke="${fill}" stroke-width="${f1(2 * rc + expand)}" stroke-linejoin="round"/>`;
+}
+const disc = (c, r, fill, expand) => `<circle cx="${f1(c[0])}" cy="${f1(c[1])}" r="${f1(r)}" fill="${fill}" stroke="${fill}" stroke-width="${expand}"/>`;
+function shape(g, fill, expand) {
+  if (g.c) return disc(g.c, g.r, fill, expand);
+  return blob(g.a, g.b, g.ra, g.rb, g.rc ?? Math.min(g.ra, g.rb), fill, expand);
+}
+
+// body parts of one pose
+function parts(J, st, thumb) {
+  const front = J.view === 'front', k = st.k * (thumb ? 1.22 : 1);
+  const R = (a, b) => [a * k, b * k];
+  const gap = st.mode === 'blocks' ? 1.5 : 0;
+  const lim = (a, b, [ra, rb], extra = {}) => {
+    const dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy) || 1, d = [dx / len, dy / len];
+    return { a: add(a, d, gap), b: add(b, d, -gap), ra, rb, rc: st.mode === 'blocks' ? Math.min(ra, rb, 3.2 * k) : undefined, ...extra };
+  };
+  const out = { legs: [], torso: [], head: [], arms: [] };
+  J.legs.forEach(l => {
+    const th = front ? R(9.5, 7) : R(10.5, 7.2);
+    out.legs.push(
+      { id: 'thigh', ...lim(l.hip, l.knee, th) },
+      { id: 'shank', ...lim(l.knee, l.ankle, front ? R(6.8, 4.6) : R(7, 4.6)) },
+      { id: 'foot', ...lim(front ? add(l.ankle, [0, 0]) : add(l.ankle, [-2, 0]), l.toe, R(4.3, 3.4)) });
+  });
+  const tr = front ? R(12, 17) : R(10.5, 12.5);
+  if (st.mode === 'blocks') {
+    const m = mix(J.hip, J.torsoTop, .3);
+    out.torso.push({ id: 'pelvis', ...lim(J.hip, m, [tr[0] * .95, tr[0]]), noMus: true },
+      { id: 'torso', ...lim(m, J.torsoTop, [tr[0] * 1.05, tr[1]]) });
+  } else out.torso.push({ id: 'torso', ...lim(J.hip, J.torsoTop, tr) });
+  if (st.mode === 'blocks') {
+    const d = upv(J.headAng), hr = 8.6 * k;
+    out.head.push({ id: 'head', a: add(J.head, d, -2), b: add(J.head, d, 2), ra: hr, rb: hr, rc: 3.2 * k });
+  } else out.head.push({ id: 'head', c: J.head, r: 9.5 * k });
+  J.arms.forEach(a => out.arms.push(
+    { id: 'uarm', ...lim(a.sh, a.elbow, R(6, 4.8)) },
+    { id: 'farm', ...lim(a.elbow, a.hand, R(4.8, 3.8)) },
+    st.mode === 'blocks' ? { id: 'hand', ...lim(a.hand, add(a.hand, dn(0), .01), R(3.9, 3.9)), c: a.hand, r: 3.9 * k } : { id: 'hand', c: a.hand, r: 4.2 * k }));
+  return out;
+}
+
+function overlay(J, st, ps, muscles, alpha, thumb) {
+  const front = J.view === 'front', sg = {};
+  const take = (arr, id) => arr.filter(p => p.id === id);
+  let s = '';
+  const fill = `fill="var(--accent)"${alpha < 1 ? ` fill-opacity="${alpha}"` : ''}`;
+  muscles.forEach(m => (MUS[m] || []).forEach(def => {
+    if (def.c) {
+      if (def.c === 'sh') J.arms.forEach(a => s += `<circle cx="${f1(a.sh[0])}" cy="${f1(a.sh[1])}" r="${def.r * (thumb ? 1.1 : 1)}" ${fill}/>`);
+      else if (!front) s += `<circle cx="${f1(J.hip[0] - J.nf[0] * 6)}" cy="${f1(J.hip[1] - J.nf[1] * 6)}" r="${def.r}" ${fill}/>`;
+      return;
+    }
+    if (front && def.side === -1) return;
+    const pool = def.s === 'torso' ? ps.torso.filter(p => p.id === 'torso') : [...ps.legs, ...ps.arms].filter(p => p.id === def.s);
+    pool.forEach(p => {
+      const dv = [p.b[0] - p.a[0], p.b[1] - p.a[1]], len = Math.hypot(dv[0], dv[1]) || 1, d = [dv[0] / len, dv[1] / len];
+      const n = def.s === 'torso' ? J.nf : [d[1], -d[0]];
+      const sd = front ? 0 : def.side;
+      const A = mix(p.a, p.b, def.t[0]), B = mix(p.a, p.b, def.t[1]);
+      const ra = p.ra + (p.rb - p.ra) * def.t[0], rb = p.ra + (p.rb - p.ra) * def.t[1];
+      const off = st.mus.off, w = st.mus.w;
+      const a2 = add(A, n, sd * off * ra), b2 = add(B, n, sd * off * rb);
+      const wa = ra * w, wb = rb * w, rc = Math.min(wa, wb) * .9;
+      const e = blob(a2, b2, wa, wb, rc, 'var(--accent)', 0).replace('<path', `<path ${alpha < 1 ? `fill-opacity="${alpha}" stroke-opacity="${alpha}"` : ''}`);
+      s += e;
+    });
+  }));
+  // faint pairs overlap when assisting + worked share a segment; worked is drawn last, so it wins
+  return s;
+}
+
+function renderBody(J, ex, st, thumb) {
+  J.headAng = J.headAng ?? 0;
+  const ps = parts(J, st, thumb);
+  const ink = 'var(--fg)', paper = 'var(--surface)', o = (st.o || 0) * (thumb ? 1.5 : 1);
+  const chainDraw = (segs, sep) => {
+    if (st.mode === 'outline') return segs.map(g => shape(g, ink, 2 * o)).join('') + segs.map(g => shape(g, paper, 0)).join('');
+    if (st.mode === 'blocks') return segs.map(g => shape(g, 'var(--figbg)', 3.2) + shape(g, ink, 0)).join('');
+    return (sep ? segs.map(g => shape(g, 'var(--figbg)', 3.4)).join('') : '') + segs.map(g => shape(g, ink, 0)).join('');
+  };
+  const sec = ex.assist || [], wk = ex.worked || [];
+  const ovs = (segsFilter) => '';
+  let svg = '';
+  const nL = J.legs.length, per = 3;
+  for (let i = 0; i < nL; i++) svg += chainDraw(ps.legs.slice(i * per, i * per + per), false);
+  svg += chainDraw(ps.torso, false);
+  // overlays for torso + legs go before arms/head
+  const body = { legs: ps.legs, torso: ps.torso, arms: ps.arms };
+  const ovAll = (muscles, alpha) => overlay(J, st, body, muscles, alpha, thumb);
+  const wkOnly = wk, secOnly = sec.filter(m => !wk.includes(m));
+  const lowerMus = m => m.filter(x => x !== 'biceps' && x !== 'triceps' && x !== 'shoulders');
+  const armMus = m => m.filter(x => x === 'biceps' || x === 'triceps' || x === 'shoulders' || x === 'full-body');
+  svg += overlay(J, st, body, lowerMus(secOnly), .42, thumb) + overlay(J, st, body, lowerMus(wkOnly), 1, thumb);
+  svg += chainDraw(ps.head, true);
+  svg += chainDraw(ps.arms.slice(0, 3), true);
+  if (J.arms.length > 1) svg += chainDraw(ps.arms.slice(3, 6), true);
+  svg += overlay(J, st, body, armMus(secOnly), .42, thumb) + overlay(J, st, body, armMus(wkOnly), 1, thumb);
+  return svg;
+}
+
+/* ================= gear ================= */
+function at(spec, J) {
+  if (Array.isArray(spec)) return spec;
+  if (spec === 'hand') return J.arms[0].hand;
+  if (spec === 'handF') return J.arms[1].hand;
+  if (spec.sh) return add(add(J.sh, J.u, spec.sh[0]), J.nf, spec.sh[1]);
+}
+function gearSvg(items, J, st, front) {
+  const g = st.gear;
+  const sty = `fill="${g.fill}" stroke="${g.stroke}" stroke-width="${g.sw}" stroke-linejoin="round"`;
+  return items.filter(it => !!it.front === front).map(it => {
+    if (it.t === 'rect') return `<rect x="${it.x}" y="${it.y}" width="${it.w}" height="${it.h}" rx="${it.rx ?? 2}" ${sty}/>` + (it.slits ? Array.from({ length: it.slits }, (_, i) => `<line x1="${it.x + 2}" x2="${it.x + it.w - 2}" y1="${it.y + (i + 1) * it.h / (it.slits + 1)}" y2="${it.y + (i + 1) * it.h / (it.slits + 1)}" stroke="var(--figbg)" stroke-width="1.6"/>`).join('') : '');
+    if (it.t === 'line') return `<line x1="${it.a[0]}" y1="${it.a[1]}" x2="${it.b[0]}" y2="${it.b[1]}" stroke="var(--muted)" stroke-width="${it.w || 3}" stroke-linecap="round"/>`;
+    if (it.t === 'pulley') return `<circle cx="${it.at[0]}" cy="${it.at[1]}" r="${it.r}" ${sty}/><circle cx="${it.at[0]}" cy="${it.at[1]}" r="1.8" fill="var(--figbg)"/>`;
+    const p = at(it.at, J);
+    if (it.t === 'plate') return `<g opacity=".93"><circle cx="${f1(p[0])}" cy="${f1(p[1])}" r="${it.r}" ${sty}/><circle cx="${f1(p[0])}" cy="${f1(p[1])}" r="${Math.max(2, it.r * .22)}" fill="var(--figbg)"/></g>`;
+    if (it.t === 'hbar') return `<line x1="${f1(p[0] - it.len / 2)}" y1="${f1(p[1])}" x2="${f1(p[0] + it.len / 2)}" y2="${f1(p[1])}" stroke="var(--muted)" stroke-width="4.5" stroke-linecap="round"/>`;
+    if (it.t === 'cable') return `<line x1="${it.from[0]}" y1="${it.from[1]}" x2="${f1(p[0])}" y2="${f1(p[1])}" stroke="var(--muted)" stroke-width="2"/>`;
+    return '';
+  }).join('');
+}
+
+/* ================= exercises (the pose data) ================= */
+const FLOOR = 186;
+const EX = {
+  squat: {
+    name: 'Back squat', muscle: 'quads', view: 'side',
+    start: { torso: 4, neck: 0, leg: [0, 0], foot: 16, grab: { sh: [-2, -9] }, bend: -1, pin: { j: 'ankle', at: [92, 178] } },
+    end: { torso: 42, neck: -26, leg: [100, -30], foot: 16, grab: { sh: [-2, -9] }, bend: -1, pin: { j: 'ankle', at: [92, 178] } },
+    gear: [{ t: 'plate', at: { sh: [-2, -9] }, r: 13, front: true }],
+    worked: ['quads', 'glutes'], assist: ['core', 'hamstrings'],
+  },
+  bench: {
+    name: 'Bench press', muscle: 'chest', view: 'side',
+    start: { torso: -90, neck: 0, leg: [60, 0], foot: 16, grab: { w: [62, 62] }, bend: 1, pin: { j: 'hip', at: [110, 118] } },
+    end: { torso: -90, neck: 0, leg: [60, 0], foot: 16, grab: { w: [72, 102] }, bend: 1, pin: { j: 'hip', at: [110, 118] } },
+    gear: [
+      { t: 'rect', x: 34, y: 129, w: 100, h: 9, rx: 4.5 }, { t: 'rect', x: 46, y: 138, w: 7, h: 48 }, { t: 'rect', x: 116, y: 138, w: 7, h: 48 },
+      { t: 'plate', at: 'hand', r: 12, front: true }],
+    worked: ['chest', 'triceps'], assist: ['shoulders'],
+  },
+  deadlift: {
+    name: 'Deadlift', muscle: 'hamstrings', view: 'side',
+    start: { torso: 60, neck: -42, leg: [74, -32], foot: 16, grab: { w: [106, 171] }, bend: 1, pin: { j: 'ankle', at: [96, 178] } },
+    end: { torso: -3, neck: 3, leg: [0, 0], foot: 16, grab: { w: [100, 112] }, bend: 1, pin: { j: 'ankle', at: [96, 178] } },
+    gear: [{ t: 'plate', at: 'hand', r: 13, front: true }],
+    worked: ['hamstrings', 'glutes', 'back'], assist: ['quads', 'core'],
+  },
+  pullup: {
+    name: 'Pull-up', muscle: 'back', view: 'side',
+    start: { torso: 0, neck: -14, leg: [20, -100], foot: 16, arm: [162, 170], pin: { j: 'hand', at: [100, 30] } },
+    end: { torso: -6, neck: -15, leg: [20, -100], foot: 16, arm: [14, 172], pin: { j: 'hand', at: [100, 30] } },
+    gear: [
+      { t: 'rect', x: 44, y: 30, w: 6, h: 156, rx: 3, nofit: true }, { t: 'rect', x: 152, y: 30, w: 6, h: 156, rx: 3, nofit: true },
+      { t: 'line', a: [46, 30], b: [156, 30], w: 4.5 }],
+    worked: ['back', 'biceps'], assist: ['shoulders', 'core'],
+  },
+  lateral: {
+    name: 'Dumbbell lateral raise', muscle: 'shoulders', view: 'front',
+    start: { torso: 0, neck: 0, leg: [2, 0], foot: 0, arm: [8, 4], pin: { j: 'hip', at: [100, 98] } },
+    end: { torso: 0, neck: 0, leg: [2, 0], foot: 0, arm: [84, 72], pin: { j: 'hip', at: [100, 98] } },
+    gear: [{ t: 'plate', at: 'hand', r: 5.5, front: true }, { t: 'plate', at: 'handF', r: 5.5, front: true }],
+    worked: ['shoulders'], assist: [],
+  },
+  pulldown: {
+    name: 'Lat pulldown', muscle: 'back', view: 'side',
+    start: { torso: -8, neck: 0, leg: [70, 0], foot: 16, grab: { w: [122, 30] }, bend: 1, pin: { j: 'hip', at: [100, 126] } },
+    end: { torso: -20, neck: 4, leg: [70, 0], foot: 16, grab: { w: [118, 82] }, bend: 1, pin: { j: 'hip', at: [100, 126] } },
+    gear: [
+      { t: 'rect', x: 40, y: 183, w: 150, h: 4, rx: 2, nofit: true },
+      { t: 'rect', x: 80, y: 137, w: 46, h: 8, rx: 4 }, { t: 'rect', x: 98, y: 145, w: 10, h: 38 },
+      { t: 'rect', x: 126, y: 116, w: 36, h: 9, rx: 4.5 },
+      { t: 'rect', x: 160, y: 8, w: 6, h: 176, rx: 3, nofit: true }, { t: 'rect', x: 118, y: 6, w: 48, h: 6, rx: 3, nofit: true },
+      { t: 'rect', x: 170, y: 40, w: 20, h: 130, rx: 3, slits: 7, nofit: true },
+      { t: 'pulley', at: [122, 18], r: 6 },
+      { t: 'cable', from: [122, 24], at: 'hand' }, { t: 'hbar', at: 'hand', len: 36, front: true }],
+    worked: ['back', 'biceps'], assist: ['shoulders'],
+  },
+  custom: {
+    name: 'Cable curl (custom)', custom: true, view: 'side',
+    start: { torso: 2, neck: 0, leg: [0, 0], foot: 16, arm: [8, 14], pin: { j: 'ankle', at: [100, 178] } },
+    gear: [],
+    worked: ['biceps'], assist: [],
+  },
+};
+const ORDER = ['squat', 'bench', 'deadlift', 'pullup', 'lateral', 'pulldown', 'custom'];
+
+/* ================= drawing a figure ================= */
+function figureSvg(ex, t, styleId, opts = {}) {
+  const st = STYLES[styleId];
+  const P = deepLerp(ex.start, ex.end || ex.start, t);
+  const J = solve(P, ex.view);
+  J.headAng = P.torso + (P.neck || 0);
+  const exm = ex.custom ? { ...ex, worked: [ex.muscle || 'biceps'] } : ex;
+  const thumb = !!opts.thumb;
+  let svg = gearSvg(ex.gear, J, st, false) + renderBody(J, exm, st, thumb) + gearSvg(ex.gear, J, st, true);
+  let vb;
+  vb = thumbBox(ex, styleId).join(' ');
+  const floor = `<line x1="14" x2="186" y1="${FLOOR - .5}" y2="${FLOOR - .5}" stroke="var(--line)" stroke-width="2" stroke-linecap="round"/>`;
+  return `<svg viewBox="${vb}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${ex.name}">${floor}${svg}</svg>`;
+}
+
+const boxCache = {};
+function thumbBox(ex, styleId) {
+  const key = ex.name;
+  if (boxCache[key]) return boxCache[key];
+  const pts = [];
+  [0, .5, 1].forEach(t => {
+    const J = solve(deepLerp(ex.start, ex.end || ex.start, t), ex.view);
+    pts.push(J.hip, J.head, J.sh, J.torsoTop);
+    J.legs.forEach(l => pts.push(l.knee, l.ankle, l.toe));
+    J.arms.forEach(a => pts.push(a.elbow, a.hand));
+    ex.gear.forEach(g => { if (g.nofit) return; if (g.t === 'rect') pts.push([g.x, g.y], [g.x + g.w, g.y + g.h]); else if (g.t === 'line') pts.push(g.a, g.b); else if (g.at && !g.from) { const p = at(g.at, J); pts.push([p[0] - (g.r || 12), p[1] - (g.r || 12)], [p[0] + (g.r || 12), p[1] + (g.r || 12)]); } else if (g.t === 'pulley') pts.push(g.at); });
+  });
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  pts.forEach(p => { x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]); x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]); });
+  y0 -= 14; x0 -= 12; x1 += 12; y1 = Math.min(y1 + 8, FLOOR + 1);
+  const s = Math.max(x1 - x0, y1 - y0, 100);
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  let by = cy - s / 2; if (by + s > FLOOR + 2) by = FLOOR + 2 - s;
+  return boxCache[key] = [f1(cx - s / 2), f1(by), f1(s), f1(s)];
+}
+
+/* ================= page ================= */
+const q = new URLSearchParams(location.search);
+const S = {
+  style: +(q.get('style') || 1),
+  theme: q.get('theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'),
+  pose: q.get('pose') || 'loop',
+  mid: q.get('mid') != null ? +q.get('mid') : null,
+  rm: q.get('rm') === '1' || matchMedia('(prefers-reduced-motion: reduce)').matches,
+  cmus: q.get('muscle') || 'biceps',
+};
+const $ = id => document.getElementById(id);
+function seg(el, opts, key, after) {
+  el.innerHTML = opts.map(([v, l]) => `<button data-v="${v}" aria-pressed="${S[key] == v}">${l}</button>`).join('');
+  el.onclick = e => { const b = e.target.closest('button'); if (!b) return; S[key] = isNaN(+b.dataset.v) ? b.dataset.v : +b.dataset.v; [...el.children].forEach(c => c.setAttribute('aria-pressed', c === b)); after(); };
+}
+function applyTheme() { document.documentElement.dataset.app = S.theme === 'dark' ? 'dark' : 'light'; }
+function note() { $('note').textContent = `${S.style}. ${STYLES[S.style].name}: ${STYLES[S.style].blurb}`; }
+
+EX.custom.muscle = S.cmus;
+$('cmus').innerHTML = Object.entries(MUSCLE_NAMES).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
+$('cmus').value = S.cmus;
+$('cmus').onchange = () => { S.cmus = $('cmus').value; EX.custom.muscle = S.cmus; build(); };
+$('rm').checked = S.rm;
+$('rm').onchange = () => { S.rm = $('rm').checked; };
+
+seg($('styleSeg'), [[1, '1 Silhouette'], [2, '2 Outline'], [3, '3 Blocks']], 'style', () => { note(); build(); });
+seg($('themeSeg'), [['light', 'Light'], ['dark', 'Dark']], 'theme', applyTheme);
+seg($('poseSeg'), [['loop', 'Loop'], ['start', 'Start'], ['end', 'End']], 'pose', () => {});
+
+const figs = [];
+function chipsFor(ex) {
+  const w = ex.custom ? [ex.muscle] : ex.worked, a = ex.custom ? [] : (ex.assist || []);
+  return w.map(m => `<span class="mchip">${MUSCLE_NAMES[m]}</span>`).join('') + a.map(m => `<span class="mchip as">${MUSCLE_NAMES[m]}</span>`).join('');
+}
+function build() {
+  figs.length = 0;
+  $('picker').innerHTML = ORDER.map(id => {
+    const ex = EX[id];
+    const sub = ex.custom ? `<span class="psub cust">Custom · ${MUSCLE_NAMES[ex.muscle]}</span>` : `<span class="psub">${MUSCLE_NAMES[ex.muscle]}</span>`;
+    return `<div class="prow"><span class="tile" data-fig="${id}" data-kind="thumb"></span><div><div class="pname">${ex.name}</div>${sub}</div><svg class="chev" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4.5 2l5 5-5 5"/></svg></div>`;
+  }).join('');
+  $('sheets').innerHTML = ORDER.map(id => {
+    const ex = EX[id];
+    const pair = ex.end ? `<div class="pair"><figure><div class="fig" data-fig="${id}" data-kind="start"></div><figcaption>Start</figcaption></figure><figure><div class="fig" data-fig="${id}" data-kind="end"></div><figcaption>End</figcaption></figure></div>` : '';
+    return `<div class="sheet"><div class="grab"></div><h3 class="stitle">${ex.name}</h3><div class="fig" data-fig="${id}" data-kind="sheet"></div><div class="chips">${chipsFor(ex)}</div>${pair}</div>`;
+  }).join('');
+  document.querySelectorAll('[data-fig]').forEach(el => {
+    figs.push({ el, ex: EX[el.dataset.fig], kind: el.dataset.kind });
+  });
+  figs.forEach(f => { if (f.kind === 'start') f.el.innerHTML = figureSvg(f.ex, 0, S.style); if (f.kind === 'end') f.el.innerHTML = figureSvg(f.ex, 1, S.style); });
+  $('data').textContent = JSON.stringify((({ name, view, start, end, gear, worked, assist }) => ({ name, view, start, end, gear, worked, assist }))(EX.pullup), null, 1);
+}
+
+const ease = x => x * x * (3 - 2 * x);
+const PERIOD = 5200;
+function loopT(p) { return p < .12 ? 0 : p < .5 ? ease((p - .12) / .38) : p < .62 ? 1 : 1 - ease((p - .62) / .38); }
+function frame(now) {
+  const p = (now % PERIOD) / PERIOD;
+  let t = S.mid != null ? S.mid : S.pose === 'start' ? 0 : S.pose === 'end' ? 1 : (S.rm ? 0 : loopT(p));
+  figs.forEach(f => {
+    if (f.kind === 'start' || f.kind === 'end') return;
+    const tt = f.kind === 'thumb' ? (S.rm || S.pose === 'loop' ? (S.mid != null ? S.mid : (S.pose === 'loop' ? t : 0)) : t) : t;
+    // Picker rows show the start pose (the app's plan); they only move when the owner picks End or a mid-loop frame.
+    const tf = f.kind === 'thumb' ? (S.pose === 'end' ? 1 : S.mid != null ? S.mid : 0) : tt;
+    const key = f.kind + S.style + S.theme + tf.toFixed(3) + S.cmus;
+    if (f.key === key) return;
+    f.key = key;
+    f.el.innerHTML = figureSvg(f.ex, tf, S.style, { thumb: f.kind === 'thumb' });
+  });
+  $('state').textContent = `style ${S.style} ${STYLES[S.style].name} · ${S.theme} · pose ${S.mid != null ? 'mid ' + S.mid : S.pose} · reduced motion ${S.rm ? 'on (start pose only)' : 'off'} · progress ${t.toFixed(2)}`;
+  requestAnimationFrame(frame);
+}
+applyTheme(); note(); build();
+['styleSeg', 'themeSeg', 'poseSeg'].forEach(id => { const m = { styleSeg: 'style', themeSeg: 'theme', poseSeg: 'pose' }[id]; [...$(id).children].forEach(b => b.setAttribute('aria-pressed', b.dataset.v == S[m])); });
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
