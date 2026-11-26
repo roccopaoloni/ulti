@@ -2017,6 +2017,25 @@ prefers-reduced-motion switches every animation off, so it stays off the badge. 
 .ru-flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:4}
 .ru.flash .ru-flash{animation:ru-flash2 .14s ease-out}
 .ru.skip *,.ru.skip .ru-div::after{animation:none!important;transition:none!important}
+/* The crown moment (Spotlight): a hard-edged cone of light from the top onto a polished gold crown. */
+.ru-crown .ru-beam,.ru-crown .ru-rays{display:none}
+.ck-beam{position:absolute;inset:0;z-index:1;pointer-events:none}
+.ck-beam > *{position:absolute;pointer-events:none}
+.ck-cone{top:0;left:50%;width:380px;height:56%;transform-origin:50% 0;opacity:0;transform:translateX(-50%) scaleY(0)}
+.ck-cone.c1{background:linear-gradient(to bottom, color-mix(in srgb,var(--t) 62%,transparent), transparent 98%);clip-path:polygon(44% 0,56% 0,100% 100%,0 100%)}
+.ck-cone.c2{background:linear-gradient(to bottom, rgba(255,255,255,.55), transparent 90%);clip-path:polygon(48.5% 0,51.5% 0,70% 100%,30% 100%)}
+.ck-cone.c3{background:repeating-linear-gradient(90deg, transparent 0 18px, color-mix(in srgb,var(--t) 22%,transparent) 18px 21px);clip-path:polygon(44% 0,56% 0,100% 100%,0 100%);-webkit-mask:linear-gradient(to bottom,#000,transparent 85%);mask:linear-gradient(to bottom,#000,transparent 85%)}
+.ck-pool{left:50%;top:40%;width:300px;height:40px;margin-left:-150px;border-radius:50%;background:radial-gradient(ellipse, color-mix(in srgb,var(--t) 50%,transparent), transparent 70%);opacity:0}
+.ru-crown.beam .ck-cone{opacity:1;transform:translateX(-50%) scaleY(1);transition:transform .9s cubic-bezier(.1,.8,.2,1),opacity .3s}
+.ru-crown.beam .ck-pool{opacity:1;transition:opacity .8s}
+.ru-crown .ru-kicker{color:var(--gold)}
+.ru-crown .ru-stage{width:270px;height:235px}
+.ck-crown{width:100%;height:auto;overflow:visible;filter:brightness(.22) saturate(.3);opacity:.7;transform:scale(.82);transition:all .3s}
+.ru-crown.fired .ck-crown{filter:none;opacity:1;transform:none;animation:ck-land .75s cubic-bezier(.2,1.5,.4,1)}
+.ck-shine{animation:ck-shine 3.4s 1.2s ease-in-out infinite}
+.ru-crown .ru-name{font-weight:800;line-height:1.12;max-width:358px}
+@keyframes ck-land{0%{transform:translateY(-260px) scale(1.6) rotate(-7deg);opacity:0}55%{transform:translateY(14px) scale(.95) rotate(2deg);opacity:1}100%{transform:none}}
+@keyframes ck-shine{0%,55%{transform:translateX(-120px);opacity:0}60%{opacity:1}90%,100%{transform:translateX(260px);opacity:0}}
 @keyframes ru-shard2{0%{opacity:1;transform:translate(0,0) rotate(0)}100%{opacity:0;transform:translate(var(--dx),var(--dy)) rotate(var(--r)) scale(.85)}}
 @keyframes ru-jolt{0%{transform:scale(1.035)}30%{transform:translate(-3px,2px) scale(1.015)}60%{transform:translate(2px,-1px)}100%{transform:none}}
 @keyframes ru-breathe{0%,100%{opacity:.55}50%{opacity:1}}

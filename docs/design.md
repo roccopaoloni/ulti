@@ -127,7 +127,7 @@ Each row has two lines beside the avatar: the name with its "You" tag and the le
 
 - **Personal Record during a Session**: a brief animated banner ("PR! Bench +3% · +40 pts") that never blocks logging.
 - **A Rank-up**: a full-screen moment in the new Tier's colour, shown on the next app open.
-- **Winning a Period** (a week, month or year in any Group): a full-screen crown moment in gold, the crown's colour, reusing the Rank-up structure in a shorter form, shown on the next app open after the Period ends. Tied winners each get it.
+- **Winning a Period** (a week, month or year in any Group): a full-screen crown moment in gold, the crown's colour, reusing the Rank-up structure in a shorter form, shown on the next app open after the Period ends. Tied winners each get it. The look is the Spotlight (picked in the crown prototype): a hard-edged cone of light from the top of the screen onto a big crown drawn as polished gold metal in the Rank crests' craft (face, bevel bright along the top, fine rim, soft shadow, no outlines). The title ("SEMANA GANADA", "MES GANADO", "AÑO GANADO", "WEEK WON") keeps the gaps between its words and wraps by whole words inside the screen; the small label above the crown is the Group name, never the title again.
 - **Finishing a Session**: a summary card with progress toward the Weekly Target, Personal Records and points earned.
 
 ## Sound
