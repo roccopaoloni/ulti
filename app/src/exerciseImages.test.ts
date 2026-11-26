@@ -1,9 +1,8 @@
-import { readdirSync } from 'node:fs';
 import { expect, test } from 'vitest';
 import { exerciseImages } from './exerciseImages.ts';
 
 // The picture folders shipped in `public/exercises`, one per catalog Exercise.
-const shipped = readdirSync(new URL('../public/exercises', import.meta.url));
+const shipped = Object.keys(import.meta.glob('../public/exercises/*/thumb.webp')).map((path) => path.split('/').at(-2)!);
 
 test('every Exercise with a picture folder in the app has its pictures found', () => {
   expect(shipped.length).toBeGreaterThan(0);

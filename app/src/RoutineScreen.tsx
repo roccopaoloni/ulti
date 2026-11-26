@@ -2,6 +2,7 @@ import { completeRoutine, dayColour, moveItem, nextDayColour, packRoutineLink, s
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { dayColourVar } from './dayColour.ts';
 import { useI18n } from './i18n.ts';
+import { ExerciseThumb } from './ExerciseImage.tsx';
 import { ExercisePicker } from './ExercisePicker.tsx';
 import { Sheet } from './GroupsScreens.tsx';
 import { chevronIcon, closeIcon, gripIcon } from './icons.tsx';
@@ -76,6 +77,7 @@ function ExerciseRows({ day, dayIndex, open, setOpen, nameOf, equipmentOf, chang
           <div key={index} className="rex" {...sortable.item(index)}>
             <div className="rex-row">
               <button type="button" className="rex-main" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : { dayId: day.id, index })}>
+                <ExerciseThumb exerciseId={e.exerciseId} />
                 <span className="rex-text">
                   <span className="rex-name">{nameOf(e.exerciseId)}</span>
                   <small className="muted">{equipmentOf(e.exerciseId)}</small>

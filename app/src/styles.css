@@ -3207,3 +3207,56 @@ prefers-reduced-motion switches every animation off, so it stays off the badge. 
     animation: none;
   }
 }
+
+/* Exercise pictures: the thumbnail in a row, and the large image in the Session sheet. */
+.ex-thumb {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+.rex-main .rex-text {
+  flex: 1;
+}
+.ex-name-btn {
+  text-align: left;
+  text-transform: inherit;
+  text-decoration: underline dotted;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 6px;
+}
+/* The end frame fades in over the start frame and out again, slowly, forever. */
+.ex-photo {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--surface-2);
+}
+.ex-photo img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.ex-photo-end {
+  animation: ex-frames 3.2s ease-in-out infinite alternate;
+}
+@keyframes ex-frames {
+  0%,
+  30% {
+    opacity: 0;
+  }
+  70%,
+  100% {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ex-photo-end {
+    display: none;
+  }
+}

@@ -2,6 +2,7 @@ import { deloadRows, incrementInUnits, kgToUnits, labelSets, plannedRows, predic
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useI18n } from './i18n.ts';
+import { ExerciseName } from './ExerciseImage.tsx';
 import { checkIcon, gripIcon, trophyIcon, undoIcon } from './icons.tsx';
 import { Info } from './Info.tsx';
 import type { SetRecord, Training } from './training.ts';
@@ -140,7 +141,9 @@ export function ExerciseBlock({
     );
   return (
     <section className={focus ? 'ex focus' : 'ex'}>
-      <h2 className="ex-name">{name}</h2>
+      <h2 className="ex-name">
+        <ExerciseName exerciseId={exerciseId} name={name} />
+      </h2>
       {calibrating && (
         <p className="calibration">
           {t.session.calibration} <Info term="calibration" />

@@ -30,6 +30,19 @@ export default defineConfig({
         globPatterns: ['**/*.{html,js,css,woff2,svg,png}'],
         // Every route opens the single-page app, online or offline.
         navigateFallback: 'index.html',
+        // The Exercise pictures are not precached: each is cached the first time it is viewed, and
+        // then shows offline too.
+        runtimeCaching: [
+          {
+            urlPattern: ({ url }) => url.pathname.startsWith('/exercises/'),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'exercise-pictures',
+              expiration: { maxEntries: 400 },
+              cacheableResponse: { statuses: [200] },
+            },
+          },
+        ],
       },
     }),
   ],

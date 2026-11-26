@@ -128,6 +128,7 @@ export function SettingsScreen({
           {t.about.fitnessVoltLink}
         </a>
         <p className="muted">{t.about.symmetricStrength}</p>
+        <p className="muted">{t.about.exercisePictures}</p>
       </section>
     </SubScreen>
   );

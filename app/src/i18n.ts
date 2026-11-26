@@ -16,7 +16,7 @@ type Messages = {
   back: string;
   settings: { title: string; open: string; nameOffline: string; you: string; app: string; privacy: string; account: string };
   install: { title: string; settingsTitle: string; homeText: string; install: string; notNow: string; iosShare: string; iosAdd: string; other: string };
-  about: { title: string; fitnessVoltLink: string; symmetricStrength: string };
+  about: { title: string; fitnessVoltLink: string; symmetricStrength: string; exercisePictures: string };
   // The Tutorial: shown once per account after setup, replayable from Settings.
   tutorial: {
     welcomeTitle: string;
@@ -210,6 +210,8 @@ type Messages = {
     resume: string;
     // How many Sets the Session in progress has, under "Back to session".
     logged: (sets: number) => string;
+    // The Exercise's name as a button, which opens its pictures.
+    showExercise: (name: string) => string;
     title: string;
     sets: (count: number) => string;
     legend: string;
@@ -487,6 +489,7 @@ const en: Messages = {
     title: 'About',
     fitnessVoltLink: 'Powered by FitnessVolt',
     symmetricStrength: 'Built on the Symmetric Strength gym dataset.',
+    exercisePictures: 'Exercise pictures from free-exercise-db (public domain).',
   },
   tutorial: {
     welcomeTitle: 'Practice first',
@@ -758,6 +761,7 @@ const en: Messages = {
     startHint: 'It saves on your phone, even with no signal.',
     resume: 'Back to session',
     logged: (sets) => (sets === 1 ? '1 set logged' : `${sets} sets logged`),
+    showExercise: (name) => `See how to do ${name}`,
     title: 'Session',
     sets: (count) => (count === 1 ? '1 set' : `${count} sets`),
     legend: 'Sets: weight × reps',
@@ -1012,6 +1016,7 @@ const es: Messages = {
     title: 'Acerca de',
     fitnessVoltLink: 'Powered by FitnessVolt',
     symmetricStrength: 'Basados en el conjunto de datos de gimnasio de Symmetric Strength.',
+    exercisePictures: 'Fotos de los ejercicios de free-exercise-db (dominio público).',
   },
   tutorial: {
     welcomeTitle: 'Primero, práctica',
@@ -1279,6 +1284,7 @@ const es: Messages = {
     startHint: 'Se guarda en tu teléfono, aunque no haya señal.',
     resume: 'Volver a la sesión',
     logged: (sets) => (sets === 1 ? '1 serie registrada' : `${sets} series registradas`),
+    showExercise: (name) => `Ver cómo se hace ${name}`,
     title: 'Sesión',
     sets: (count) => (count === 1 ? '1 serie' : `${count} series`),
     legend: 'Series: peso × repeticiones',
