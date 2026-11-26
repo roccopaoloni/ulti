@@ -454,50 +454,41 @@ function weekEnd(week: string): string {
   return day.toISOString().slice(0, 10);
 }
 
-// One week of the History screen: its Sessions (as given, newest first) against the Weekly Target,
-// whether it earned its Week Stamp, and its points (Consistency Points plus Progress Points).
-export type HistoryWeek<S> = {
-  // The Monday and the Sunday of the week, as local dates.
-  week: string;
-  end: string;
-  sessions: S[];
-  done: number;
-  target: number;
-  stamped: boolean;
-  points: number;
-};
+// One day of the History calendar: its date and the Sessions logged on it, in the order given.
+// A day outside the month shown (a week's edge) has none: its Sessions show in its own month.
+export type HistoryDay<S> = { date: string; inMonth: boolean; sessions: S[] };
 
-// The weeks from `today`'s back to the oldest Session's, newest first, empty ones between included.
-export function historyWeeks<S extends { localDate: string }>(input: {
+// A week row of the History calendar, Monday to Sunday, and whether it earned its Week Stamp.
+export type HistoryMonthWeek<S> = { week: string; stamped: boolean; days: HistoryDay<S>[] };
+
+// The History calendar for a month ('YYYY-MM'): the whole weeks that touch it, the Session count and
+// the Week Stamps of the weeks that end in it (a week spanning two months is stamped in both grids
+// but counts once, in the month it ends in).
+export function historyMonth<S extends { localDate: string }>(input: {
+  month: string;
   sessions: readonly S[];
   consistency: readonly ConsistencyWeek[];
-  records: readonly Pick<PersonalRecord, 'localDate' | 'progressPoints'>[];
-  weeklyTargets: Dated<number>[];
-  today: string;
-}): HistoryWeek<S>[] {
-  const current = weekStart(input.today);
-  const oldest = input.sessions.reduce((min, { localDate }) => (localDate < min ? localDate : min), input.today);
-  const first = weekStart(oldest);
-  const weeks: HistoryWeek<S>[] = [];
-  for (let week = current; week >= first; week = previousMonday(week)) {
-    const end = weekEnd(week);
-    const scored = input.consistency.find((event) => event.week === week);
-    const done = scored?.sessionDates.length ?? 0;
-    const target = scored?.weeklyTarget ?? weeklyTargetOf(input.weeklyTargets, week) ?? 0;
-    const progress = input.records
-      .filter(({ localDate }) => localDate >= week && localDate <= end)
-      .reduce((sum, record) => sum + record.progressPoints, 0);
-    weeks.push({
-      week,
-      end,
-      sessions: input.sessions.filter(({ localDate }) => localDate >= week && localDate <= end),
-      done,
-      target,
-      stamped: scored !== undefined && done === target,
-      points: (scored?.consistencyPoints ?? 0) + progress,
+}): { weeks: HistoryMonthWeek<S>[]; sessions: number; stamps: number } {
+  const stamped = new Set(weekStamps([...input.consistency]));
+  const last = new Date(Date.UTC(Number(input.month.slice(0, 4)), Number(input.month.slice(5, 7)), 0)).toISOString().slice(0, 10);
+  const weeks: HistoryMonthWeek<S>[] = [];
+  let stamps = 0;
+  for (let week = weekStart(`${input.month}-01`); week <= last; week = addDays(week, 7)) {
+    const days = Array.from({ length: 7 }, (_, i) => {
+      const date = addDays(week, i);
+      const inMonth = date.startsWith(input.month);
+      return { date, inMonth, sessions: inMonth ? input.sessions.filter((session) => session.localDate === date) : [] };
     });
+    if (days[6].inMonth && stamped.has(week)) stamps++;
+    weeks.push({ week, stamped: stamped.has(week), days });
   }
-  return weeks;
+  return { weeks, sessions: input.sessions.filter((session) => session.localDate.startsWith(input.month)).length, stamps };
+}
+
+function addDays(localDate: string, days: number): string {
+  const day = new Date(`${localDate}T00:00:00Z`);
+  day.setUTCDate(day.getUTCDate() + days);
+  return day.toISOString().slice(0, 10);
 }
 
 // Puts a Session's Sets, given in the order they were logged, in the order they are done. Each

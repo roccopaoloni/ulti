@@ -1,13 +1,12 @@
 import {
   dayColour,
-  historyWeeks,
+  historyMonth,
   incrementInUnits,
   kgToUnits,
   labelSets,
   sessionConsistencyPoints,
   unitsToKg,
   type ConsistencyWeek,
-  type Dated,
   type PersonalRecord,
   type RoutineDay,
   type SetLabel,
@@ -18,7 +17,7 @@ import { dayColourVar } from './dayColour.ts';
 import { Keypad } from './ExerciseBlock.tsx';
 import { Sheet } from './GroupsScreens.tsx';
 import { useI18n } from './i18n.ts';
-import { chevronIcon, checkIcon, gripIcon, trophyIcon } from './icons.tsx';
+import { backIcon, chevronIcon, checkIcon, gripIcon, trophyIcon } from './icons.tsx';
 import { useImplausibleSheet } from './NoticeSheet.tsx';
 import { historyPath, navigate, paths, sessionPath } from './navigation.ts';
 import { today } from './profile.ts';
@@ -40,7 +39,6 @@ function useHistory(training: Training) {
   // The Consistency Points each Session added, by the ID of any of its Sets.
   const [sessionPoints, setSessionPoints] = useState(new Map<string, number>());
   const [consistency, setConsistency] = useState<ConsistencyWeek[]>([]);
-  const [weeklyTargets, setWeeklyTargets] = useState<Dated<number>[]>([]);
 
   const reload = useCallback(async () => {
     const scoring = await training.scoring();
@@ -48,7 +46,6 @@ function useHistory(training: Training) {
     const added = sessionConsistencyPoints(scoring.history);
     setSessionPoints(new Map(scoring.history.sessions.flatMap((session, i) => session.sets.map((set) => [set.id, added[i]!] as const))));
     setConsistency(scoring.consistency);
-    setWeeklyTargets(scoring.history.weeklyTargets);
     setSessions(await training.pastSessions());
   }, [training]);
   useEffect(() => {
@@ -57,7 +54,7 @@ function useHistory(training: Training) {
     training.routine().then((routine) => setDays(routine?.days ?? []));
   }, [training, reload]);
 
-  return { sessions, catalog, days, records, sessionPoints, consistency, weeklyTargets, reload };
+  return { sessions, catalog, days, records, sessionPoints, consistency, reload };
 }
 type HistoryData = ReturnType<typeof useHistory>;
 
@@ -134,7 +131,10 @@ export function RecentSessions({ training }: { training: Training }) {
     <section className="history">
       <div className="row-head">
         <h2 className="eyebrow">{h.recent}</h2>
-        <button type="button" className="see-all" onClick={() => navigate(historyPath)}>
+        <button type="button" className="see-all" onClick={() => {
+            viewedMonth = null;
+            navigate(historyPath);
+          }}>
           {h.seeAll}
           {chevronIcon}
         </button>
@@ -148,42 +148,59 @@ export function RecentSessions({ training }: { training: Training }) {
   );
 }
 
-// How many weeks the History screen loads at a time.
-const PAGE = 8;
+// The month the lifter was looking at when they opened a Session, so Back returns to it. Opening
+// History from the Train tab clears it, and History lands on the current month.
+let viewedMonth: string | null = null;
 
-// All past Sessions grouped by week, newest first, the current week included; older weeks load
-// 8 at a time as the list is scrolled to its end.
+const monthOf = (localDate: string) => localDate.slice(0, 7);
+
+function shiftMonth(month: string, by: number) {
+  return new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)) - 1 + by, 1)).toISOString().slice(0, 7);
+}
+
+// All past Sessions as a month calendar: a day with a Session is filled in its Routine Day's colour,
+// a Personal Record adds a trophy and a week that met its Weekly Target gets the Week Stamp ribbon.
+// Months page by swipe and by arrows; a tap on a day opens its Session, or a sheet to pick one.
 export function HistoryScreen({ training }: { training: Training }) {
   const { t, language } = useI18n();
   const h = t.history;
   const data = useHistory(training);
-  const [shown, setShown] = useState(PAGE);
-  const more = useRef<HTMLButtonElement>(null);
+  const now = today();
+  const [month, setMonth] = useState(viewedMonth ?? monthOf(now));
+  const picker = useRef<HTMLDialogElement>(null);
+  const [pickDay, setPickDay] = useState<{ date: string; sessions: Past[] } | null>(null);
+  const swipeFrom = useRef<number | null>(null);
   const { sessions } = data;
-  const weeks = sessions
-    ? historyWeeks({
-        sessions: sessions.map((past) => ({ localDate: past.session.localDate, past })),
-        consistency: data.consistency,
-        records: [...data.records.values()],
-        weeklyTargets: data.weeklyTargets,
-        today: today(),
-      })
-    : [];
-  const hasMore = weeks.length > shown;
 
-  useEffect(() => {
-    const button = more.current;
-    if (!button || typeof IntersectionObserver === 'undefined') return;
-    const observer = new IntersectionObserver((entries) => {
-      if (entries.some((entry) => entry.isIntersecting)) setShown((count) => count + PAGE);
-    });
-    observer.observe(button);
-    return () => observer.disconnect();
-  }, [hasMore, shown]);
+  const first = monthOf((sessions ?? []).reduce((min, { session }) => (session.localDate < min ? session.localDate : min), now));
+  const last = monthOf(now);
+  const go = (by: number) => {
+    const next = shiftMonth(month, by);
+    if (next >= first && next <= last) setMonth(next);
+  };
 
-  const range = (week: string, end: string) =>
-    `${formatDay(language, week, { day: 'numeric', month: 'short' })} – ${formatDay(language, end, { day: 'numeric', month: 'short' })}`;
-  const thisWeek = weeks[0]?.week;
+  const view = historyMonth({
+    month,
+    sessions: (sessions ?? []).map((past) => ({ localDate: past.session.localDate, past })),
+    consistency: data.consistency,
+  });
+  const weekdays = Array.from({ length: 7 }, (_, i) => formatDay(language, `2026-06-0${i + 1}`, { weekday: 'narrow' }));
+  const isRecord = (past: Past) => past.sets.some((set) => data.records.has(set.id));
+
+  // The colour key lists only what the month shown has: its Routine Days, no routine, a Personal Record.
+  const shown = view.weeks.flatMap((week) => week.days.flatMap((day) => day.sessions.map(({ past }) => past)));
+  const usedDays = new Set(shown.map((past) => past.session.routineDayId));
+  const keyDays = data.days.flatMap((day, index) => (usedDays.has(day.id) ? [{ name: day.name, colour: dayColourVar(dayColour(data.days, index)) }] : []));
+  const hasNoRoutine = shown.some((past) => !dayOf(past, data.days));
+
+  const open = (date: string, onDay: Past[]) => {
+    viewedMonth = month;
+    if (onDay.length === 1) navigate(sessionPath(onDay[0]!.session.id));
+    else {
+      setPickDay({ date, sessions: onDay });
+      picker.current?.showModal();
+    }
+  };
 
   return (
     <SubScreen title={h.title} parent={paths.train}>
@@ -192,52 +209,112 @@ export function HistoryScreen({ training }: { training: Training }) {
       ) : sessions.length === 0 ? (
         <p className="muted">{h.empty}</p>
       ) : (
-        weeks.slice(0, shown).map((week) =>
-          week.sessions.length === 0 && week.week !== thisWeek ? (
-            <p key={week.week} className="empty-week">
-              <b>{range(week.week, week.end)}</b> · {h.noSessions}
-            </p>
-          ) : (
-            <section key={week.week} className="week">
-              <div className="week-head">
-                <span className={`wk-stamp${week.stamped ? '' : ' no'}`}>{checkIcon}</span>
-                <span className="when">
-                  <b>{week.week === thisWeek ? t.consistency.thisWeek : range(week.week, week.end)}</b>
-                  <small>
-                    {week.week === thisWeek
-                      ? range(week.week, week.end)
-                      : week.stamped
-                        ? h.weekStamp
-                        : h.weekProgress(week.done, week.target)}
-                  </small>
-                </span>
-                {week.target > 0 && (
-                  <span className="tally" role="img" aria-label={h.weekProgress(week.done, week.target)}>
-                    {Array.from({ length: week.target }, (_, i) => (
-                      <i key={i} className={i < week.done ? 'f' : undefined} />
-                    ))}
+        <>
+          <div className="cal-head">
+            <div>
+              <h2 className="disp cal-month">{formatDay(language, `${month}-01`, { month: 'long', year: 'numeric' })}</h2>
+              <p className="cal-sub">
+                <b>{h.monthSessions(view.sessions)}</b> · {h.monthStamps(view.stamps)}
+              </p>
+            </div>
+            <div className="cal-arrows">
+              <button type="button" className="iconbtn" aria-label={h.previousMonth} disabled={month <= first} onClick={() => go(-1)}>
+                {backIcon}
+              </button>
+              <button type="button" className="iconbtn" aria-label={h.nextMonth} disabled={month >= last} onClick={() => go(1)}>
+                {chevronIcon}
+              </button>
+            </div>
+          </div>
+          <div
+            className="cal"
+            onPointerDown={(event) => (swipeFrom.current = event.clientX)}
+            onPointerUp={(event) => {
+              if (swipeFrom.current === null) return;
+              const moved = event.clientX - swipeFrom.current;
+              swipeFrom.current = null;
+              if (Math.abs(moved) > 60) go(moved < 0 ? 1 : -1);
+            }}
+            onPointerCancel={() => (swipeFrom.current = null)}
+          >
+            <div className="cal-week cal-dow" aria-hidden="true">
+              {weekdays.map((letter, i) => (
+                <span key={i}>{letter}</span>
+              ))}
+            </div>
+            {view.weeks.map((week) => (
+              <div key={week.week} className={`cal-week${week.stamped ? ' stamped' : ''}`}>
+                {week.days.map((day) => {
+                  if (!day.inMonth) return <span key={day.date} className="cal-day out" />;
+                  const onDay = day.sessions.map(({ past }) => past);
+                  const number = Number(day.date.slice(8));
+                  const todayClass = day.date === now ? ' today' : '';
+                  if (!onDay.length) {
+                    return (
+                      <span key={day.date} className={`cal-day${day.date > now ? ' future' : ''}${todayClass}`}>
+                        {number}
+                      </span>
+                    );
+                  }
+                  const routine = dayOf(onDay[0]!, data.days);
+                  return (
+                    <button
+                      key={day.date}
+                      type="button"
+                      className={`cal-day has${routine ? '' : ' none'}${todayClass}`}
+                      style={{ '--c': routine?.colour } as CSSProperties}
+                      aria-label={`${formatDay(language, day.date, { weekday: 'long', day: 'numeric', month: 'long' })}, ${routine?.name ?? h.noRoutine}`}
+                      onClick={() => open(day.date, onDay)}
+                    >
+                      {number}
+                      {onDay.some(isRecord) && trophyIcon}
+                      {onDay.length > 1 && <span className="cal-two">{onDay.length}</span>}
+                    </button>
+                  );
+                })}
+                {week.stamped && (
+                  <span className="cal-stamp" role="img" aria-label={h.weekStamp}>
+                    {checkIcon}
                   </span>
                 )}
-                <span className="wk-pts">{h.points(Math.round(week.points))}</span>
               </div>
-              {week.sessions.length === 0 ? (
-                <p className="empty-week">{h.noSessions}</p>
-              ) : (
-                <div className="card list">
-                  {week.sessions.map(({ past }) => (
-                    <SessionRow key={past.session.id} past={past} data={data} />
-                  ))}
-                </div>
-              )}
-            </section>
-          ),
-        )
+            ))}
+          </div>
+          <div className="cal-key">
+            {keyDays.map((day) => (
+              <span key={day.name}>
+                <i className="dot" style={{ background: day.colour }} />
+                {day.name}
+              </span>
+            ))}
+            {hasNoRoutine && (
+              <span>
+                <i className="dot none" />
+                {h.noRoutine}
+              </span>
+            )}
+            {shown.some(isRecord) && (
+              <span>
+                {trophyIcon}
+                {h.recordKey}
+              </span>
+            )}
+          </div>
+        </>
       )}
-      {hasMore && (
-        <button type="button" ref={more} className="btn-ghost" onClick={() => setShown((count) => count + PAGE)}>
-          {h.showEarlier}
-        </button>
-      )}
+      <Sheet dialog={picker} label={h.pickSession}>
+        {pickDay && (
+          <>
+            <h2 className="disp sheet-title">{formatDay(language, pickDay.date, { weekday: 'long', day: 'numeric', month: 'long' })}</h2>
+            <p className="muted">{h.pickSession}</p>
+            <div className="card list">
+              {pickDay.sessions.map((past) => (
+                <SessionRow key={past.session.id} past={past} data={data} />
+              ))}
+            </div>
+          </>
+        )}
+      </Sheet>
     </SubScreen>
   );
 }
