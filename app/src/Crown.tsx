@@ -9,9 +9,11 @@ import { audioInit, now, sfx, silence } from './rankUpSound.ts';
 
 export type CrownMomentProps = {
   title: string;
-  groupName: string;
+  label: string;
   headline: string;
   chips: string[];
+  // Several wins: one card per win (the Group, then its Period, points and ties) in place of the chips.
+  wins?: { group: string; sub: string }[];
   strings: { news: string; tapHint: string; continue: string };
   onContinue: () => void;
 };
@@ -70,10 +72,11 @@ function Gem({ x, y, w, h, fill, glow }: { x: number; y: number; w: number; h: n
   );
 }
 
-function CrownMetal({ className }: { className: string }) {
+// `mini` is the small flat crown on a win's card: it uses the gradients the big crown defines.
+function CrownMetal({ className, mini }: { className: string; mini?: boolean }) {
   return (
-    <svg className={className} viewBox="0 0 200 180" aria-hidden="true">
-      <defs>
+    <svg className={className} viewBox={mini ? '14 20 172 160' : '0 0 200 180'} aria-hidden="true">
+      {!mini && <defs>
         <linearGradient id="ck-face" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#ffd75e" /><stop offset=".55" stopColor="#e8a51c" /><stop offset="1" stopColor="#9a6205" /></linearGradient>
         <linearGradient id="ck-b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#fff7d1" /><stop offset=".4" stopColor="#ffd75e" /><stop offset=".6" stopColor="#9a6205" /><stop offset="1" stopColor="#4a2c00" /></linearGradient>
         <linearGradient id="ck-rim" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#fff" stopOpacity=".9" /><stop offset=".35" stopColor="#fff" stopOpacity=".25" /><stop offset=".5" stopColor="#fff" stopOpacity="0" /></linearGradient>
@@ -86,7 +89,7 @@ function CrownMetal({ className }: { className: string }) {
         <clipPath id="ck-bandclip"><path d={BAND} /></clipPath>
         <clipPath id="ck-all"><path d={BODY} /><path d={BAND} /></clipPath>
         <filter id="ck-ds" x="-20%" y="-20%" width="140%" height="170%"><feDropShadow dx="0" dy="3" stdDeviation="2.2" floodColor="#0a0418" floodOpacity=".6" /></filter>
-      </defs>
+      </defs>}
       <Piece d={BODY} face="ck-face" clip="ck-body" />
       <g clipPath="url(#ck-body)">
         <path d="M24 58L68 96L34 140Z" fill="#fff" opacity=".2" />
@@ -99,12 +102,12 @@ function CrownMetal({ className }: { className: string }) {
       <path d="M40 152H160" stroke="#4a2c00" strokeOpacity=".35" strokeWidth="1.4" />
       <path d="M40 154H160" stroke="#fff" strokeOpacity=".3" strokeWidth="1" />
       <Gem x={62} y={153} w={11} h={15} fill="ck-amber" /><Gem x={138} y={153} w={11} h={15} fill="ck-amber" /><Gem x={100} y={152} w={15} h={25} fill="ck-ruby" glow />
-      <g clipPath="url(#ck-all)"><g className="ck-shine"><path d="M70 0H92L56 190H34Z" fill="#fff" opacity=".35" /><path d="M100 0H106L70 190H64Z" fill="#fff" opacity=".35" /></g></g>
+      {!mini && <g clipPath="url(#ck-all)"><g className="ck-shine"><path d="M70 0H92L56 190H34Z" fill="#fff" opacity=".35" /><path d="M100 0H106L70 190H64Z" fill="#fff" opacity=".35" /></g></g>}
     </svg>
   );
 }
 
-export function CrownMoment({ title, groupName, headline, chips, strings, onContinue }: CrownMomentProps) {
+export function CrownMoment({ title, label, headline, chips, wins, strings, onContinue }: CrownMomentProps) {
   const root = useRef<HTMLDivElement>(null);
   const tap = useRef<() => void>(() => {});
   const [phase, setPhase] = useState<'news' | 'rest'>('news');
@@ -158,7 +161,7 @@ export function CrownMoment({ title, groupName, headline, chips, strings, onCont
   }, []);
 
   return (
-    <div ref={root} className="ru ru-crown" style={{ '--t': 'var(--gold)' } as CSSProperties} onClick={() => tap.current()} role="dialog" aria-modal="true" aria-label={title}>
+    <div ref={root} className={`ru ru-crown${wins ? ' ck-many' : ''}`} style={{ '--t': 'var(--gold)' } as CSSProperties} onClick={() => tap.current()} role="dialog" aria-modal="true" aria-label={title}>
       <div className="ru-flood" />
       <div className="ck-beam" aria-hidden="true">
         <div className="ck-cone c1" />
@@ -167,7 +170,7 @@ export function CrownMoment({ title, groupName, headline, chips, strings, onCont
         <div className="ck-pool" />
       </div>
       <div className="ru-in">
-        <div className="eyebrow ru-kicker">{phase === 'rest' ? groupName : strings.news}</div>
+        <div className="eyebrow ru-kicker">{phase === 'rest' ? label : strings.news}</div>
         <div className="ru-stage">
           <div className="ru-glow" />
           <CrownMetal className="ck-crown" />
@@ -176,9 +179,20 @@ export function CrownMoment({ title, groupName, headline, chips, strings, onCont
         <h1 className="disp ru-name">
           {words(title)}
         </h1>
-        <div className="ru-chips">
-          {chips.map((chip, i) => <span key={i} style={{ '--i': i } as CSSProperties}>{chip}</span>)}
-        </div>
+        {wins ? (
+          <div className="ck-wins">
+            {wins.map((w, i) => (
+              <div key={i} className="ck-win" style={{ '--i': i } as CSSProperties}>
+                <CrownMetal className="ck-mini" mini />
+                <div className="ck-tx"><div className="ck-nm">{w.group}</div><div className="ck-sub">{w.sub}</div></div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="ru-chips">
+            {chips.map((chip, i) => <span key={i} style={{ '--i': i } as CSSProperties}>{chip}</span>)}
+          </div>
+        )}
         <p className="ru-msg">{headline}</p>
         <button type="button" className="btn-primary ru-cont" onClick={(e) => { e.stopPropagation(); onContinue(); }}>{strings.continue}</button>
       </div>

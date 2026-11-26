@@ -440,6 +440,11 @@ type Messages = {
     headline: (period: 'week' | 'month' | 'year', group: string, sharedWith: number) => string;
     points: (points: number) => string;
     shared: (sharedWith: number) => string;
+    // Wins in several Groups, one moment: the small label, the headline, and each win's card.
+    crowns: (count: number) => string;
+    many: (count: number) => string;
+    period: Record<'week' | 'month' | 'year', string>;
+    tiedWith: (sharedWith: number) => string;
   };
   // The Train tab's recent Sessions, the History screen and the Session detail screen.
   history: {
@@ -979,6 +984,10 @@ const en: Messages = {
     },
     points: (points) => `${points.toLocaleString('en')} pts`,
     shared: (sharedWith) => (sharedWith === 1 ? 'Tied with 1 other' : `Tied with ${sharedWith} others`),
+    crowns: (count) => `${count} crowns`,
+    many: (count) => `You won in ${count} Groups.`,
+    period: { week: 'Week', month: 'Month', year: 'Year' },
+    tiedWith: (sharedWith) => `tied with ${sharedWith}`,
   },
   history: {
     title: 'History',
@@ -1506,6 +1515,10 @@ const es: Messages = {
     },
     points: (points) => `${points.toLocaleString('es')} pts`,
     shared: (sharedWith) => (sharedWith === 1 ? 'Empatado con 1 más' : `Empatado con ${sharedWith} más`),
+    crowns: (count) => `${count} coronas`,
+    many: (count) => `Ganaste en ${count} grupos.`,
+    period: { week: 'Semana', month: 'Mes', year: 'Año' },
+    tiedWith: (sharedWith) => `empatado con ${sharedWith}`,
   },
   history: {
     title: 'Historial',
