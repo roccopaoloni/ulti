@@ -443,6 +443,7 @@ export function SessionScreen({ training, units, layout: chosen, practice = fals
             name={name(exerciseId)}
             training={training}
             exerciseId={exerciseId}
+            muscle={catalog.find(({ id }) => id === exerciseId)?.muscle ?? 'full-body'}
             incrementKg={catalog.find(({ id }) => id === exerciseId)?.incrementKg ?? 2.5}
             bodyweight={catalog.find(({ id }) => id === exerciseId)?.bodyweight ?? false}
             dumbbell={catalog.find(({ id }) => id === exerciseId)?.equipment === 'dumbbell'}

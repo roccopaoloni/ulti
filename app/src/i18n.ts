@@ -210,6 +210,8 @@ type Messages = {
     resume: string;
     // How many Sets the Session in progress has, under "Back to session".
     logged: (sets: number) => string;
+    // The Exercise's name as a button, which opens its figure.
+    showExercise: (name: string) => string;
     title: string;
     sets: (count: number) => string;
     legend: string;
@@ -769,6 +771,7 @@ const en: Messages = {
     startHint: 'It saves on your phone, even with no signal.',
     resume: 'Back to session',
     logged: (sets) => (sets === 1 ? '1 set logged' : `${sets} sets logged`),
+    showExercise: (name) => `See how to do ${name}`,
     title: 'Session',
     sets: (count) => (count === 1 ? '1 set' : `${count} sets`),
     legend: 'Sets: weight × reps',
@@ -1300,6 +1303,7 @@ const es: Messages = {
     startHint: 'Se guarda en tu teléfono, aunque no haya señal.',
     resume: 'Volver a la sesión',
     logged: (sets) => (sets === 1 ? '1 serie registrada' : `${sets} series registradas`),
+    showExercise: (name) => `Ver cómo se hace ${name}`,
     title: 'Sesión',
     sets: (count) => (count === 1 ? '1 serie' : `${count} series`),
     legend: 'Series: peso × repeticiones',

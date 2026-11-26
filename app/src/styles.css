@@ -3324,3 +3324,59 @@ prefers-reduced-motion switches every animation off, so it stays off the badge. 
     animation: none;
   }
 }
+
+/* Exercise figures: the thumbnail in a row, and the large figure in the Session sheet. */
+.ex-thumb {
+  --figbg: var(--surface);
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  background: var(--surface);
+  overflow: hidden;
+}
+.ex-thumb svg,
+.ex-figure svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.picker .pick .ex-thumb {
+  --figbg: var(--surface-2);
+  background: var(--surface-2);
+}
+.rex-main .rex-text {
+  flex: 1;
+}
+.ex-figure {
+  --figbg: var(--surface-2);
+  aspect-ratio: 1;
+  max-height: 46vh;
+  margin: 0 auto;
+  border-radius: 16px;
+  background: var(--surface-2);
+}
+.ex-name-btn {
+  text-align: left;
+  text-transform: inherit;
+  text-decoration: underline dotted;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 6px;
+}
+.fig-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.fig-chip {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+.fig-chip.assist {
+  background: color-mix(in srgb, var(--accent) 38%, transparent);
+  color: var(--fg);
+}

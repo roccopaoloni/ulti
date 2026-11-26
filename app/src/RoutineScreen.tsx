@@ -1,7 +1,8 @@
-import { completeRoutine, dayColour, moveItem, nextDayColour, packRoutineLink, suggestedWeeklyTarget, withDayColours, type RoutineDay } from '@ulti/rules';
+import { completeRoutine, dayColour, moveItem, nextDayColour, packRoutineLink, suggestedWeeklyTarget, withDayColours, type Muscle, type RoutineDay } from '@ulti/rules';
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { dayColourVar } from './dayColour.ts';
 import { useI18n } from './i18n.ts';
+import { ExerciseThumb } from './ExerciseFigure.tsx';
 import { ExercisePicker } from './ExercisePicker.tsx';
 import { Sheet } from './GroupsScreens.tsx';
 import { chevronIcon, closeIcon, gripIcon } from './icons.tsx';
@@ -55,13 +56,14 @@ type Rows = {
   setOpen: (open: { dayId: string; index: number } | null) => void;
   nameOf: (exerciseId: string) => string;
   equipmentOf: (exerciseId: string) => string;
+  muscleOf: (exerciseId: string) => Muscle;
   changeDay: (index: number, change: Partial<RoutineDay>) => void;
   changeExercise: (dayIndex: number, index: number, change: Partial<RoutineDay['exercises'][number]>) => void;
   setPicking: (picking: { dayIndex: number; index?: number }) => void;
 };
 
 // A Day's Exercises, one compact row each. Tapping a row opens it to step its Sets and Rep Range.
-function ExerciseRows({ day, dayIndex, open, setOpen, nameOf, equipmentOf, changeDay, changeExercise, setPicking }: Rows) {
+function ExerciseRows({ day, dayIndex, open, setOpen, nameOf, equipmentOf, muscleOf, changeDay, changeExercise, setPicking }: Rows) {
   const { t } = useI18n();
   const r = t.routine;
   const sortable = useSortable((from, to) => {
@@ -76,6 +78,7 @@ function ExerciseRows({ day, dayIndex, open, setOpen, nameOf, equipmentOf, chang
           <div key={index} className="rex" {...sortable.item(index)}>
             <div className="rex-row">
               <button type="button" className="rex-main" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : { dayId: day.id, index })}>
+                <ExerciseThumb exerciseId={e.exerciseId} muscle={muscleOf(e.exerciseId)} />
                 <span className="rex-text">
                   <span className="rex-name">{nameOf(e.exerciseId)}</span>
                   <small className="muted">{equipmentOf(e.exerciseId)}</small>
@@ -258,6 +261,7 @@ export function RoutineScreen({ userId, training, profile, onProfileSaved }: { u
               setOpen={setOpen}
               nameOf={(id) => { const exercise = exerciseOf(id); return exercise ? nameOf(exercise) : id; }}
               equipmentOf={(id) => { const exercise = exerciseOf(id); const equipment = exercise?.equipment ? t.session.equipment[exercise.equipment] : ''; return exercise?.custom || !exercise ? [t.session.customTag, equipment].filter(Boolean).join(' · ') : equipment; }}
+              muscleOf={(id) => exerciseOf(id)?.muscle ?? 'full-body'}
               changeDay={changeDay}
               changeExercise={changeExercise}
               setPicking={setPicking}
